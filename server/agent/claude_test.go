@@ -127,6 +127,14 @@ func TestParseLine(t *testing.T) {
 			},
 		},
 		{
+			name:  "user event with invalid message falls back to raw text",
+			input: `{"type":"user","message":"invalid message format"}`,
+			expected: []AgentEvent{{
+				Type:    EventTypeText,
+				Content: `"invalid message format"`,
+			}},
+		},
+		{
 			name:     "unknown event type",
 			input:    `{"type":"unknown_event"}`,
 			expected: nil,

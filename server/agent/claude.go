@@ -250,7 +250,11 @@ func (c *ClaudeAgent) parseUserEvent(event cliEvent) []AgentEvent {
 	var msg cliMessage
 	if err := json.Unmarshal(event.Message, &msg); err != nil {
 		logger.Error("parseUserEvent: failed to parse message: %v", err)
-		return nil
+		// Fallback: send raw message as text
+		return []AgentEvent{{
+			Type:    EventTypeText,
+			Content: string(event.Message),
+		}}
 	}
 
 	var events []AgentEvent
