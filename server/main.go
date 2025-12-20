@@ -1,16 +1,20 @@
 package main
 
 import (
-	"log"
+	"context"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/pockode/server/agent"
+	"github.com/pockode/server/logger"
 	"github.com/pockode/server/middleware"
 	"github.com/pockode/server/ws"
 )
 
-func newHandler(token, workDir string) http.Handler {
+func newHandler(token, workDir string, devMode bool) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
@@ -24,7 +28,7 @@ func newHandler(token, workDir string) http.Handler {
 	})
 
 	// WebSocket endpoint (handles its own auth via query param)
-	wsHandler := ws.NewHandler(token, agent.NewClaudeAgent(), workDir)
+	wsHandler := ws.NewHandler(token, agent.NewClaudeAgent(), workDir, devMode)
 	mux.Handle("GET /ws", wsHandler)
 
 	return middleware.Auth(token)(mux)
@@ -38,7 +42,8 @@ func main() {
 
 	token := os.Getenv("AUTH_TOKEN")
 	if token == "" {
-		log.Fatal("AUTH_TOKEN environment variable is required")
+		logger.Error("AUTH_TOKEN environment variable is required")
+		os.Exit(1)
 	}
 
 	workDir := os.Getenv("WORK_DIR")
@@ -46,10 +51,33 @@ func main() {
 		workDir = "/workspace"
 	}
 
-	handler := newHandler(token, workDir)
+	devMode := os.Getenv("DEV_MODE") == "true"
 
-	log.Printf("Server starting on :%s (workDir: %s)", port, workDir)
-	if err := http.ListenAndServe(":"+port, handler); err != nil {
-		log.Fatal(err)
+	handler := newHandler(token, workDir, devMode)
+
+	srv := &http.Server{
+		Addr:    ":" + port,
+		Handler: handler,
 	}
+
+	// Graceful shutdown
+	go func() {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		<-sigCh
+
+		logger.Info("Shutting down server...")
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := srv.Shutdown(ctx); err != nil {
+			logger.Error("Server shutdown error: %v", err)
+		}
+	}()
+
+	logger.Info("Server starting on :%s (workDir: %s, devMode: %v)", port, workDir, devMode)
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		logger.Error("Server error: %v", err)
+		os.Exit(1)
+	}
+	logger.Info("Server stopped")
 }

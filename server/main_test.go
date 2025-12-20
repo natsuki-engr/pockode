@@ -7,7 +7,7 @@ import (
 )
 
 func TestHealthEndpoint(t *testing.T) {
-	handler := newHandler("test-token", "/tmp")
+	handler := newHandler("test-token", "/tmp", true)
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rec := httptest.NewRecorder()
 
@@ -23,7 +23,7 @@ func TestHealthEndpoint(t *testing.T) {
 
 func TestPingEndpoint(t *testing.T) {
 	const token = "test-token"
-	handler := newHandler(token, "/tmp")
+	handler := newHandler(token, "/tmp", true)
 
 	t.Run("returns pong with valid token", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/ping", nil)

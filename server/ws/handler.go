@@ -4,12 +4,19 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/json"
-	"log"
 	"net/http"
 	"sync"
 
 	"github.com/coder/websocket"
 	"github.com/pockode/server/agent"
+	"github.com/pockode/server/logger"
+)
+
+const (
+	// maxConcurrentRequests limits concurrent requests per connection.
+	maxConcurrentRequests = 5
+	// promptLogMaxLen limits prompt length in logs for privacy.
+	promptLogMaxLen = 50
 )
 
 // Handler handles WebSocket connections for chat.
@@ -17,14 +24,16 @@ type Handler struct {
 	token   string
 	agent   agent.Agent
 	workDir string
+	devMode bool
 }
 
 // NewHandler creates a new WebSocket handler.
-func NewHandler(token string, ag agent.Agent, workDir string) *Handler {
+func NewHandler(token string, ag agent.Agent, workDir string, devMode bool) *Handler {
 	return &Handler{
 		token:   token,
 		agent:   ag,
 		workDir: workDir,
+		devMode: devMode,
 	}
 }
 
@@ -44,11 +53,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Accept WebSocket connection
 	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		// Allow all origins for development; restrict in production
-		InsecureSkipVerify: true,
+		InsecureSkipVerify: h.devMode,
 	})
 	if err != nil {
-		log.Printf("Failed to accept websocket: %v", err)
+		logger.Error("Failed to accept websocket: %v", err)
 		return
 	}
 	defer conn.Close(websocket.StatusNormalClosure, "")
@@ -60,6 +68,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type sessionState struct {
 	mu     sync.Mutex
 	cancel context.CancelFunc
+	sem    chan struct{}
+}
+
+func newSessionState() *sessionState {
+	return &sessionState{
+		sem: make(chan struct{}, maxConcurrentRequests),
+	}
 }
 
 func (s *sessionState) cancelCurrent() {
@@ -80,35 +95,55 @@ func (s *sessionState) setCancel(cancel context.CancelFunc) {
 	s.cancel = cancel
 }
 
+func (s *sessionState) acquire() bool {
+	select {
+	case s.sem <- struct{}{}:
+		return true
+	default:
+		return false
+	}
+}
+
+func (s *sessionState) release() {
+	<-s.sem
+}
+
 // handleConnection manages the WebSocket connection lifecycle.
 func (h *Handler) handleConnection(ctx context.Context, conn *websocket.Conn) {
-	log.Printf("handleConnection: new connection")
-	session := &sessionState{}
+	logger.Info("handleConnection: new connection")
+	session := newSessionState()
 	defer session.cancelCurrent()
 
 	for {
 		_, data, err := conn.Read(ctx)
 		if err != nil {
-			log.Printf("handleConnection: read error: %v", err)
+			logger.Debug("handleConnection: read error: %v", err)
 			return
 		}
 
-		log.Printf("handleConnection: received: %s", string(data))
+		logger.Debug("handleConnection: received message (len=%d)", len(data))
 
 		var msg ClientMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
-			log.Printf("handleConnection: unmarshal error: %v", err)
+			logger.Error("handleConnection: unmarshal error: %v", err)
 			h.sendError(ctx, conn, "", "Invalid message format")
 			continue
 		}
 
-		log.Printf("handleConnection: parsed message type=%s, id=%s", msg.Type, msg.ID)
+		logger.Debug("handleConnection: parsed message type=%s, id=%s", msg.Type, msg.ID)
 
 		switch msg.Type {
 		case "message":
+			if !session.acquire() {
+				h.sendError(ctx, conn, msg.ID, "Too many concurrent requests")
+				continue
+			}
 			msgCtx, cancel := context.WithCancel(ctx)
 			session.setCancel(cancel)
-			go h.handleMessage(msgCtx, conn, msg)
+			go func() {
+				defer session.release()
+				h.handleMessage(msgCtx, conn, msg)
+			}()
 
 		case "cancel":
 			session.cancelCurrent()
@@ -121,17 +156,17 @@ func (h *Handler) handleConnection(ctx context.Context, conn *websocket.Conn) {
 
 // handleMessage processes a user message and streams the response.
 func (h *Handler) handleMessage(ctx context.Context, conn *websocket.Conn, msg ClientMessage) {
-	log.Printf("handleMessage: prompt=%q, workDir=%s", msg.Content, h.workDir)
+	logger.Info("handleMessage: prompt=%q, workDir=%s", logger.Truncate(msg.Content, promptLogMaxLen), h.workDir)
 
 	events, err := h.agent.Run(ctx, msg.Content, h.workDir)
 	if err != nil {
-		log.Printf("agent.Run error: %v", err)
+		logger.Error("agent.Run error: %v", err)
 		h.sendError(ctx, conn, msg.ID, err.Error())
 		return
 	}
 
 	for event := range events {
-		log.Printf("event: type=%s, content=%q, error=%q", event.Type, event.Content, event.Error)
+		logger.Debug("event: type=%s", event.Type)
 
 		serverMsg := ServerMessage{
 			Type:      string(event.Type),
@@ -143,7 +178,7 @@ func (h *Handler) handleMessage(ctx context.Context, conn *websocket.Conn, msg C
 		}
 
 		if err := h.send(ctx, conn, serverMsg); err != nil {
-			log.Printf("send error: %v", err)
+			logger.Error("send error: %v", err)
 			return
 		}
 	}
@@ -159,10 +194,14 @@ func (h *Handler) send(ctx context.Context, conn *websocket.Conn, msg ServerMess
 }
 
 // sendError sends an error message to the client.
-func (h *Handler) sendError(ctx context.Context, conn *websocket.Conn, msgID, errMsg string) {
-	h.send(ctx, conn, ServerMessage{
+func (h *Handler) sendError(ctx context.Context, conn *websocket.Conn, msgID, errMsg string) error {
+	if err := h.send(ctx, conn, ServerMessage{
 		Type:      "error",
 		MessageID: msgID,
 		Error:     errMsg,
-	})
+	}); err != nil {
+		logger.Error("sendError: failed to send error message: %v", err)
+		return err
+	}
+	return nil
 }

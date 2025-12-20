@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	DefaultTimeout = 5 * time.Minute
-	ClaudeBinary   = "claude"
+	DefaultTimeout    = 5 * time.Minute
+	ClaudeBinary      = "claude"
+	stderrReadTimeout = 5 * time.Second
 )
 
 // ClaudeAgent implements the Agent interface using Claude CLI.
@@ -92,8 +93,13 @@ func (c *ClaudeAgent) Run(ctx context.Context, prompt string, workDir string) (<
 			}
 		}
 
-		// Wait for stderr goroutine to complete
-		stderrContent := <-stderrCh
+		// Wait for stderr goroutine with timeout
+		var stderrContent string
+		select {
+		case stderrContent = <-stderrCh:
+		case <-time.After(stderrReadTimeout):
+			// Timeout waiting for stderr, continue without it
+		}
 
 		if err := cmd.Wait(); err != nil {
 			errMsg := stderrContent

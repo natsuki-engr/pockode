@@ -7,6 +7,8 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 export AUTH_TOKEN="${AUTH_TOKEN:-dev-token}"
 export WORK_DIR="${WORK_DIR:-$PROJECT_DIR}"
 export PORT="${PORT:-8080}"
+export DEV_MODE="${DEV_MODE:-true}"
+export DEBUG="${DEBUG:-true}"
 export VITE_API_BASE_URL="${VITE_API_BASE_URL:-http://localhost:$PORT}"
 export VITE_AUTH_TOKEN="${VITE_AUTH_TOKEN:-$AUTH_TOKEN}"
 

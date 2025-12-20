@@ -39,7 +39,7 @@ func (m *mockAgent) Run(ctx context.Context, prompt string, workDir string) (<-c
 }
 
 func TestHandler_MissingToken(t *testing.T) {
-	h := NewHandler("secret-token", &mockAgent{}, "/tmp")
+	h := NewHandler("secret-token", &mockAgent{}, "/tmp", true)
 
 	req := httptest.NewRequest(http.MethodGet, "/ws", nil)
 	rec := httptest.NewRecorder()
@@ -56,7 +56,7 @@ func TestHandler_MissingToken(t *testing.T) {
 }
 
 func TestHandler_InvalidToken(t *testing.T) {
-	h := NewHandler("secret-token", &mockAgent{}, "/tmp")
+	h := NewHandler("secret-token", &mockAgent{}, "/tmp", true)
 
 	req := httptest.NewRequest(http.MethodGet, "/ws?token=wrong-token", nil)
 	rec := httptest.NewRecorder()
@@ -77,7 +77,7 @@ func TestHandler_WebSocketConnection(t *testing.T) {
 		{Type: agent.EventTypeText, Content: "Hello"},
 		{Type: agent.EventTypeDone},
 	}
-	h := NewHandler("test-token", &mockAgent{events: events}, "/tmp")
+	h := NewHandler("test-token", &mockAgent{events: events}, "/tmp", true)
 
 	server := httptest.NewServer(h)
 	defer server.Close()
@@ -145,7 +145,7 @@ func TestHandler_ToolCallEvent(t *testing.T) {
 		},
 		{Type: agent.EventTypeDone},
 	}
-	h := NewHandler("test-token", &mockAgent{events: events}, "/tmp")
+	h := NewHandler("test-token", &mockAgent{events: events}, "/tmp", true)
 
 	server := httptest.NewServer(h)
 	defer server.Close()
@@ -193,7 +193,7 @@ func TestHandler_ToolCallEvent(t *testing.T) {
 }
 
 func TestSessionState_CancelCurrent(t *testing.T) {
-	session := &sessionState{}
+	session := newSessionState()
 
 	called := false
 	session.setCancel(func() {
@@ -211,7 +211,7 @@ func TestSessionState_CancelCurrent(t *testing.T) {
 }
 
 func TestSessionState_SetCancelReplacesExisting(t *testing.T) {
-	session := &sessionState{}
+	session := newSessionState()
 
 	firstCalled := false
 	secondCalled := false
