@@ -27,8 +27,8 @@
 
 ### 后端
 
-- [ ] 初始化 Go module
-- [ ] 基础 HTTP 服务器 + Token 认证
+- [x] 初始化 Go module
+- [x] 基础 HTTP 服务器 + Token 认证
 
 ### 交付物
 
