@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/pockode/server/logger"
 )
 
 const (
@@ -93,6 +95,10 @@ func (c *ClaudeAgent) Run(ctx context.Context, prompt string, workDir string) (<
 			}
 		}
 
+		if err := scanner.Err(); err != nil {
+			logger.Error("stdout scanner error: %v", err)
+		}
+
 		// Wait for stderr goroutine with timeout
 		var stderrContent string
 		select {
@@ -147,6 +153,7 @@ type cliContentBlock struct {
 func (c *ClaudeAgent) parseLine(line []byte) *AgentEvent {
 	var event cliEvent
 	if err := json.Unmarshal(line, &event); err != nil {
+		logger.Error("parseLine: failed to parse JSON: %v, line: %s", err, logger.Truncate(string(line), 100))
 		return nil
 	}
 
@@ -167,11 +174,13 @@ func (c *ClaudeAgent) parseLine(line []byte) *AgentEvent {
 // parseAssistantEvent handles assistant message events.
 func (c *ClaudeAgent) parseAssistantEvent(event cliEvent) *AgentEvent {
 	if event.Message == nil {
+		logger.Error("parseAssistantEvent: message is nil, subtype: %s", event.Subtype)
 		return nil
 	}
 
 	var msg cliMessage
 	if err := json.Unmarshal(event.Message, &msg); err != nil {
+		logger.Error("parseAssistantEvent: failed to parse message: %v", err)
 		return nil
 	}
 
