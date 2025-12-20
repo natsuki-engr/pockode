@@ -20,6 +20,7 @@ Pockode 是一个移动端编程平台，核心理念是「AI 编辑为主，手
 
 ```
 pockode/
+├── web/            # React 前端（见 web/AGENTS.md）
 ├── server/         # Go 后端（见 server/AGENTS.md）
 ├── docs/           # 技术文档
 ├── README.md       # 项目愿景和功能介绍
@@ -46,7 +47,7 @@ CloudFront (React SPA)
 
 ### 代码风格
 
-- 前端：使用 ESLint + Prettier，遵循 React 最佳实践
+- 前端：使用 Biome（Linter + Formatter），遵循 React 最佳实践（见 web/AGENTS.md）
 - 后端：使用 `gofmt`，遵循 Go 惯用写法
 - 运行 linter 和 formatter 后再提交
 
