@@ -5,7 +5,6 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"net/http"
-	"sync"
 
 	"github.com/coder/websocket"
 	"github.com/pockode/server/agent"
@@ -13,8 +12,6 @@ import (
 )
 
 const (
-	// maxConcurrentRequests limits concurrent requests per connection.
-	maxConcurrentRequests = 5
 	// promptLogMaxLen limits prompt length in logs for privacy.
 	promptLogMaxLen = 50
 )
@@ -64,60 +61,18 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.handleConnection(r.Context(), conn)
 }
 
-// sessionState manages the state for a single WebSocket session.
-type sessionState struct {
-	mu     sync.Mutex
-	cancel context.CancelFunc
-	sem    chan struct{}
-}
-
-func newSessionState() *sessionState {
-	return &sessionState{
-		sem: make(chan struct{}, maxConcurrentRequests),
-	}
-}
-
-func (s *sessionState) cancelCurrent() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.cancel != nil {
-		s.cancel()
-		s.cancel = nil
-	}
-}
-
-func (s *sessionState) setCancel(cancel context.CancelFunc) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.cancel != nil {
-		s.cancel()
-	}
-	s.cancel = cancel
-}
-
-func (s *sessionState) acquire() bool {
-	select {
-	case s.sem <- struct{}{}:
-		return true
-	default:
-		return false
-	}
-}
-
-func (s *sessionState) release() {
-	<-s.sem
-}
-
 // handleConnection manages the WebSocket connection lifecycle.
 func (h *Handler) handleConnection(ctx context.Context, conn *websocket.Conn) {
 	logger.Info("handleConnection: new connection")
-	session := newSessionState()
-	defer session.cancelCurrent()
+	var cancel context.CancelFunc
 
 	for {
 		_, data, err := conn.Read(ctx)
 		if err != nil {
 			logger.Debug("handleConnection: read error: %v", err)
+			if cancel != nil {
+				cancel()
+			}
 			return
 		}
 
@@ -134,19 +89,18 @@ func (h *Handler) handleConnection(ctx context.Context, conn *websocket.Conn) {
 
 		switch msg.Type {
 		case "message":
-			if !session.acquire() {
-				h.sendError(ctx, conn, msg.ID, "Too many concurrent requests")
-				continue
+			if cancel != nil {
+				cancel()
 			}
-			msgCtx, cancel := context.WithCancel(ctx)
-			session.setCancel(cancel)
-			go func() {
-				defer session.release()
-				h.handleMessage(msgCtx, conn, msg)
-			}()
+			var msgCtx context.Context
+			msgCtx, cancel = context.WithCancel(ctx)
+			go h.handleMessage(msgCtx, conn, msg)
 
 		case "cancel":
-			session.cancelCurrent()
+			if cancel != nil {
+				cancel()
+				cancel = nil
+			}
 
 		default:
 			h.sendError(ctx, conn, msg.ID, "Unknown message type")
