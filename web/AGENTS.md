@@ -48,6 +48,7 @@ web/
 ├── src/
 │   ├── components/   # React 组件
 │   ├── hooks/        # 自定义 Hooks
+│   ├── lib/          # 状态管理（stores）
 │   ├── types/        # 类型定义
 │   ├── utils/        # 工具函数
 │   ├── test/         # 测试配置
@@ -79,6 +80,7 @@ web/
 |------|------|------|
 | 组件 | PascalCase | `ChatPanel.tsx` |
 | Hook | camelCase + use 前缀 | `useWebSocket.ts` |
+| Store | camelCase + Store 后缀 | `wsStore.ts` |
 | 工具函数 | camelCase | `formatMessage.ts` |
 | 类型/接口 | PascalCase | `Message`, `ChatProps` |
 | 常量 | UPPER_SNAKE_CASE | `API_BASE_URL` |
