@@ -12,13 +12,18 @@ export interface ToolCall {
 	result?: string;
 }
 
+// Content part - represents a piece of content in timeline order
+export type ContentPart =
+	| { type: "text"; content: string }
+	| { type: "tool_call"; tool: ToolCall };
+
 // Chat message
 export interface Message {
 	id: string;
 	role: MessageRole;
-	content: string;
+	content: string; // For user messages; for assistant, use parts
+	parts?: ContentPart[]; // Timeline-ordered content for assistant
 	status: MessageStatus;
-	toolCalls?: ToolCall[];
 	error?: string;
 	createdAt: Date;
 }

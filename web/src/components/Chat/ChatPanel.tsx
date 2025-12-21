@@ -51,32 +51,50 @@ function ChatPanel() {
 
 			const updated = [...prev];
 			const message = { ...updated[index] };
+			const parts = [...(message.parts ?? [])];
 
 			switch (serverMsg.type) {
-				case "text":
-					message.content += serverMsg.content ?? "";
+				case "text": {
+					// Append to last text part or create new one
+					const lastPart = parts[parts.length - 1];
+					if (lastPart?.type === "text") {
+						parts[parts.length - 1] = {
+							type: "text",
+							content: lastPart.content + (serverMsg.content ?? ""),
+						};
+					} else {
+						parts.push({ type: "text", content: serverMsg.content ?? "" });
+					}
+					message.parts = parts;
 					message.status = "streaming";
 					break;
+				}
 				case "tool_call":
-					message.toolCalls = [
-						...(message.toolCalls ?? []),
-						{
+					parts.push({
+						type: "tool_call",
+						tool: {
 							id: serverMsg.tool_use_id,
 							name: serverMsg.tool_name ?? "",
 							input: serverMsg.tool_input,
 						},
-					];
+					});
+					message.parts = parts;
 					break;
-				case "tool_result":
-					// Match tool result to tool call by id
-					if (message.toolCalls && serverMsg.tool_use_id) {
-						message.toolCalls = message.toolCalls.map((tc) =>
-							tc.id === serverMsg.tool_use_id
-								? { ...tc, result: serverMsg.tool_result }
-								: tc,
+				case "tool_result": {
+					// Find and update the matching tool call
+					const toolId = serverMsg.tool_use_id;
+					if (toolId) {
+						message.parts = parts.map((part) =>
+							part.type === "tool_call" && part.tool.id === toolId
+								? {
+										...part,
+										tool: { ...part.tool, result: serverMsg.tool_result },
+									}
+								: part,
 						);
 					}
 					break;
+				}
 				case "done":
 					message.status = "complete";
 					break;
