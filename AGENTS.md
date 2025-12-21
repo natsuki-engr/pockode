@@ -65,6 +65,15 @@ CloudFront (React SPA)
 - **保持精简** — 每个测试应有明确目的；冗余测试是负担，不是资产
 - 提交前确保测试通过
 
+### 前端 UI 测试
+
+遵循 [Testing Library 指导原则](https://testing-library.com/docs/guiding-principles)：
+
+- **按用户视角测试** — 测试用户能看到和交互的内容，而非实现细节
+- **优先使用可访问性查询** — 按优先级：`getByRole` > `getByLabelText` > `getByText` > `getByTestId`
+- **避免测试实现细节** — 不测 state、props、生命周期；只测用户可见的行为
+- **适度测试** — 只为有意义的交互和边界情况编写测试，不追求 100% 覆盖
+
 ## AI 助手注意事项
 
 1. **用英语思考，用中文输出** — 内部推理使用英语以获得更好的逻辑性，但与用户交流时使用中文
