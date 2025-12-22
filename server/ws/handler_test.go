@@ -21,8 +21,10 @@ type mockSession struct {
 	messageQueue    chan string
 	pendingRequests *sync.Map
 	ctx             context.Context
+	mu              sync.Mutex
 	closed          bool
-	closeMu         sync.Mutex
+	interruptCh     chan struct{} // closed when SendInterrupt is called
+	interruptOnce   sync.Once
 }
 
 func (s *mockSession) Events() <-chan agent.AgentEvent {
@@ -46,9 +48,16 @@ func (s *mockSession) SendPermissionResponse(requestID string, allow bool) error
 	return nil
 }
 
+func (s *mockSession) SendInterrupt() error {
+	s.interruptOnce.Do(func() {
+		close(s.interruptCh)
+	})
+	return nil
+}
+
 func (s *mockSession) Close() {
-	s.closeMu.Lock()
-	defer s.closeMu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.closed {
 		return
 	}
@@ -63,8 +72,9 @@ type mockAgent struct {
 	sessionID string             // session ID to return
 
 	mu                sync.Mutex
-	messages          []string            // record of all messages sent
-	messagesBySession map[string][]string // messages grouped by sessionID
+	messages          []string                // record of all messages sent
+	messagesBySession map[string][]string     // messages grouped by sessionID
+	sessions          map[string]*mockSession // track created sessions
 }
 
 func (m *mockAgent) Start(ctx context.Context, workDir string, sessionID string) (agent.Session, error) {
@@ -89,7 +99,15 @@ func (m *mockAgent) Start(ctx context.Context, workDir string, sessionID string)
 		messageQueue:    messageQueue,
 		pendingRequests: pendingRequests,
 		ctx:             ctx,
+		interruptCh:     make(chan struct{}),
 	}
+
+	m.mu.Lock()
+	if m.sessions == nil {
+		m.sessions = make(map[string]*mockSession)
+	}
+	m.sessions[effectiveSessionID] = sess
+	m.mu.Unlock()
 
 	go func() {
 		defer close(eventsChan)
@@ -165,6 +183,12 @@ func (m *mockAgent) getMessagesBySession(sessionID string) []string {
 	result := make([]string, len(msgs))
 	copy(result, msgs)
 	return result
+}
+
+func (m *mockAgent) getSession(sessionID string) *mockSession {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.sessions[sessionID]
 }
 
 func TestHandler_MissingToken(t *testing.T) {
@@ -627,7 +651,7 @@ func TestHandler_AgentStartError(t *testing.T) {
 	}
 }
 
-func TestHandler_Cancel(t *testing.T) {
+func TestHandler_Interrupt(t *testing.T) {
 	mock := &mockAgent{
 		events: []agent.AgentEvent{
 			{Type: agent.EventTypeText, Content: "Response"},
@@ -651,7 +675,7 @@ func TestHandler_Cancel(t *testing.T) {
 	defer conn.Close(websocket.StatusNormalClosure, "")
 
 	// Create a session first
-	msg := ClientMessage{Type: "message", ID: "msg-1", SessionID: "cancel-test-session", Content: "hello"}
+	msg := ClientMessage{Type: "message", ID: "msg-1", SessionID: "interrupt-test-session", Content: "hello"}
 	msgData, _ := json.Marshal(msg)
 	if err := conn.Write(ctx, websocket.MessageText, msgData); err != nil {
 		t.Fatalf("failed to write: %v", err)
@@ -665,38 +689,29 @@ func TestHandler_Cancel(t *testing.T) {
 		}
 	}
 
-	// Cancel the session
-	cancelMsg := ClientMessage{Type: "cancel", SessionID: "cancel-test-session"}
-	msgData, _ = json.Marshal(cancelMsg)
+	// Verify session exists before interrupt
+	sess := mock.getSession("interrupt-test-session")
+	if sess == nil {
+		t.Fatal("session should exist before interrupt")
+	}
+
+	// Interrupt the session (soft stop, session remains active)
+	interruptMsg := ClientMessage{Type: "interrupt", SessionID: "interrupt-test-session"}
+	msgData, _ = json.Marshal(interruptMsg)
 	if err := conn.Write(ctx, websocket.MessageText, msgData); err != nil {
-		t.Fatalf("failed to write cancel: %v", err)
+		t.Fatalf("failed to write interrupt: %v", err)
 	}
 
-	// Try to send message to cancelled session - should get error
-	msg2 := ClientMessage{Type: "message", ID: "msg-2", SessionID: "cancel-test-session", Content: "should create new"}
-	msgData, _ = json.Marshal(msg2)
-	if err := conn.Write(ctx, websocket.MessageText, msgData); err != nil {
-		t.Fatalf("failed to write: %v", err)
-	}
-
-	// Should receive session event for the new session (cancel removes old one)
-	_, data, err := conn.Read(ctx)
-	if err != nil {
-		t.Fatalf("failed to read: %v", err)
-	}
-
-	var resp ServerMessage
-	if err := json.Unmarshal(data, &resp); err != nil {
-		t.Fatalf("failed to unmarshal: %v", err)
-	}
-
-	// New session should be created
-	if resp.Type != "session" {
-		t.Errorf("expected session event after cancel, got %+v", resp)
+	// Wait for SendInterrupt to be called
+	select {
+	case <-sess.interruptCh:
+		// Success: SendInterrupt was called
+	case <-ctx.Done():
+		t.Fatal("timeout waiting for SendInterrupt")
 	}
 }
 
-func TestHandler_CancelInvalidSession(t *testing.T) {
+func TestHandler_InterruptInvalidSession(t *testing.T) {
 	h := NewHandler("test-token", &mockAgent{}, "/tmp", true)
 
 	server := httptest.NewServer(h)
@@ -713,9 +728,9 @@ func TestHandler_CancelInvalidSession(t *testing.T) {
 	}
 	defer conn.Close(websocket.StatusNormalClosure, "")
 
-	// Try to cancel non-existent session
-	cancelMsg := ClientMessage{Type: "cancel", SessionID: "non-existent"}
-	msgData, _ := json.Marshal(cancelMsg)
+	// Try to interrupt non-existent session
+	interruptMsg := ClientMessage{Type: "interrupt", SessionID: "non-existent"}
+	msgData, _ := json.Marshal(interruptMsg)
 	if err := conn.Write(ctx, websocket.MessageText, msgData); err != nil {
 		t.Fatalf("failed to write: %v", err)
 	}

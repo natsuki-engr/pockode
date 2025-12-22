@@ -136,9 +136,9 @@ func (h *Handler) handleConnection(ctx context.Context, conn *websocket.Conn) {
 				h.sendErrorWithLock(ctx, conn, state, err.Error())
 			}
 
-		case "cancel":
-			if err := h.handleCancel(msg, state); err != nil {
-				logger.Error("handleConnection: cancel error: %v", err)
+		case "interrupt":
+			if err := h.handleInterrupt(msg, state); err != nil {
+				logger.Error("handleConnection: interrupt error: %v", err)
 				h.sendErrorWithLock(ctx, conn, state, err.Error())
 			}
 
@@ -168,6 +168,9 @@ func (h *Handler) handleMessage(ctx context.Context, conn *websocket.Conn, msg C
 			return err
 		}
 
+		// TODO: Bug - when msg.SessionID is empty, we store under "" key, but Claude
+		// returns the real session_id via session event. Subsequent messages with the
+		// real session_id won't find this session.
 		state.mu.Lock()
 		state.sessions[msg.SessionID] = sess
 		state.mu.Unlock()
@@ -184,19 +187,22 @@ func (h *Handler) handleMessage(ctx context.Context, conn *websocket.Conn, msg C
 	return sess.SendMessage(msg.Content)
 }
 
-// handleCancel terminates a specific session.
-func (h *Handler) handleCancel(msg ClientMessage, state *connectionState) error {
+// handleInterrupt sends an interrupt signal to stop the current task.
+// This is a soft stop that preserves the session for future messages.
+func (h *Handler) handleInterrupt(msg ClientMessage, state *connectionState) error {
 	state.mu.Lock()
 	sess, exists := state.sessions[msg.SessionID]
-	if !exists {
-		state.mu.Unlock()
-		return fmt.Errorf("session not found: %s", msg.SessionID)
-	}
-	delete(state.sessions, msg.SessionID)
 	state.mu.Unlock()
 
-	sess.Close()
-	logger.Info("handleCancel: cancelled session %s", msg.SessionID)
+	if !exists {
+		return fmt.Errorf("session not found: %s", msg.SessionID)
+	}
+
+	if err := sess.SendInterrupt(); err != nil {
+		return fmt.Errorf("failed to send interrupt: %w", err)
+	}
+
+	logger.Info("handleInterrupt: sent interrupt to session %s", msg.SessionID)
 	return nil
 }
 

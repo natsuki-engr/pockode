@@ -15,7 +15,6 @@ func TestParseLine(t *testing.T) {
 		name     string
 		input    string
 		expected []agent.AgentEvent
-		isResult bool
 	}{
 		{
 			name:     "empty line",
@@ -36,10 +35,18 @@ func TestParseLine(t *testing.T) {
 			expected: nil,
 		},
 		{
-			name:     "result event",
-			input:    `{"type":"result","subtype":"success","result":"Hello"}`,
-			expected: nil,
-			isResult: true,
+			name:  "result event success",
+			input: `{"type":"result","subtype":"success","result":"Hello"}`,
+			expected: []agent.AgentEvent{
+				{Type: agent.EventTypeDone},
+			},
+		},
+		{
+			name:  "result event interrupted",
+			input: `{"type":"result","subtype":"error_during_execution","errors":["Error: Request was aborted."]}`,
+			expected: []agent.AgentEvent{
+				{Type: agent.EventTypeInterrupted},
+			},
 		},
 		{
 			name:  "assistant text message",
@@ -196,27 +203,10 @@ func TestParseLine(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pendingRequests := &sync.Map{}
-			results, isResult := parseLine([]byte(tt.input), pendingRequests)
+			results := parseLine([]byte(tt.input), pendingRequests)
 
-			if isResult != tt.isResult {
-				t.Errorf("isResult: expected %v, got %v", tt.isResult, isResult)
-			}
-
-			if tt.expected == nil {
-				if len(results) != 0 {
-					t.Errorf("expected nil/empty, got %+v", results)
-				}
-				return
-			}
-
-			if len(results) != len(tt.expected) {
-				t.Fatalf("expected %d events, got %d: %+v", len(tt.expected), len(results), results)
-			}
-
-			for i, expected := range tt.expected {
-				if !reflect.DeepEqual(results[i], expected) {
-					t.Errorf("event[%d]: expected %+v, got %+v", i, expected, results[i])
-				}
+			if !reflect.DeepEqual(results, tt.expected) {
+				t.Errorf("expected %+v, got %+v", tt.expected, results)
 			}
 		})
 	}
@@ -226,11 +216,8 @@ func TestParseControlRequest_StoresPendingRequest(t *testing.T) {
 	pendingRequests := &sync.Map{}
 
 	input := `{"type":"control_request","request_id":"req-789","request":{"subtype":"can_use_tool","tool_name":"Bash","input":{"command":"ls"},"tool_use_id":"toolu_xyz"}}`
-	results, isResult := parseLine([]byte(input), pendingRequests)
+	results := parseLine([]byte(input), pendingRequests)
 
-	if isResult {
-		t.Error("expected isResult to be false for control_request")
-	}
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}

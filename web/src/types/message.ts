@@ -2,7 +2,12 @@
 export type MessageRole = "user" | "assistant";
 
 // Message status
-export type MessageStatus = "sending" | "streaming" | "complete" | "error";
+export type MessageStatus =
+	| "sending"
+	| "streaming"
+	| "complete"
+	| "error"
+	| "interrupted";
 
 // Tool call
 export interface ToolCall {
@@ -45,9 +50,8 @@ export type WSClientMessage =
 			session_id?: string;
 	  }
 	| {
-			type: "cancel";
-			id: string;
-			session_id?: string;
+			type: "interrupt";
+			session_id: string;
 	  }
 	| {
 			type: "permission_response";
@@ -64,6 +68,7 @@ export interface WSServerMessage {
 		| "tool_result"
 		| "error"
 		| "done"
+		| "interrupted"
 		| "session"
 		| "permission_request";
 	content?: string;

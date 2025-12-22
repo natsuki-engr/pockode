@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { type ConnectionStatus, useWebSocket } from "../../hooks/useWebSocket";
 import type {
 	Message,
@@ -102,6 +102,9 @@ function ChatPanel({ onLogout }: Props) {
 				case "done":
 					message.status = "complete";
 					break;
+				case "interrupted":
+					message.status = "interrupted";
+					break;
 				case "error":
 					message.status = "error";
 					message.error = serverMsg.error;
@@ -180,6 +183,33 @@ function ChatPanel({ onLogout }: Props) {
 		[send, permissionRequest, sessionId],
 	);
 
+	// Check if AI is currently streaming a response
+	const isStreaming = messages.some(
+		(m) => m.status === "sending" || m.status === "streaming",
+	);
+
+	// Handle interrupt request
+	const handleInterrupt = useCallback(() => {
+		if (!sessionId) return;
+
+		send({
+			type: "interrupt",
+			session_id: sessionId,
+		});
+	}, [send, sessionId]);
+
+	// Esc key to interrupt streaming
+	useEffect(() => {
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.key === "Escape" && isStreaming) {
+				handleInterrupt();
+			}
+		};
+
+		document.addEventListener("keydown", handleKeyDown);
+		return () => document.removeEventListener("keydown", handleKeyDown);
+	}, [isStreaming, handleInterrupt]);
+
 	const { text: statusText, color: statusColor } = STATUS_CONFIG[status];
 
 	return (
@@ -200,7 +230,12 @@ function ChatPanel({ onLogout }: Props) {
 				</div>
 			</header>
 			<MessageList messages={messages} />
-			<InputBar onSend={handleSend} disabled={status !== "connected"} />
+			<InputBar
+				onSend={handleSend}
+				disabled={status !== "connected"}
+				isStreaming={isStreaming}
+				onInterrupt={handleInterrupt}
+			/>
 
 			{permissionRequest && (
 				<PermissionDialog

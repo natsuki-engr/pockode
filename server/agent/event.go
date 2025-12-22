@@ -11,6 +11,7 @@ const (
 	EventTypeToolResult        EventType = "tool_result"
 	EventTypeError             EventType = "error"
 	EventTypeDone              EventType = "done"
+	EventTypeInterrupted       EventType = "interrupted"
 	EventTypeSession           EventType = "session"
 	EventTypePermissionRequest EventType = "permission_request"
 )

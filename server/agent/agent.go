@@ -28,6 +28,10 @@ type Session interface {
 	// allow indicates whether the user approved the action.
 	SendPermissionResponse(requestID string, allow bool) error
 
+	// SendInterrupt sends an interrupt signal to stop the current task.
+	// This is a soft stop that preserves the session for future messages.
+	SendInterrupt() error
+
 	// Close terminates the agent process and releases resources.
 	Close()
 }

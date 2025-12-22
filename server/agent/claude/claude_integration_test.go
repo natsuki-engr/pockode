@@ -182,3 +182,51 @@ eventLoop:
 		t.Error("permission was approved but no tool_result received")
 	}
 }
+
+func TestIntegration_Interrupt(t *testing.T) {
+	a := New()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	session, err := a.Start(ctx, t.TempDir(), "")
+	if err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
+	defer session.Close()
+
+	// Send a task that takes time
+	if err := session.SendMessage("Count from 1 to 100, one number per line"); err != nil {
+		t.Fatalf("SendMessage failed: %v", err)
+	}
+
+	// Wait for some output, then interrupt
+	time.Sleep(2 * time.Second)
+
+	if err := session.SendInterrupt(); err != nil {
+		t.Fatalf("SendInterrupt failed: %v", err)
+	}
+
+	var interruptedEvents int
+
+eventLoop:
+	for {
+		select {
+		case event, ok := <-session.Events():
+			if !ok {
+				break eventLoop
+			}
+			t.Logf("event: %s", event.Type)
+			if event.Type == agent.EventTypeInterrupted {
+				interruptedEvents++
+				break eventLoop
+			}
+		case <-ctx.Done():
+			t.Fatal("timeout waiting for interrupted event")
+		}
+	}
+
+	if interruptedEvents != 1 {
+		t.Errorf("expected 1 interrupted event, got %d", interruptedEvents)
+	}
+}

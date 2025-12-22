@@ -4,10 +4,10 @@ import "encoding/json"
 
 // ClientMessage represents a message sent by the client.
 type ClientMessage struct {
-	Type      string `json:"type"`                 // "message", "cancel", or "permission_response"
-	ID        string `json:"id"`                   // Message ID (UUID)
+	Type      string `json:"type"`                 // "message", "interrupt", or "permission_response"
+	ID        string `json:"id"`                   // TODO: unused, only logged - remove or use
 	Content   string `json:"content"`              // User input (for "message" type)
-	SessionID string `json:"session_id,omitempty"` // Optional: resume a specific session
+	SessionID string `json:"session_id,omitempty"` // First "message" optional, then required
 	// Permission response fields (for "permission_response" type)
 	RequestID string `json:"request_id,omitempty"` // Permission request ID
 	Allow     bool   `json:"allow,omitempty"`      // Whether to allow the tool execution

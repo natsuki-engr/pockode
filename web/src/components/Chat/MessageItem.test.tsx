@@ -59,6 +59,20 @@ describe("MessageItem", () => {
 		expect(screen.getByText("Connection failed")).toBeInTheDocument();
 	});
 
+	it("shows interrupted indicator for interrupted status", () => {
+		const message: Message = {
+			id: "4b",
+			role: "assistant",
+			content: "",
+			parts: [{ type: "text", content: "Partial response" }],
+			status: "interrupted",
+			createdAt: new Date(),
+		};
+
+		render(<MessageItem message={message} />);
+		expect(screen.getByText("Interrupted")).toBeInTheDocument();
+	});
+
 	it("renders tool calls in parts", () => {
 		const message: Message = {
 			id: "5",

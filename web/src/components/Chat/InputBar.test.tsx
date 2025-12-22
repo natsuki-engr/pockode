@@ -86,4 +86,25 @@ describe("InputBar", () => {
 
 		expect(onSend).not.toHaveBeenCalled();
 	});
+
+	it("shows Stop button when streaming", () => {
+		render(<InputBar onSend={() => {}} isStreaming onInterrupt={() => {}} />);
+
+		expect(screen.getByRole("button", { name: "Stop" })).toBeInTheDocument();
+		expect(
+			screen.queryByRole("button", { name: "Send" }),
+		).not.toBeInTheDocument();
+	});
+
+	it("calls onInterrupt when Stop button clicked", async () => {
+		const user = userEvent.setup();
+		const onInterrupt = vi.fn();
+		render(
+			<InputBar onSend={() => {}} isStreaming onInterrupt={onInterrupt} />,
+		);
+
+		await user.click(screen.getByRole("button", { name: "Stop" }));
+
+		expect(onInterrupt).toHaveBeenCalled();
+	});
 });

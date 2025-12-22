@@ -4,6 +4,8 @@ package claude
 import (
 	"bufio"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -140,6 +142,35 @@ func (s *session) SendPermissionResponse(requestID string, allow bool) error {
 	return s.sendControlResponse(req, allow)
 }
 
+// SendInterrupt sends an interrupt signal to stop the current task.
+func (s *session) SendInterrupt() error {
+	request := interruptRequest{
+		Type:      "control_request",
+		RequestID: generateRequestID(),
+		Request: interruptRequestData{
+			Subtype: "interrupt",
+		},
+	}
+
+	data, err := json.Marshal(request)
+	if err != nil {
+		return fmt.Errorf("failed to marshal interrupt request: %w", err)
+	}
+
+	logger.Info("SendInterrupt: sending interrupt signal")
+	return s.writeStdin(data)
+}
+
+func generateRequestID() string {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		// crypto/rand.Read failure is extremely rare (only on entropy exhaustion).
+		// Log and continue with zero bytes rather than failing the interrupt.
+		logger.Error("generateRequestID: rand.Read failed: %v", err)
+	}
+	return hex.EncodeToString(b)
+}
+
 // Close terminates the Claude process.
 func (s *session) Close() {
 	logger.Info("Session.Close: terminating claude process")
@@ -215,18 +246,9 @@ func streamOutput(ctx context.Context, stdout io.Reader, events chan<- agent.Age
 			continue
 		}
 
-		parsedEvents, isResult := parseLine(line, pendingRequests)
-		for _, event := range parsedEvents {
+		for _, event := range parseLine(line, pendingRequests) {
 			select {
 			case events <- event:
-			case <-ctx.Done():
-				return
-			}
-		}
-
-		if isResult {
-			select {
-			case events <- agent.AgentEvent{Type: agent.EventTypeDone}:
 			case <-ctx.Done():
 				return
 			}
@@ -309,6 +331,16 @@ type controlResponseContent struct {
 	UpdatedInput json.RawMessage `json:"updatedInput,omitempty"`
 }
 
+type interruptRequest struct {
+	Type      string               `json:"type"`
+	RequestID string               `json:"request_id"`
+	Request   interruptRequestData `json:"request"`
+}
+
+type interruptRequestData struct {
+	Subtype string `json:"subtype"`
+}
+
 // --- Parsing ---
 
 type cliEvent struct {
@@ -332,9 +364,9 @@ type cliContentBlock struct {
 	Content   string          `json:"content,omitempty"`
 }
 
-func parseLine(line []byte, pendingRequests *sync.Map) ([]agent.AgentEvent, bool) {
+func parseLine(line []byte, pendingRequests *sync.Map) []agent.AgentEvent {
 	if len(line) == 0 {
-		return nil, false
+		return nil
 	}
 
 	var event cliEvent
@@ -343,32 +375,32 @@ func parseLine(line []byte, pendingRequests *sync.Map) ([]agent.AgentEvent, bool
 		return []agent.AgentEvent{{
 			Type:    agent.EventTypeText,
 			Content: string(line),
-		}}, false
+		}}
 	}
 
 	switch event.Type {
 	case "assistant":
-		return parseAssistantEvent(event), false
+		return parseAssistantEvent(event)
 	case "user":
-		return parseUserEvent(event), false
+		return parseUserEvent(event)
 	case "result":
-		return nil, true
+		return []agent.AgentEvent{parseResultEvent(line)}
 	case "system":
 		if event.SessionID != "" {
 			return []agent.AgentEvent{{
 				Type:      agent.EventTypeSession,
 				SessionID: event.SessionID,
-			}}, false
+			}}
 		}
-		return nil, false
+		return nil
 	case "control_request":
-		return parseControlRequest(line, pendingRequests), false
+		return parseControlRequest(line, pendingRequests)
 	default:
 		logger.Info("parseLine: unknown event type: %s", event.Type)
 		return []agent.AgentEvent{{
 			Type:    agent.EventTypeText,
 			Content: string(line),
-		}}, false
+		}}
 	}
 }
 
@@ -477,4 +509,27 @@ func parseUserEvent(event cliEvent) []agent.AgentEvent {
 	}
 
 	return events
+}
+
+type resultEvent struct {
+	Subtype string   `json:"subtype"`
+	Errors  []string `json:"errors"`
+}
+
+func parseResultEvent(line []byte) agent.AgentEvent {
+	var result resultEvent
+	if err := json.Unmarshal(line, &result); err != nil {
+		return agent.AgentEvent{Type: agent.EventTypeDone}
+	}
+
+	// Check if this was an interrupt (aborted request)
+	if result.Subtype == "error_during_execution" {
+		for _, e := range result.Errors {
+			if strings.Contains(e, "Request was aborted") {
+				return agent.AgentEvent{Type: agent.EventTypeInterrupted}
+			}
+		}
+	}
+
+	return agent.AgentEvent{Type: agent.EventTypeDone}
 }

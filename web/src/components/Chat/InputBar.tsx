@@ -3,9 +3,16 @@ import { type KeyboardEvent, useCallback, useState } from "react";
 interface Props {
 	onSend: (content: string) => void;
 	disabled?: boolean;
+	isStreaming?: boolean;
+	onInterrupt?: () => void;
 }
 
-function InputBar({ onSend, disabled = false }: Props) {
+function InputBar({
+	onSend,
+	disabled = false,
+	isStreaming = false,
+	onInterrupt,
+}: Props) {
 	const [input, setInput] = useState("");
 
 	const handleSend = useCallback(() => {
@@ -38,14 +45,24 @@ function InputBar({ onSend, disabled = false }: Props) {
 					rows={1}
 					className="flex-1 resize-none rounded-lg bg-gray-800 px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
 				/>
-				<button
-					type="button"
-					onClick={handleSend}
-					disabled={disabled || !input.trim()}
-					className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-				>
-					Send
-				</button>
+				{isStreaming ? (
+					<button
+						type="button"
+						onClick={onInterrupt}
+						className="rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+					>
+						Stop
+					</button>
+				) : (
+					<button
+						type="button"
+						onClick={handleSend}
+						disabled={disabled || !input.trim()}
+						className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+					>
+						Send
+					</button>
+				)}
 			</div>
 		</div>
 	);
