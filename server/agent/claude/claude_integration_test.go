@@ -11,6 +11,37 @@ import (
 	"github.com/pockode/server/agent"
 )
 
+// requireFields validates that expected fields are non-empty for each event type.
+// This ensures Claude CLI's JSON schema matches our parsing expectations.
+// Must be manually maintained when AgentEvent fields change.
+func requireFields(t *testing.T, event agent.AgentEvent) {
+	t.Helper()
+	switch event.Type {
+	case agent.EventTypeSession:
+		requireNonEmpty(t, "SessionID", event.SessionID)
+	case agent.EventTypeText:
+		requireNonEmpty(t, "Content", event.Content)
+	case agent.EventTypeToolCall:
+		requireNonEmpty(t, "ToolName", event.ToolName)
+		requireNonEmpty(t, "ToolUseID", event.ToolUseID)
+	case agent.EventTypeToolResult:
+		requireNonEmpty(t, "ToolUseID", event.ToolUseID)
+	case agent.EventTypePermissionRequest:
+		requireNonEmpty(t, "RequestID", event.RequestID)
+		requireNonEmpty(t, "ToolName", event.ToolName)
+		requireNonEmpty(t, "ToolUseID", event.ToolUseID)
+	case agent.EventTypeError:
+		requireNonEmpty(t, "Error", event.Error)
+	}
+}
+
+func requireNonEmpty(t *testing.T, field, value string) {
+	t.Helper()
+	if value == "" {
+		t.Errorf("missing required field: %s", field)
+	}
+}
+
 // Integration tests for Claude CLI.
 // These tests call real Claude CLI and consume API tokens.
 //
@@ -53,6 +84,7 @@ eventLoop:
 			if !ok {
 				break eventLoop
 			}
+			requireFields(t, event)
 			switch event.Type {
 			case agent.EventTypeSession:
 				sessionEvents++
@@ -109,6 +141,7 @@ eventLoop:
 			if !ok {
 				break eventLoop
 			}
+			requireFields(t, event)
 			switch event.Type {
 			case agent.EventTypeToolCall:
 				toolCalls++
@@ -119,12 +152,6 @@ eventLoop:
 			case agent.EventTypePermissionRequest:
 				permissionRequests++
 				t.Logf("permission_request: %s (request_id=%s)", event.ToolName, event.RequestID)
-				if event.RequestID == "" {
-					t.Error("permission_request missing RequestID")
-				}
-				if event.ToolName == "" {
-					t.Error("permission_request missing ToolName")
-				}
 				// Auto-approve for integration test
 				if err := session.SendPermissionResponse(event.RequestID, true); err != nil {
 					t.Errorf("failed to send permission response: %v", err)
