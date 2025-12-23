@@ -20,7 +20,8 @@ export interface ToolCall {
 // Content part - represents a piece of content in timeline order
 export type ContentPart =
 	| { type: "text"; content: string }
-	| { type: "tool_call"; tool: ToolCall };
+	| { type: "tool_call"; tool: ToolCall }
+	| { type: "system"; content: string };
 
 // Chat message
 export interface Message {
@@ -69,7 +70,8 @@ export interface WSServerMessage {
 		| "error"
 		| "done"
 		| "interrupted"
-		| "permission_request";
+		| "permission_request"
+		| "system";
 	content?: string;
 	tool_name?: string;
 	tool_input?: unknown;

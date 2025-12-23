@@ -75,6 +75,36 @@ function ToolCallItem({ tool }: ToolCallItemProps) {
 	);
 }
 
+interface SystemItemProps {
+	content: string;
+}
+
+function SystemItem({ content }: SystemItemProps) {
+	const [expanded, setExpanded] = useState(false);
+
+	return (
+		<div className="rounded bg-gray-800 text-xs">
+			<button
+				type="button"
+				onClick={() => setExpanded(!expanded)}
+				className="flex w-full items-center gap-2 p-2 text-left hover:bg-gray-750"
+			>
+				<span
+					className={`text-gray-500 transition-transform ${expanded ? "rotate-90" : ""}`}
+				>
+					▶
+				</span>
+				<span className="italic text-gray-500">system</span>
+			</button>
+			{expanded && (
+				<pre className="max-h-48 overflow-auto border-t border-gray-700 p-2 text-gray-400">
+					{content}
+				</pre>
+			)}
+		</div>
+	);
+}
+
 interface ContentPartItemProps {
 	part: ContentPart;
 }
@@ -86,6 +116,9 @@ function ContentPartItem({ part }: ContentPartItemProps) {
 				{part.content}
 			</p>
 		);
+	}
+	if (part.type === "system") {
+		return <SystemItem content={part.content} />;
 	}
 	return <ToolCallItem tool={part.tool} />;
 }

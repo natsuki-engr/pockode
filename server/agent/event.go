@@ -13,6 +13,7 @@ const (
 	EventTypeDone              EventType = "done"
 	EventTypeInterrupted       EventType = "interrupted"
 	EventTypePermissionRequest EventType = "permission_request"
+	EventTypeSystem            EventType = "system"
 )
 
 // AgentEvent represents a unified event from an AI agent.

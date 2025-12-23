@@ -40,6 +40,22 @@ function ChatPanel({ onLogout }: Props) {
 			return;
 		}
 
+		// Handle system messages independently (e.g., login prompts before any message)
+		if (serverMsg.type === "system") {
+			setMessages((prev) => {
+				const systemMessage: Message = {
+					id: generateUUID(),
+					role: "assistant",
+					content: "",
+					parts: [{ type: "system", content: serverMsg.content ?? "" }],
+					status: "complete",
+					createdAt: new Date(),
+				};
+				return [...prev, systemMessage];
+			});
+			return;
+		}
+
 		setMessages((prev) => {
 			// Find the current pending message (sending or streaming)
 			const index = prev.findIndex(
