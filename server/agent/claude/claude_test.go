@@ -30,12 +30,9 @@ func TestParseLine(t *testing.T) {
 			}},
 		},
 		{
-			name:  "system init event",
-			input: `{"type":"system","subtype":"init","cwd":"/tmp"}`,
-			expected: []agent.AgentEvent{{
-				Type:    agent.EventTypeSystem,
-				Content: `{"type":"system","subtype":"init","cwd":"/tmp"}`,
-			}},
+			name:     "system init event is filtered",
+			input:    `{"type":"system","subtype":"init","cwd":"/tmp"}`,
+			expected: nil,
 		},
 		{
 			name:  "result event success",
@@ -188,12 +185,9 @@ func TestParseLine(t *testing.T) {
 			expected: nil,
 		},
 		{
-			name:  "system event with session_id",
-			input: `{"type":"system","subtype":"init","session_id":"sess-abc-123"}`,
-			expected: []agent.AgentEvent{{
-				Type:    agent.EventTypeSystem,
-				Content: `{"type":"system","subtype":"init","session_id":"sess-abc-123"}`,
-			}},
+			name:     "system init event with session_id is filtered",
+			input:    `{"type":"system","subtype":"init","session_id":"sess-abc-123"}`,
+			expected: nil,
 		},
 		{
 			name:     "assistant message with nil message",

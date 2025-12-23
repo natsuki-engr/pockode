@@ -386,6 +386,10 @@ func parseLine(line []byte, pendingRequests *sync.Map) []agent.AgentEvent {
 	case "result":
 		return []agent.AgentEvent{parseResultEvent(line)}
 	case "system":
+		// Skip init event (noise at session start)
+		if event.Subtype == "init" {
+			return nil
+		}
 		return []agent.AgentEvent{{
 			Type:    agent.EventTypeSystem,
 			Content: string(line),
