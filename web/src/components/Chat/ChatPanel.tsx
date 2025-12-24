@@ -32,8 +32,8 @@ function ChatPanel({ onLogout }: Props) {
 		// Handle permission request
 		if (serverMsg.type === "permission_request") {
 			setPermissionRequest({
-				requestId: serverMsg.request_id ?? "",
-				toolName: serverMsg.tool_name ?? "",
+				requestId: serverMsg.request_id,
+				toolName: serverMsg.tool_name,
 				toolInput: serverMsg.tool_input,
 				toolUseId: serverMsg.tool_use_id,
 			});
@@ -47,7 +47,7 @@ function ChatPanel({ onLogout }: Props) {
 					id: generateUUID(),
 					role: "assistant",
 					content: "",
-					parts: [{ type: "system", content: serverMsg.content ?? "" }],
+					parts: [{ type: "system", content: serverMsg.content }],
 					status: "complete",
 					createdAt: new Date(),
 				};
@@ -74,10 +74,10 @@ function ChatPanel({ onLogout }: Props) {
 					if (lastPart?.type === "text") {
 						parts[parts.length - 1] = {
 							type: "text",
-							content: lastPart.content + (serverMsg.content ?? ""),
+							content: lastPart.content + serverMsg.content,
 						};
 					} else {
-						parts.push({ type: "text", content: serverMsg.content ?? "" });
+						parts.push({ type: "text", content: serverMsg.content });
 					}
 					message.parts = parts;
 					message.status = "streaming";
@@ -88,27 +88,22 @@ function ChatPanel({ onLogout }: Props) {
 						type: "tool_call",
 						tool: {
 							id: serverMsg.tool_use_id,
-							name: serverMsg.tool_name ?? "",
+							name: serverMsg.tool_name,
 							input: serverMsg.tool_input,
 						},
 					});
 					message.parts = parts;
 					break;
-				case "tool_result": {
-					// Find and update the matching tool call
-					const toolId = serverMsg.tool_use_id;
-					if (toolId) {
-						message.parts = parts.map((part) =>
-							part.type === "tool_call" && part.tool.id === toolId
-								? {
-										...part,
-										tool: { ...part.tool, result: serverMsg.tool_result },
-									}
-								: part,
-						);
-					}
+				case "tool_result":
+					message.parts = parts.map((part) =>
+						part.type === "tool_call" && part.tool.id === serverMsg.tool_use_id
+							? {
+									...part,
+									tool: { ...part.tool, result: serverMsg.tool_result },
+								}
+							: part,
+					);
 					break;
-				}
 				case "done":
 					message.status = "complete";
 					break;
