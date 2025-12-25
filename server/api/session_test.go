@@ -8,29 +8,28 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/pockode/server/agent"
 	"github.com/pockode/server/session"
 )
 
 // mockAgent implements agent.Agent for testing.
 type mockAgent struct {
-	sessionID   string
 	lastSession *mockSession
 }
 
-func (m *mockAgent) Start(ctx context.Context, workDir string, sessionID string) (agent.Session, error) {
-	m.lastSession = &mockSession{sessionID: m.sessionID}
+func (m *mockAgent) Start(ctx context.Context, workDir string, sessionID string, isNew bool) (agent.Session, error) {
+	m.lastSession = &mockSession{}
 	return m.lastSession, nil
 }
 
 type mockSession struct {
-	sessionID string
-	closed    bool
+	closed bool
 }
 
 func (m *mockSession) Events() <-chan agent.AgentEvent {
 	ch := make(chan agent.AgentEvent, 1)
-	ch <- agent.AgentEvent{Type: agent.EventTypeDone, SessionID: m.sessionID}
+	ch <- agent.AgentEvent{Type: agent.EventTypeDone}
 	close(ch)
 	return ch
 }
@@ -71,7 +70,7 @@ func TestSessionHandler_List(t *testing.T) {
 
 func TestSessionHandler_Create(t *testing.T) {
 	store, _ := session.NewFileStore(t.TempDir())
-	mockAg := &mockAgent{sessionID: "mock-session-id"}
+	mockAg := &mockAgent{}
 	handler := NewSessionHandler(store, mockAg, "/tmp")
 
 	req := httptest.NewRequest(http.MethodPost, "/api/sessions", nil)
@@ -87,8 +86,10 @@ func TestSessionHandler_Create(t *testing.T) {
 	if err := json.NewDecoder(rec.Body).Decode(&sess); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
-	if sess.ID != "mock-session-id" {
-		t.Errorf("expected ID 'mock-session-id', got %q", sess.ID)
+
+	// Verify ID is a valid UUID
+	if _, err := uuid.Parse(sess.ID); err != nil {
+		t.Errorf("expected valid UUID, got %q: %v", sess.ID, err)
 	}
 	if sess.Title != "New Chat" {
 		t.Errorf("expected title 'New Chat', got %q", sess.Title)
@@ -99,8 +100,8 @@ func TestSessionHandler_Create(t *testing.T) {
 	if len(sessions) != 1 {
 		t.Fatalf("expected 1 session in store, got %d", len(sessions))
 	}
-	if sessions[0].ID != "mock-session-id" {
-		t.Errorf("expected stored session ID 'mock-session-id', got %q", sessions[0].ID)
+	if sessions[0].ID != sess.ID {
+		t.Errorf("expected stored session ID to match response, got %q vs %q", sessions[0].ID, sess.ID)
 	}
 
 	// Verify agent session was closed

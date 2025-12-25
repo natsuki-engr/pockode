@@ -163,7 +163,7 @@ func (h *Handler) handleMessage(ctx context.Context, conn *websocket.Conn, msg C
 	if !exists {
 		// Resume session (sessionID should exist from REST session creation).
 		var err error
-		sess, err = h.agent.Start(ctx, h.workDir, msg.SessionID)
+		sess, err = h.agent.Start(ctx, h.workDir, msg.SessionID, false)
 		if err != nil {
 			return err
 		}

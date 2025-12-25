@@ -77,7 +77,7 @@ type mockAgent struct {
 	sessions          map[string]*mockSession // track created sessions
 }
 
-func (m *mockAgent) Start(ctx context.Context, workDir string, sessionID string) (agent.Session, error) {
+func (m *mockAgent) Start(ctx context.Context, workDir string, sessionID string, isNew bool) (agent.Session, error) {
 	if m.startErr != nil {
 		return nil, m.startErr
 	}

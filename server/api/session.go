@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/pockode/server/agent"
 	"github.com/pockode/server/logger"
 	"github.com/pockode/server/session"
@@ -38,29 +39,17 @@ func (h *SessionHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 
 // HandleCreate handles POST /api/sessions
 func (h *SessionHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
-	// Start agent to get session ID from Claude CLI
-	agentSess, err := h.agent.Start(r.Context(), h.workDir, "")
+	// Generate UUIDv7 for session ID
+	sessionID := uuid.Must(uuid.NewV7()).String()
+
+	// Start Claude CLI with --session-id to register the session, then close immediately
+	agentSess, err := h.agent.Start(r.Context(), h.workDir, sessionID, true)
 	if err != nil {
 		logger.Error("Failed to start agent: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	defer agentSess.Close()
-
-	// Wait for done event to get session_id
-	var sessionID string
-	for event := range agentSess.Events() {
-		if event.Type == agent.EventTypeDone && event.SessionID != "" {
-			sessionID = event.SessionID
-			break
-		}
-	}
-
-	if sessionID == "" {
-		logger.Error("Failed to get session ID from agent")
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
+	agentSess.Close()
 
 	// Save to store
 	sess, err := h.store.Create(sessionID)

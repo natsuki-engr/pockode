@@ -8,7 +8,8 @@ type Agent interface {
 	// The process stays alive until the context is cancelled or Close is called.
 	// workDir is the working directory for the agent.
 	// sessionID identifies and resumes conversations.
-	Start(ctx context.Context, workDir string, sessionID string) (Session, error)
+	// isNew indicates whether this is a new session (use --session-id) or resuming (use --resume).
+	Start(ctx context.Context, workDir string, sessionID string, isNew bool) (Session, error)
 }
 
 // Session represents an active agent session with bidirectional communication.
