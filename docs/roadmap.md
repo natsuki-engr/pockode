@@ -62,20 +62,20 @@
 
 ### 后端
 
-- [ ] Session 管理（创建、列表、切换、删除）
-- [ ] Session 与 Claude 进程绑定
+- [x] Session 管理（创建、列表、切换、删除）
+- [x] Session 与 Claude 进程绑定
 - [ ] Session 消息持久化
 
 ### 前端
 
-- [ ] Session 列表侧边栏
-- [ ] 新建/切换/删除 Session
-- [ ] 当前 Session 状态显示
+- [x] Session 列表侧边栏
+- [x] 新建/切换/删除 Session
+- [x] 当前 Session 状态显示
 
 ### 交付物
 
-- 可创建多个独立对话
-- 切换 Session 时恢复历史消息
+- [x] 可创建多个独立对话
+- [ ] 切换 Session 时恢复历史消息
 
 ---
 
