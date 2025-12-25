@@ -30,4 +30,6 @@ type AgentEvent struct {
 	Error      string          `json:"error,omitempty"`
 	// Permission request fields
 	RequestID string `json:"request_id,omitempty"`
+	// SessionID is set in done event, returned by Claude CLI
+	SessionID string `json:"session_id,omitempty"`
 }

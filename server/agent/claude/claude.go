@@ -43,7 +43,7 @@ func (a *Agent) Start(ctx context.Context, workDir string, sessionID string) (ag
 		"--verbose",
 	}
 	if sessionID != "" {
-		args = append(args, "--session-id", sessionID)
+		args = append(args, "--resume", sessionID)
 	}
 
 	cmd := exec.CommandContext(procCtx, Binary, args...)
@@ -522,8 +522,9 @@ func parseUserEvent(event cliEvent) []agent.AgentEvent {
 }
 
 type resultEvent struct {
-	Subtype string   `json:"subtype"`
-	Errors  []string `json:"errors"`
+	Subtype   string   `json:"subtype"`
+	SessionID string   `json:"session_id"`
+	Errors    []string `json:"errors"`
 }
 
 func parseResultEvent(line []byte) agent.AgentEvent {
@@ -532,14 +533,20 @@ func parseResultEvent(line []byte) agent.AgentEvent {
 		return agent.AgentEvent{Type: agent.EventTypeDone}
 	}
 
+	eventType := agent.EventTypeDone
+
 	// Check if this was an interrupt (aborted request)
 	if result.Subtype == "error_during_execution" {
 		for _, e := range result.Errors {
 			if strings.Contains(e, "Request was aborted") {
-				return agent.AgentEvent{Type: agent.EventTypeInterrupted}
+				eventType = agent.EventTypeInterrupted
+				break
 			}
 		}
 	}
 
-	return agent.AgentEvent{Type: agent.EventTypeDone}
+	return agent.AgentEvent{
+		Type:      eventType,
+		SessionID: result.SessionID,
+	}
 }

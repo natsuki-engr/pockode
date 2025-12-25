@@ -30,12 +30,14 @@ func newHandler(token, workDir string, devMode bool, sessionStore session.Store)
 		w.Write([]byte(`{"message":"pong"}`))
 	})
 
+	claudeAgent := claude.New()
+
 	// Session REST API
-	sessionHandler := api.NewSessionHandler(sessionStore)
+	sessionHandler := api.NewSessionHandler(sessionStore, claudeAgent, workDir)
 	sessionHandler.Register(mux)
 
 	// WebSocket endpoint (handles its own auth via query param)
-	wsHandler := ws.NewHandler(token, claude.New(), workDir, devMode)
+	wsHandler := ws.NewHandler(token, claudeAgent, workDir, devMode)
 	mux.Handle("GET /ws", wsHandler)
 
 	return middleware.Auth(token)(mux)

@@ -161,7 +161,7 @@ func (h *Handler) handleMessage(ctx context.Context, conn *websocket.Conn, msg C
 	state.mu.Unlock()
 
 	if !exists {
-		// Create new session (or resume if sessionID exists in Claude's history).
+		// Resume session (sessionID should exist from REST session creation).
 		var err error
 		sess, err = h.agent.Start(ctx, h.workDir, msg.SessionID)
 		if err != nil {

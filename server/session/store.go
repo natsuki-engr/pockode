@@ -1,8 +1,6 @@
 package session
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -13,7 +11,7 @@ import (
 // Store defines operations for session management.
 type Store interface {
 	List() ([]SessionMeta, error)
-	Create() (SessionMeta, error)
+	Create(sessionID string) (SessionMeta, error)
 	Delete(sessionID string) error
 	Update(sessionID string, title string) error
 }
@@ -66,22 +64,6 @@ func (s *FileStore) writeIndex(idx indexData) error {
 	return os.WriteFile(s.indexPath(), data, 0644)
 }
 
-func generateUUID() string {
-	b := make([]byte, 16)
-	if _, err := rand.Read(b); err != nil {
-		panic("crypto/rand failed: " + err.Error())
-	}
-	// Set version 4 (random)
-	b[6] = (b[6] & 0x0f) | 0x40
-	// Set variant (RFC 4122)
-	b[8] = (b[8] & 0x3f) | 0x80
-	return hex.EncodeToString(b[:4]) + "-" +
-		hex.EncodeToString(b[4:6]) + "-" +
-		hex.EncodeToString(b[6:8]) + "-" +
-		hex.EncodeToString(b[8:10]) + "-" +
-		hex.EncodeToString(b[10:])
-}
-
 // List returns all sessions sorted by updated_at (newest first).
 func (s *FileStore) List() ([]SessionMeta, error) {
 	s.mu.RLock()
@@ -94,8 +76,8 @@ func (s *FileStore) List() ([]SessionMeta, error) {
 	return idx.Sessions, nil
 }
 
-// Create creates a new session with default title.
-func (s *FileStore) Create() (SessionMeta, error) {
+// Create creates a new session with the given ID and default title.
+func (s *FileStore) Create(sessionID string) (SessionMeta, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -106,7 +88,7 @@ func (s *FileStore) Create() (SessionMeta, error) {
 
 	now := time.Now()
 	session := SessionMeta{
-		ID:        generateUUID(),
+		ID:        sessionID,
 		Title:     "New Chat",
 		CreatedAt: now,
 		UpdatedAt: now,

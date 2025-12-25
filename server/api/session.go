@@ -4,18 +4,21 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/pockode/server/agent"
 	"github.com/pockode/server/logger"
 	"github.com/pockode/server/session"
 )
 
 // SessionHandler handles session-related REST endpoints.
 type SessionHandler struct {
-	store session.Store
+	store   session.Store
+	agent   agent.Agent
+	workDir string
 }
 
 // NewSessionHandler creates a new session handler.
-func NewSessionHandler(store session.Store) *SessionHandler {
-	return &SessionHandler{store: store}
+func NewSessionHandler(store session.Store, ag agent.Agent, workDir string) *SessionHandler {
+	return &SessionHandler{store: store, agent: ag, workDir: workDir}
 }
 
 // HandleList handles GET /api/sessions
@@ -35,7 +38,32 @@ func (h *SessionHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 
 // HandleCreate handles POST /api/sessions
 func (h *SessionHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
-	sess, err := h.store.Create()
+	// Start agent to get session ID from Claude CLI
+	agentSess, err := h.agent.Start(r.Context(), h.workDir, "")
+	if err != nil {
+		logger.Error("Failed to start agent: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer agentSess.Close()
+
+	// Wait for done event to get session_id
+	var sessionID string
+	for event := range agentSess.Events() {
+		if event.Type == agent.EventTypeDone && event.SessionID != "" {
+			sessionID = event.SessionID
+			break
+		}
+	}
+
+	if sessionID == "" {
+		logger.Error("Failed to get session ID from agent")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Save to store
+	sess, err := h.store.Create(sessionID)
 	if err != nil {
 		logger.Error("Failed to create session: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
