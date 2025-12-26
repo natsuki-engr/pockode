@@ -380,7 +380,7 @@ function ChatPanel({
 	const { text: statusText, color: statusColor } = STATUS_CONFIG[status];
 
 	return (
-		<div className="flex h-full flex-col bg-gray-900">
+		<div className="flex h-dvh flex-col bg-gray-900">
 			<header className="flex items-center justify-between border-b border-gray-700 p-3 sm:p-4">
 				<div className="flex items-center gap-3">
 					{onOpenSidebar && (
