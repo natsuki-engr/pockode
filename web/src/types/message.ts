@@ -47,7 +47,7 @@ export interface PermissionRequest {
 	requestId: string;
 	toolName: string;
 	toolInput: unknown;
-	toolUseId?: string;
+	toolUseId: string;
 }
 
 // WebSocket client message
@@ -86,6 +86,6 @@ export type WSServerMessage =
 			request_id: string;
 			tool_name: string;
 			tool_input: unknown;
-			tool_use_id?: string;
+			tool_use_id: string;
 	  }
 	| { type: "system"; content: string };

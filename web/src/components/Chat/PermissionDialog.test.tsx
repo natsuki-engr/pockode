@@ -9,6 +9,7 @@ describe("PermissionDialog", () => {
 		requestId: "req-123",
 		toolName: "Bash",
 		toolInput: { command: "ls -la" },
+		toolUseId: "tool-use-456",
 	};
 
 	it("displays tool name and input", () => {

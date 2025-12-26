@@ -13,30 +13,58 @@ import MessageList from "./MessageList";
 import PermissionDialog from "./PermissionDialog";
 
 // Normalized event with camelCase (internal representation)
-interface NormalizedEvent {
-	type: string;
-	content?: string;
-	toolUseId?: string;
-	toolName?: string;
-	toolInput?: unknown;
-	toolResult?: string;
-	error?: string;
-}
+type NormalizedEvent =
+	| { type: "text"; content: string }
+	| {
+			type: "tool_call";
+			toolUseId: string;
+			toolName: string;
+			toolInput: unknown;
+	  }
+	| { type: "tool_result"; toolUseId: string; toolResult: string }
+	| { type: "error"; error: string }
+	| { type: "done" }
+	| { type: "interrupted" }
+	| { type: "system"; content: string }
+	| { type: "message"; content: string }; // For history replay (user message)
 
 // Convert snake_case server event to camelCase
 function normalizeEvent(
 	e: WSServerMessage | Record<string, unknown>,
 ): NormalizedEvent {
 	const record = e as Record<string, unknown>;
-	return {
-		type: record.type as string,
-		content: record.content as string | undefined,
-		toolUseId: record.tool_use_id as string | undefined,
-		toolName: record.tool_name as string | undefined,
-		toolInput: record.tool_input,
-		toolResult: record.tool_result as string | undefined,
-		error: record.error as string | undefined,
-	};
+	const type = record.type as string;
+
+	switch (type) {
+		case "text":
+			return { type: "text", content: (record.content as string) ?? "" };
+		case "tool_call":
+			return {
+				type: "tool_call",
+				toolUseId: record.tool_use_id as string,
+				toolName: record.tool_name as string,
+				toolInput: record.tool_input,
+			};
+		case "tool_result":
+			return {
+				type: "tool_result",
+				toolUseId: record.tool_use_id as string,
+				toolResult: (record.tool_result as string) ?? "",
+			};
+		case "error":
+			return { type: "error", error: (record.error as string) ?? "" };
+		case "done":
+			return { type: "done" };
+		case "interrupted":
+			return { type: "interrupted" };
+		case "system":
+			return { type: "system", content: (record.content as string) ?? "" };
+		case "message":
+			return { type: "message", content: (record.content as string) ?? "" };
+		default:
+			// Fallback for unknown types - treat as text
+			return { type: "text", content: "" };
+	}
 }
 
 // Apply an event to message parts, returning updated parts
@@ -50,10 +78,10 @@ function applyEventToParts(
 			if (lastPart?.type === "text") {
 				return [
 					...parts.slice(0, -1),
-					{ type: "text", content: lastPart.content + (event.content ?? "") },
+					{ type: "text", content: lastPart.content + event.content },
 				];
 			}
-			return [...parts, { type: "text", content: event.content ?? "" }];
+			return [...parts, { type: "text", content: event.content }];
 		}
 		case "tool_call":
 			return [
@@ -61,8 +89,8 @@ function applyEventToParts(
 				{
 					type: "tool_call",
 					tool: {
-						id: event.toolUseId ?? "",
-						name: event.toolName ?? "",
+						id: event.toolUseId,
+						name: event.toolName,
 						input: event.toolInput,
 					},
 				},
@@ -70,7 +98,7 @@ function applyEventToParts(
 		case "tool_result":
 			return parts.map((part) =>
 				part.type === "tool_call" && part.tool.id === event.toolUseId
-					? { ...part, tool: { ...part.tool, result: event.toolResult ?? "" } }
+					? { ...part, tool: { ...part.tool, result: event.toolResult } }
 					: part,
 			);
 		default:
@@ -100,7 +128,7 @@ function applyServerEvent(
 	// System messages are always standalone
 	if (event.type === "system") {
 		const systemMessage = createAssistantMessage("complete");
-		systemMessage.parts = [{ type: "system", content: event.content ?? "" }];
+		systemMessage.parts = [{ type: "system", content: event.content }];
 		return [...messages, systemMessage];
 	}
 

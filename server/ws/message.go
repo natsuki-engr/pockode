@@ -18,7 +18,7 @@ type ServerMessage struct {
 	Content    string          `json:"content,omitempty"`     // Text content
 	ToolName   string          `json:"tool_name,omitempty"`   // Tool name (for tool_call, permission_request)
 	ToolInput  json.RawMessage `json:"tool_input,omitempty"`  // Tool input (for tool_call, permission_request)
-	ToolUseID  string          `json:"tool_use_id,omitempty"` // Tool use ID (for tool_result)
+	ToolUseID  string          `json:"tool_use_id,omitempty"` // Tool use ID (for tool_call, tool_result, permission_request)
 	ToolResult string          `json:"tool_result,omitempty"` // Tool result content
 	Error      string          `json:"error,omitempty"`       // Error message
 	RequestID  string          `json:"request_id,omitempty"`  // Permission request ID (for permission_request)
