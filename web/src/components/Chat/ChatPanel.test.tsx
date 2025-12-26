@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { WSServerMessage } from "../../types/message";
 import ChatPanel from "./ChatPanel";
 
-// Mock scrollIntoView (not available in jsdom)
-Element.prototype.scrollIntoView = vi.fn();
+// Mock scrollTo (not available in jsdom)
+Element.prototype.scrollTo = vi.fn();
 
 // Mock state - stored in module scope for vi.mock factory access
 const mockState = {

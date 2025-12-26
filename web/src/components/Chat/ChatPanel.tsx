@@ -261,21 +261,29 @@ function ChatPanel({
 		setMessages(messages);
 	}, []);
 
-	const handleServerMessage = useCallback((serverMsg: WSServerMessage) => {
-		// Handle permission request (not stored in history, UI-only)
-		if (serverMsg.type === "permission_request") {
-			setPermissionRequest({
-				requestId: serverMsg.request_id,
-				toolName: serverMsg.tool_name,
-				toolInput: serverMsg.tool_input,
-				toolUseId: serverMsg.tool_use_id,
-			});
-			return;
-		}
+	const handleServerMessage = useCallback(
+		(serverMsg: WSServerMessage) => {
+			// Filter messages by session_id
+			if (serverMsg.session_id && serverMsg.session_id !== sessionId) {
+				return;
+			}
 
-		const event = normalizeEvent(serverMsg);
-		setMessages((prev) => applyServerEvent(prev, event));
-	}, []);
+			// Handle permission request (not stored in history, UI-only)
+			if (serverMsg.type === "permission_request") {
+				setPermissionRequest({
+					requestId: serverMsg.request_id,
+					toolName: serverMsg.tool_name,
+					toolInput: serverMsg.tool_input,
+					toolUseId: serverMsg.tool_use_id,
+				});
+				return;
+			}
+
+			const event = normalizeEvent(serverMsg);
+			setMessages((prev) => applyServerEvent(prev, event));
+		},
+		[sessionId],
+	);
 
 	const { status, send } = useWebSocket({
 		onMessage: handleServerMessage,

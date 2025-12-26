@@ -69,25 +69,34 @@ export type WSClientMessage =
 			allow: boolean;
 	  };
 
+// Base interface for all server messages
+interface WSServerMessageBase {
+	session_id?: string;
+}
+
 // WebSocket server message
 export type WSServerMessage =
-	| { type: "text"; content: string }
-	| {
+	| (WSServerMessageBase & { type: "text"; content: string })
+	| (WSServerMessageBase & {
 			type: "tool_call";
 			tool_name: string;
 			tool_input: unknown;
 			tool_use_id: string;
-	  }
-	| { type: "tool_result"; tool_use_id: string; tool_result: string }
-	| { type: "error"; error: string }
-	| { type: "done" }
-	| { type: "interrupted" }
-	| { type: "process_ended" }
-	| {
+	  })
+	| (WSServerMessageBase & {
+			type: "tool_result";
+			tool_use_id: string;
+			tool_result: string;
+	  })
+	| (WSServerMessageBase & { type: "error"; error: string })
+	| (WSServerMessageBase & { type: "done" })
+	| (WSServerMessageBase & { type: "interrupted" })
+	| (WSServerMessageBase & { type: "process_ended" })
+	| (WSServerMessageBase & {
 			type: "permission_request";
 			request_id: string;
 			tool_name: string;
 			tool_input: unknown;
 			tool_use_id: string;
-	  }
-	| { type: "system"; content: string };
+	  })
+	| (WSServerMessageBase & { type: "system"; content: string });

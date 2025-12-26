@@ -227,6 +227,7 @@ func (h *Handler) streamEvents(ctx context.Context, conn *websocket.Conn, sessio
 
 		serverMsg := ServerMessage{
 			Type:       string(event.Type),
+			SessionID:  sessionID,
 			Content:    event.Content,
 			ToolName:   event.ToolName,
 			ToolInput:  event.ToolInput,
