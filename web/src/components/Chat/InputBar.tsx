@@ -34,7 +34,7 @@ function InputBar({
 	);
 
 	return (
-		<div className="border-t border-gray-700 p-4">
+		<div className="border-t border-gray-700 p-3 sm:p-4">
 			<div className="flex gap-2">
 				<textarea
 					value={input}
@@ -43,13 +43,13 @@ function InputBar({
 					placeholder="Type a message..."
 					disabled={disabled}
 					rows={1}
-					className="flex-1 resize-none rounded-lg bg-gray-800 px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+					className="min-h-[44px] flex-1 resize-none rounded-lg bg-gray-800 px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 sm:px-4"
 				/>
 				{isStreaming ? (
 					<button
 						type="button"
 						onClick={onInterrupt}
-						className="rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+						className="min-h-[44px] rounded-lg bg-red-600 px-3 py-2 text-white hover:bg-red-700 sm:px-4"
 					>
 						Stop
 					</button>
@@ -58,7 +58,7 @@ function InputBar({
 						type="button"
 						onClick={handleSend}
 						disabled={disabled || !input.trim()}
-						className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+						className="min-h-[44px] rounded-lg bg-blue-600 px-3 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:px-4"
 					>
 						Send
 					</button>

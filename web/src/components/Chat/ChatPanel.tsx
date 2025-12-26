@@ -375,8 +375,8 @@ function ChatPanel({
 	const { text: statusText, color: statusColor } = STATUS_CONFIG[status];
 
 	return (
-		<div className="flex h-screen flex-col bg-gray-900">
-			<header className="flex items-center justify-between border-b border-gray-700 p-4">
+		<div className="flex h-dvh flex-col bg-gray-900">
+			<header className="flex items-center justify-between border-b border-gray-700 p-3 sm:p-4">
 				<div className="flex items-center gap-3">
 					{onOpenSidebar && (
 						<button
@@ -401,7 +401,7 @@ function ChatPanel({
 							</svg>
 						</button>
 					)}
-					<h1 className="text-xl font-bold text-white">Pockode</h1>
+					<h1 className="text-lg font-bold text-white sm:text-xl">Pockode</h1>
 				</div>
 				<div className="flex items-center gap-4">
 					<span className={`text-sm ${statusColor}`}>{statusText}</span>

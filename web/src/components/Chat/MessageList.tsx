@@ -39,7 +39,7 @@ function MessageList({ messages }: Props) {
 		<div
 			ref={containerRef}
 			onScroll={handleScroll}
-			className="flex-1 space-y-4 overflow-y-auto p-4"
+			className="flex-1 space-y-3 overflow-y-auto p-3 sm:space-y-4 sm:p-4"
 		>
 			{messages.length === 0 && (
 				<div className="flex h-full items-center justify-center text-gray-500">

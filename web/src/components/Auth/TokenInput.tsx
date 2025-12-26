@@ -16,7 +16,7 @@ function TokenInput({ onSubmit }: Props) {
 	};
 
 	return (
-		<div className="flex h-screen items-center justify-center bg-gray-900">
+		<div className="flex h-dvh items-center justify-center bg-gray-900">
 			<form onSubmit={handleSubmit} className="w-full max-w-md p-6">
 				<h1 className="mb-6 text-center text-2xl font-bold text-white">
 					Pockode
