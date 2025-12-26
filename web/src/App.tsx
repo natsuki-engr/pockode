@@ -49,7 +49,7 @@ function App() {
 
 	if (!currentSessionId || !currentSession) {
 		return (
-			<div className="flex h-dvh items-center justify-center bg-gray-900">
+			<div className="flex h-full items-center justify-center bg-gray-900">
 				<div className="text-gray-400">Loading...</div>
 			</div>
 		);

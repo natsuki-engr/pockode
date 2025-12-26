@@ -1,1 +1,14 @@
 @import "tailwindcss";
+
+@layer base {
+	html,
+	body {
+		height: 100%;
+		overflow: hidden;
+		overscroll-behavior: none;
+	}
+
+	#root {
+		height: 100%;
+	}
+}
