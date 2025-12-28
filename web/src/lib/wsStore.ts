@@ -1,3 +1,4 @@
+import { create } from "zustand";
 import type { WSClientMessage, WSServerMessage } from "../types/message";
 import { getToken, getWebSocketUrl } from "../utils/config";
 
@@ -8,61 +9,31 @@ export type ConnectionStatus =
 	| "error";
 
 type MessageListener = (message: WSServerMessage) => void;
-type StatusListener = () => void;
 
-interface WSStore {
-	// State
+interface WSState {
 	status: ConnectionStatus;
-	ws: WebSocket | null;
-
-	// Connection management
 	connect: () => void;
 	disconnect: () => void;
 	send: (message: WSClientMessage) => boolean;
-
-	// Subscriptions for useSyncExternalStore
-	subscribeStatus: (listener: StatusListener) => () => void;
-	getStatusSnapshot: () => ConnectionStatus;
-
-	// Message subscriptions
 	subscribeMessage: (listener: MessageListener) => () => void;
 }
 
-function createWSStore(): WSStore {
-	let status: ConnectionStatus = "disconnected";
-	let ws: WebSocket | null = null;
-	let reconnectAttempts = 0;
-	let reconnectTimeout: number | undefined;
+// Module-level state for mutable objects (not reactive)
+let ws: WebSocket | null = null;
+let reconnectAttempts = 0;
+let reconnectTimeout: number | undefined;
+const messageListeners = new Set<MessageListener>();
 
-	const maxReconnectAttempts = 5;
-	const reconnectInterval = 3000;
+const MAX_RECONNECT_ATTEMPTS = 5;
+const RECONNECT_INTERVAL = 3000;
 
-	const statusListeners = new Set<StatusListener>();
-	const messageListeners = new Set<MessageListener>();
+export const useWSStore = create<WSState>((set, get) => ({
+	status: "disconnected",
 
-	const notifyStatusListeners = () => {
-		for (const listener of statusListeners) {
-			listener();
-		}
-	};
-
-	const notifyMessageListeners = (message: WSServerMessage) => {
-		for (const listener of messageListeners) {
-			listener(message);
-		}
-	};
-
-	const setStatus = (newStatus: ConnectionStatus) => {
-		if (status !== newStatus) {
-			status = newStatus;
-			notifyStatusListeners();
-		}
-	};
-
-	const connect = () => {
+	connect: () => {
 		const token = getToken();
 		if (!token) {
-			setStatus("error");
+			set({ status: "error" });
 			return;
 		}
 
@@ -72,98 +43,109 @@ function createWSStore(): WSStore {
 			ws = null;
 		}
 
-		setStatus("connecting");
+		set({ status: "connecting" });
 
 		const url = `${getWebSocketUrl()}?token=${encodeURIComponent(token)}`;
 		const socket = new WebSocket(url);
 
 		socket.onopen = () => {
-			setStatus("connected");
+			set({ status: "connected" });
 			reconnectAttempts = 0;
 		};
 
 		socket.onmessage = (event) => {
 			try {
 				const data = JSON.parse(event.data) as WSServerMessage;
-				notifyMessageListeners(data);
+				for (const listener of messageListeners) {
+					listener(data);
+				}
 			} catch (e) {
 				console.warn("Failed to parse WebSocket message:", event.data, e);
 			}
 		};
 
 		socket.onerror = () => {
-			setStatus("error");
+			set({ status: "error" });
 		};
 
 		socket.onclose = () => {
-			setStatus("disconnected");
+			set({ status: "disconnected" });
 			ws = null;
 
 			// Auto reconnect
-			if (reconnectAttempts < maxReconnectAttempts) {
+			if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
 				reconnectAttempts += 1;
 				reconnectTimeout = window.setTimeout(() => {
-					connect();
-				}, reconnectInterval);
+					get().connect();
+				}, RECONNECT_INTERVAL);
 			}
 		};
 
 		ws = socket;
-	};
+	},
 
-	const disconnect = () => {
+	disconnect: () => {
 		if (reconnectTimeout) {
 			clearTimeout(reconnectTimeout);
 			reconnectTimeout = undefined;
 		}
-		reconnectAttempts = maxReconnectAttempts; // Prevent auto-reconnect
+		reconnectAttempts = MAX_RECONNECT_ATTEMPTS; // Prevent auto-reconnect
 		if (ws) {
 			ws.close();
 			ws = null;
 		}
-		setStatus("disconnected");
-	};
+		set({ status: "disconnected" });
+	},
 
-	const send = (message: WSClientMessage): boolean => {
+	send: (message) => {
 		if (ws?.readyState === WebSocket.OPEN) {
 			ws.send(JSON.stringify(message));
 			return true;
 		}
 		console.warn("WebSocket is not connected, message not sent:", message);
 		return false;
-	};
+	},
 
-	const subscribeStatus = (listener: StatusListener) => {
-		statusListeners.add(listener);
-		return () => {
-			statusListeners.delete(listener);
-		};
-	};
-
-	const getStatusSnapshot = () => status;
-
-	const subscribeMessage = (listener: MessageListener) => {
+	subscribeMessage: (listener) => {
 		messageListeners.add(listener);
 		return () => {
 			messageListeners.delete(listener);
 		};
-	};
+	},
+}));
 
-	return {
-		get status() {
-			return status;
-		},
-		get ws() {
-			return ws;
-		},
-		connect,
-		disconnect,
-		send,
-		subscribeStatus,
-		getStatusSnapshot,
-		subscribeMessage,
-	};
+// Compatibility layer for non-hook usage (e.g., App.tsx logout)
+export const wsStore = {
+	get status() {
+		return useWSStore.getState().status;
+	},
+	connect: () => useWSStore.getState().connect(),
+	disconnect: () => useWSStore.getState().disconnect(),
+	send: (message: WSClientMessage) => useWSStore.getState().send(message),
+	subscribeMessage: (listener: MessageListener) =>
+		useWSStore.getState().subscribeMessage(listener),
+	// For useSyncExternalStore compatibility (can be removed after full migration)
+	subscribeStatus: (listener: () => void) => {
+		return useWSStore.subscribe((state, prevState) => {
+			if (state.status !== prevState.status) {
+				listener();
+			}
+		});
+	},
+	getStatusSnapshot: () => useWSStore.getState().status,
+};
+
+// Reset function for testing
+export function resetWSStore() {
+	if (ws) {
+		ws.close();
+		ws = null;
+	}
+	if (reconnectTimeout) {
+		clearTimeout(reconnectTimeout);
+		reconnectTimeout = undefined;
+	}
+	reconnectAttempts = 0;
+	messageListeners.clear();
+	useWSStore.setState({ status: "disconnected" });
 }
-
-// Singleton instance
-export const wsStore = createWSStore();

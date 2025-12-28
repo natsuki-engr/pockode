@@ -1,5 +1,5 @@
-import { useEffect, useSyncExternalStore } from "react";
-import { type ConnectionStatus, wsStore } from "../lib/wsStore";
+import { useEffect } from "react";
+import { type ConnectionStatus, useWSStore } from "../lib/wsStore";
 import type { WSClientMessage, WSServerMessage } from "../types/message";
 
 interface UseWebSocketOptions {
@@ -17,28 +17,26 @@ export type { ConnectionStatus };
 export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
 	const { onMessage } = options;
 
-	// Subscribe to connection status using useSyncExternalStore
-	const status = useSyncExternalStore(
-		wsStore.subscribeStatus,
-		wsStore.getStatusSnapshot,
-		wsStore.getStatusSnapshot, // SSR snapshot (same as client)
-	);
+	// Subscribe to connection status via Zustand selector
+	const status = useWSStore((state) => state.status);
 
 	// Subscribe to messages
 	useEffect(() => {
-		return wsStore.subscribeMessage(onMessage);
+		const { subscribeMessage } = useWSStore.getState();
+		return subscribeMessage(onMessage);
 	}, [onMessage]);
 
 	// Connect on mount (only once per app lifecycle)
 	useEffect(() => {
-		if (wsStore.status === "disconnected") {
-			wsStore.connect();
+		const { status: currentStatus, connect } = useWSStore.getState();
+		if (currentStatus === "disconnected") {
+			connect();
 		}
 	}, []);
 
 	return {
 		status,
-		send: wsStore.send,
-		disconnect: wsStore.disconnect,
+		send: useWSStore.getState().send,
+		disconnect: useWSStore.getState().disconnect,
 	};
 }
