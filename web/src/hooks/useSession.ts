@@ -78,6 +78,9 @@ export function useSession({ enabled = true }: UseSessionOptions = {}) {
 				old.map((s) => (s.id === id ? { ...s, title } : s)),
 			);
 		},
+		onError: () => {
+			queryClient.invalidateQueries({ queryKey: ["sessions"] });
+		},
 	});
 
 	// Set initial session when data loads

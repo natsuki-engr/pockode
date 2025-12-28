@@ -263,6 +263,32 @@ describe("useSession", () => {
 				expect(result.current.sessions[0].title).toBe("New Title");
 			});
 		});
+
+		it("refreshes sessions list on error", async () => {
+			vi.mocked(sessionApi.listSessions).mockResolvedValue([
+				mockSession("1", "Title"),
+			]);
+			vi.mocked(sessionApi.updateSessionTitle).mockRejectedValue(
+				new Error("HTTP 404: Not Found"),
+			);
+
+			const { result } = renderHook(() => useSession(), {
+				wrapper: createWrapper(queryClient),
+			});
+
+			await waitFor(() => {
+				expect(result.current.sessions.length).toBe(1);
+			});
+
+			// Clear mock call count before updateTitle
+			vi.mocked(sessionApi.listSessions).mockClear();
+
+			result.current.updateTitle("1", "New Title");
+
+			await waitFor(() => {
+				expect(sessionApi.listSessions).toHaveBeenCalled();
+			});
+		});
 	});
 
 	describe("currentSession", () => {
