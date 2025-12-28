@@ -1,22 +1,143 @@
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
 	THEME_INFO,
 	THEME_NAMES,
 	type ThemeMode,
+	type ThemeName,
 	useTheme,
 } from "../../hooks/useTheme";
 
-const MODE_OPTIONS: { value: ThemeMode; label: string }[] = [
-	{ value: "light", label: "Light" },
-	{ value: "dark", label: "Dark" },
-	{ value: "system", label: "System" },
+const MODE_OPTIONS: { value: ThemeMode; label: string; icon: ReactNode }[] = [
+	{
+		value: "light",
+		label: "Light",
+		icon: (
+			<svg
+				className="h-4 w-4"
+				fill="none"
+				stroke="currentColor"
+				viewBox="0 0 24 24"
+				aria-hidden="true"
+			>
+				<path
+					strokeLinecap="round"
+					strokeLinejoin="round"
+					strokeWidth={2}
+					d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+				/>
+			</svg>
+		),
+	},
+	{
+		value: "dark",
+		label: "Dark",
+		icon: (
+			<svg
+				className="h-4 w-4"
+				fill="none"
+				stroke="currentColor"
+				viewBox="0 0 24 24"
+				aria-hidden="true"
+			>
+				<path
+					strokeLinecap="round"
+					strokeLinejoin="round"
+					strokeWidth={2}
+					d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+				/>
+			</svg>
+		),
+	},
+	{
+		value: "system",
+		label: "Auto",
+		icon: (
+			<svg
+				className="h-4 w-4"
+				fill="none"
+				stroke="currentColor"
+				viewBox="0 0 24 24"
+				aria-hidden="true"
+			>
+				<path
+					strokeLinecap="round"
+					strokeLinejoin="round"
+					strokeWidth={2}
+					d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+				/>
+			</svg>
+		),
+	},
 ];
+
+function ThemePreview({
+	themeName,
+	isSelected,
+	isDarkMode,
+}: {
+	themeName: ThemeName;
+	isSelected: boolean;
+	isDarkMode: boolean;
+}) {
+	const info = THEME_INFO[themeName];
+	const accentColor = isDarkMode ? info.accentDark : info.accentLight;
+	const previewBg = isDarkMode ? info.previewBgDark : info.previewBgLight;
+
+	return (
+		<div
+			className="relative h-10 w-full overflow-hidden rounded-md"
+			style={{ backgroundColor: previewBg }}
+		>
+			{/* Accent line */}
+			<div
+				className="absolute bottom-0 left-0 h-1 w-full"
+				style={{ backgroundColor: accentColor }}
+			/>
+			{/* Content preview dots */}
+			<div className="flex flex-col gap-1 p-2">
+				<div
+					className="h-1 w-8 rounded-full opacity-60"
+					style={{ backgroundColor: isDarkMode ? "#fff" : "#000" }}
+				/>
+				<div
+					className="h-1 w-5 rounded-full opacity-40"
+					style={{ backgroundColor: isDarkMode ? "#fff" : "#000" }}
+				/>
+			</div>
+			{/* Selection indicator */}
+			{isSelected && (
+				<div
+					className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full"
+					style={{ backgroundColor: accentColor }}
+				>
+					<svg
+						className="h-2.5 w-2.5 text-white"
+						fill="currentColor"
+						viewBox="0 0 20 20"
+						aria-hidden="true"
+					>
+						<path
+							fillRule="evenodd"
+							d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+							clipRule="evenodd"
+						/>
+					</svg>
+				</div>
+			)}
+		</div>
+	);
+}
 
 function ThemeToggle() {
 	const { mode, setMode, theme, setTheme, resolvedMode } = useTheme();
 	const [isOpen, setIsOpen] = useState(false);
 	const panelRef = useRef<HTMLDivElement>(null);
 	const buttonRef = useRef<HTMLButtonElement>(null);
+
+	const isDarkMode = resolvedMode === "dark";
+	const currentAccent = isDarkMode
+		? THEME_INFO[theme].accentDark
+		: THEME_INFO[theme].accentLight;
 
 	// Close panel on outside click
 	useEffect(() => {
@@ -49,38 +170,37 @@ function ThemeToggle() {
 		return () => document.removeEventListener("keydown", handleEscape);
 	}, [isOpen]);
 
-	const modeIcon =
-		resolvedMode === "dark" ? (
-			<svg
-				className="h-5 w-5"
-				fill="none"
-				stroke="currentColor"
-				viewBox="0 0 24 24"
-				aria-hidden="true"
-			>
-				<path
-					strokeLinecap="round"
-					strokeLinejoin="round"
-					strokeWidth={2}
-					d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-				/>
-			</svg>
-		) : (
-			<svg
-				className="h-5 w-5"
-				fill="none"
-				stroke="currentColor"
-				viewBox="0 0 24 24"
-				aria-hidden="true"
-			>
-				<path
-					strokeLinecap="round"
-					strokeLinejoin="round"
-					strokeWidth={2}
-					d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-				/>
-			</svg>
-		);
+	const modeIcon = isDarkMode ? (
+		<svg
+			className="h-5 w-5"
+			fill="none"
+			stroke="currentColor"
+			viewBox="0 0 24 24"
+			aria-hidden="true"
+		>
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth={2}
+				d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+			/>
+		</svg>
+	) : (
+		<svg
+			className="h-5 w-5"
+			fill="none"
+			stroke="currentColor"
+			viewBox="0 0 24 24"
+			aria-hidden="true"
+		>
+			<path
+				strokeLinecap="round"
+				strokeLinejoin="round"
+				strokeWidth={2}
+				d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+			/>
+		</svg>
+	);
 
 	return (
 		<div className="relative">
@@ -94,8 +214,11 @@ function ThemeToggle() {
 			>
 				{modeIcon}
 				<span
-					className="h-3 w-3 rounded-full border border-th-border"
-					style={{ backgroundColor: THEME_INFO[theme].accentColor }}
+					className="h-3 w-3 rounded-full"
+					style={{
+						backgroundColor: currentAccent,
+						boxShadow: `0 0 6px ${currentAccent}40`,
+					}}
 					aria-hidden="true"
 				/>
 			</button>
@@ -103,28 +226,29 @@ function ThemeToggle() {
 			{isOpen && (
 				<div
 					ref={panelRef}
-					className="absolute right-0 top-full z-50 mt-2 w-64 rounded-lg border border-th-border bg-th-bg-primary p-3 shadow-lg"
+					className="absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-th-border bg-th-bg-primary p-4 shadow-xl"
 					role="dialog"
 					aria-label="Theme settings"
 				>
 					{/* Mode Selection */}
-					<div className="mb-3">
-						<div className="mb-2 text-xs font-medium text-th-text-muted uppercase tracking-wide">
-							Mode
+					<div className="mb-4">
+						<div className="mb-2 text-xs font-medium uppercase tracking-wider text-th-text-muted">
+							Appearance
 						</div>
-						<div className="flex gap-1">
+						<div className="flex gap-1 rounded-lg bg-th-bg-secondary p-1">
 							{MODE_OPTIONS.map((option) => (
 								<button
 									key={option.value}
 									type="button"
 									onClick={() => setMode(option.value)}
-									className={`flex-1 rounded px-2 py-1.5 text-sm transition-colors ${
+									className={`flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-2 text-sm transition-all ${
 										mode === option.value
-											? "bg-th-accent text-th-accent-text"
-											: "bg-th-bg-tertiary text-th-text-secondary hover:text-th-text-primary"
+											? "bg-th-bg-primary text-th-text-primary shadow-sm"
+											: "text-th-text-muted hover:text-th-text-secondary"
 									}`}
 								>
-									{option.label}
+									{option.icon}
+									<span className="hidden sm:inline">{option.label}</span>
 								</button>
 							))}
 						</div>
@@ -132,10 +256,10 @@ function ThemeToggle() {
 
 					{/* Theme Selection */}
 					<div>
-						<div className="mb-2 text-xs font-medium text-th-text-muted uppercase tracking-wide">
+						<div className="mb-2 text-xs font-medium uppercase tracking-wider text-th-text-muted">
 							Theme
 						</div>
-						<div className="grid grid-cols-2 gap-2">
+						<div className="grid grid-cols-1 gap-2">
 							{THEME_NAMES.map((name) => {
 								const info = THEME_INFO[name];
 								const isSelected = theme === name;
@@ -144,26 +268,36 @@ function ThemeToggle() {
 										key={name}
 										type="button"
 										onClick={() => setTheme(name)}
-										className={`flex items-center gap-2 rounded-lg border p-2 text-left transition-all ${
+										className={`group overflow-hidden rounded-lg border text-left transition-all ${
 											isSelected
-												? "border-th-accent bg-th-bg-secondary"
-												: "border-th-border hover:border-th-text-muted hover:bg-th-bg-secondary"
+												? "border-th-accent ring-1 ring-th-accent"
+												: "border-th-border hover:border-th-text-muted"
 										}`}
 									>
-										<span
-											className="h-4 w-4 shrink-0 rounded-full"
-											style={{ backgroundColor: info.accentColor }}
-											aria-hidden="true"
+										<ThemePreview
+											themeName={name}
+											isSelected={isSelected}
+											isDarkMode={isDarkMode}
 										/>
-										<div className="min-w-0">
+										<div className="flex items-center justify-between bg-th-bg-secondary px-3 py-2">
+											<div>
+												<div
+													className={`text-sm font-medium ${isSelected ? "text-th-text-primary" : "text-th-text-secondary"}`}
+												>
+													{info.label}
+												</div>
+												<div className="text-xs text-th-text-muted">
+													{info.description}
+												</div>
+											</div>
 											<div
-												className={`text-sm font-medium ${isSelected ? "text-th-text-primary" : "text-th-text-secondary"}`}
-											>
-												{info.label}
-											</div>
-											<div className="truncate text-xs text-th-text-muted">
-												{info.description}
-											</div>
+												className="h-4 w-4 rounded-full"
+												style={{
+													backgroundColor: isDarkMode
+														? info.accentDark
+														: info.accentLight,
+												}}
+											/>
 										</div>
 									</button>
 								);

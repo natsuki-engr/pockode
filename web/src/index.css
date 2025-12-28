@@ -4,7 +4,13 @@
 /* Enable class-based dark mode */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Theme color tokens with th- prefix for easy identification */
+/* =============================================================================
+ * SEMANTIC THEME TOKENS
+ *
+ * All UI components use these tokens. Never hardcode colors.
+ * Prefix: th- (theme)
+ * ============================================================================= */
+
 @theme inline {
 	/* Backgrounds */
 	--color-th-bg-primary: var(--th-bg-primary);
@@ -44,33 +50,36 @@
 }
 
 /* =============================================================================
- * THEME: SLATE (Default)
+ * THEME: ABYSS (Default)
  *
- * Design: Classic professional with cool undertones
- * Accent: Indigo - modern, intelligent, trustworthy
+ * 设计理念: 深海科技感
+ * - 灵感: 深海探索、数据深渊、神秘科技
+ * - 色调: 深蓝-青绿主调，给人沉稳而神秘的感觉
+ * - 强调色: 电光青绿 (Teal/Cyan)
+ * - 适合: 长时间编程、夜间使用
  * ============================================================================= */
 
 :root,
-.theme-slate {
-	/* Backgrounds - Pure white base with cool gray progression */
-	--th-bg-primary: #ffffff;
-	--th-bg-secondary: #f8fafc;
-	--th-bg-tertiary: #f1f5f9;
-	--th-bg-overlay: rgba(15, 23, 42, 0.6);
+.theme-abyss {
+	/* Backgrounds - 清透的白底，微微带青色调 */
+	--th-bg-primary: #f8fafb;
+	--th-bg-secondary: #f0f5f7;
+	--th-bg-tertiary: #e4ecef;
+	--th-bg-overlay: rgba(12, 18, 32, 0.7);
 
-	/* Text - Slate grays for softer, more refined look */
-	--th-text-primary: #0f172a;
-	--th-text-secondary: #475569;
-	--th-text-muted: #94a3b8;
-	--th-text-inverse: #ffffff;
+	/* Text - 深蓝灰色调 */
+	--th-text-primary: #0c1829;
+	--th-text-secondary: #3d5160;
+	--th-text-muted: #7c919e;
+	--th-text-inverse: #f8fafb;
 
 	/* Borders */
-	--th-border: #e2e8f0;
-	--th-border-focus: #6366f1;
+	--th-border: #d4e0e6;
+	--th-border-focus: #0d9488;
 
-	/* Interactive - Indigo */
-	--th-accent: #6366f1;
-	--th-accent-hover: #4f46e5;
+	/* Interactive - Teal */
+	--th-accent: #0d9488;
+	--th-accent-hover: #0f766e;
 	--th-accent-text: #ffffff;
 
 	/* Semantic */
@@ -79,37 +88,37 @@
 	--th-warning: #f59e0b;
 
 	/* Code */
-	--th-code-bg: #f1f5f9;
-	--th-code-text: #1e293b;
+	--th-code-bg: #e4ecef;
+	--th-code-text: #134e4a;
 
 	/* Chat bubbles */
-	--th-user-bubble: #6366f1;
+	--th-user-bubble: #0d9488;
 	--th-user-bubble-text: #ffffff;
-	--th-ai-bubble: #f1f5f9;
-	--th-ai-bubble-text: #0f172a;
+	--th-ai-bubble: #e4ecef;
+	--th-ai-bubble-text: #0c1829;
 }
 
-.dark.theme-slate {
-	/* Backgrounds - Deep midnight slate */
-	--th-bg-primary: #0f172a;
-	--th-bg-secondary: #1e293b;
-	--th-bg-tertiary: #334155;
-	--th-bg-overlay: rgba(0, 0, 0, 0.75);
+.dark.theme-abyss {
+	/* Backgrounds - 深海蓝黑，有层次的深度感 */
+	--th-bg-primary: #0c1220;
+	--th-bg-secondary: #111b2c;
+	--th-bg-tertiary: #1a2840;
+	--th-bg-overlay: rgba(0, 0, 0, 0.8);
 
-	/* Text */
-	--th-text-primary: #f1f5f9;
-	--th-text-secondary: #cbd5e1;
-	--th-text-muted: #64748b;
-	--th-text-inverse: #0f172a;
+	/* Text - 冷白色调 */
+	--th-text-primary: #e8f0f5;
+	--th-text-secondary: #a0b8c8;
+	--th-text-muted: #5a7a8f;
+	--th-text-inverse: #0c1220;
 
 	/* Borders */
-	--th-border: #334155;
-	--th-border-focus: #818cf8;
+	--th-border: #1e3348;
+	--th-border-focus: #2dd4bf;
 
-	/* Interactive - Brighter indigo */
-	--th-accent: #818cf8;
-	--th-accent-hover: #a5b4fc;
-	--th-accent-text: #0f172a;
+	/* Interactive - 发光的青绿 */
+	--th-accent: #2dd4bf;
+	--th-accent-hover: #5eead4;
+	--th-accent-text: #042f2e;
 
 	/* Semantic */
 	--th-success: #34d399;
@@ -117,212 +126,46 @@
 	--th-warning: #fbbf24;
 
 	/* Code */
-	--th-code-bg: #1e293b;
-	--th-code-text: #e2e8f0;
+	--th-code-bg: #111b2c;
+	--th-code-text: #5eead4;
 
 	/* Chat bubbles */
-	--th-user-bubble: #6366f1;
-	--th-user-bubble-text: #ffffff;
-	--th-ai-bubble: #334155;
-	--th-ai-bubble-text: #f1f5f9;
+	--th-user-bubble: #0f766e;
+	--th-user-bubble-text: #ccfbf1;
+	--th-ai-bubble: #1a2840;
+	--th-ai-bubble-text: #e8f0f5;
 }
 
 /* =============================================================================
- * THEME: CYBER
+ * THEME: AURORA
  *
- * Design: Futuristic tech aesthetic with electric cyan
- * Accent: Cyan/Teal - cutting-edge, AI-forward, energetic
- * Inspiration: Tron, cyberpunk UI, terminal aesthetics
+ * 设计理念: 极光梦幻
+ * - 灵感: 北极光、宇宙星云、梦幻科技
+ * - 色调: 紫-粉渐变主调，神秘而浪漫
+ * - 强调色: 紫罗兰 (Violet/Purple)
+ * - 适合: 创意工作、个性表达
  * ============================================================================= */
 
-.theme-cyber {
-	/* Backgrounds - Cool gray with subtle blue undertone */
-	--th-bg-primary: #f8fafb;
-	--th-bg-secondary: #f0f4f7;
-	--th-bg-tertiary: #e4eaef;
-	--th-bg-overlay: rgba(8, 28, 41, 0.7);
+.theme-aurora {
+	/* Backgrounds - 柔和的淡紫白 */
+	--th-bg-primary: #fbf9fe;
+	--th-bg-secondary: #f5f0fa;
+	--th-bg-tertiary: #ebe3f3;
+	--th-bg-overlay: rgba(21, 10, 36, 0.7);
 
-	/* Text - Cool neutrals */
-	--th-text-primary: #0c1e29;
-	--th-text-secondary: #3d5466;
-	--th-text-muted: #7c96a8;
-	--th-text-inverse: #ffffff;
-
-	/* Borders */
-	--th-border: #d4e0e8;
-	--th-border-focus: #06b6d4;
-
-	/* Interactive - Electric Cyan */
-	--th-accent: #0891b2;
-	--th-accent-hover: #0e7490;
-	--th-accent-text: #ffffff;
-
-	/* Semantic */
-	--th-success: #14b8a6;
-	--th-error: #f43f5e;
-	--th-warning: #f59e0b;
-
-	/* Code */
-	--th-code-bg: #e4eaef;
-	--th-code-text: #164e63;
-
-	/* Chat bubbles */
-	--th-user-bubble: #0891b2;
-	--th-user-bubble-text: #ffffff;
-	--th-ai-bubble: #e4eaef;
-	--th-ai-bubble-text: #0c1e29;
-}
-
-.dark.theme-cyber {
-	/* Backgrounds - Deep ocean blue, almost black */
-	--th-bg-primary: #0a1929;
-	--th-bg-secondary: #0f2438;
-	--th-bg-tertiary: #163049;
-	--th-bg-overlay: rgba(0, 0, 0, 0.8);
-
-	/* Text - Ice white with cyan tint */
-	--th-text-primary: #e6f4f8;
-	--th-text-secondary: #a5c9d6;
-	--th-text-muted: #5a8599;
-	--th-text-inverse: #0a1929;
+	/* Text - 深紫灰 */
+	--th-text-primary: #1e1228;
+	--th-text-secondary: #4a3a5c;
+	--th-text-muted: #8a7a9c;
+	--th-text-inverse: #fbf9fe;
 
 	/* Borders */
-	--th-border: #1e3a50;
-	--th-border-focus: #22d3ee;
-
-	/* Interactive - Glowing Cyan */
-	--th-accent: #22d3ee;
-	--th-accent-hover: #67e8f9;
-	--th-accent-text: #0a1929;
-
-	/* Semantic */
-	--th-success: #2dd4bf;
-	--th-error: #fb7185;
-	--th-warning: #fbbf24;
-
-	/* Code */
-	--th-code-bg: #0f2438;
-	--th-code-text: #67e8f9;
-
-	/* Chat bubbles */
-	--th-user-bubble: #0e7490;
-	--th-user-bubble-text: #e6f4f8;
-	--th-ai-bubble: #163049;
-	--th-ai-bubble-text: #e6f4f8;
-}
-
-/* =============================================================================
- * THEME: ROSE
- *
- * Design: Soft, warm, and comfortable - inspired by Catppuccin
- * Accent: Rose/Pink - friendly, approachable, modern
- * Perfect for: Long coding sessions, reduced eye strain
- * ============================================================================= */
-
-.theme-rose {
-	/* Backgrounds - Warm cream whites */
-	--th-bg-primary: #fefcfb;
-	--th-bg-secondary: #faf5f3;
-	--th-bg-tertiary: #f3ebe7;
-	--th-bg-overlay: rgba(49, 36, 32, 0.6);
-
-	/* Text - Warm browns */
-	--th-text-primary: #312420;
-	--th-text-secondary: #6b5550;
-	--th-text-muted: #a8938d;
-	--th-text-inverse: #fefcfb;
-
-	/* Borders */
-	--th-border: #e8ddd8;
-	--th-border-focus: #e11d48;
-
-	/* Interactive - Rose */
-	--th-accent: #e11d48;
-	--th-accent-hover: #be123c;
-	--th-accent-text: #ffffff;
-
-	/* Semantic */
-	--th-success: #059669;
-	--th-error: #dc2626;
-	--th-warning: #d97706;
-
-	/* Code */
-	--th-code-bg: #f3ebe7;
-	--th-code-text: #4a3630;
-
-	/* Chat bubbles */
-	--th-user-bubble: #e11d48;
-	--th-user-bubble-text: #ffffff;
-	--th-ai-bubble: #f3ebe7;
-	--th-ai-bubble-text: #312420;
-}
-
-.dark.theme-rose {
-	/* Backgrounds - Warm dark browns (Catppuccin Mocha inspired) */
-	--th-bg-primary: #1e1815;
-	--th-bg-secondary: #2a2320;
-	--th-bg-tertiary: #3d3330;
-	--th-bg-overlay: rgba(0, 0, 0, 0.75);
-
-	/* Text - Warm off-whites */
-	--th-text-primary: #f5ebe8;
-	--th-text-secondary: #d4c4be;
-	--th-text-muted: #8a7a74;
-	--th-text-inverse: #1e1815;
-
-	/* Borders */
-	--th-border: #3d3330;
-	--th-border-focus: #fb7185;
-
-	/* Interactive - Soft Rose */
-	--th-accent: #fb7185;
-	--th-accent-hover: #fda4af;
-	--th-accent-text: #1e1815;
-
-	/* Semantic */
-	--th-success: #4ade80;
-	--th-error: #f87171;
-	--th-warning: #fbbf24;
-
-	/* Code */
-	--th-code-bg: #2a2320;
-	--th-code-text: #f5ebe8;
-
-	/* Chat bubbles */
-	--th-user-bubble: #be123c;
-	--th-user-bubble-text: #f5ebe8;
-	--th-ai-bubble: #3d3330;
-	--th-ai-bubble-text: #f5ebe8;
-}
-
-/* =============================================================================
- * THEME: GRAPE
- *
- * Design: Bold and expressive - inspired by Dracula
- * Accent: Violet/Purple - creative, distinctive, trendy
- * Perfect for: Standing out, personal expression
- * ============================================================================= */
-
-.theme-grape {
-	/* Backgrounds - Subtle lavender tints */
-	--th-bg-primary: #fcfaff;
-	--th-bg-secondary: #f6f2fb;
-	--th-bg-tertiary: #ede6f5;
-	--th-bg-overlay: rgba(46, 32, 74, 0.6);
-
-	/* Text - Deep purples */
-	--th-text-primary: #2e204a;
-	--th-text-secondary: #5c4d73;
-	--th-text-muted: #9588a8;
-	--th-text-inverse: #fcfaff;
-
-	/* Borders */
-	--th-border: #e2d9ee;
-	--th-border-focus: #8b5cf6;
+	--th-border: #ddd2ea;
+	--th-border-focus: #a855f7;
 
 	/* Interactive - Violet */
-	--th-accent: #8b5cf6;
-	--th-accent-hover: #7c3aed;
+	--th-accent: #a855f7;
+	--th-accent-hover: #9333ea;
 	--th-accent-text: #ffffff;
 
 	/* Semantic */
@@ -331,37 +174,37 @@
 	--th-warning: #eab308;
 
 	/* Code */
-	--th-code-bg: #ede6f5;
-	--th-code-text: #3b2960;
+	--th-code-bg: #ebe3f3;
+	--th-code-text: #6b21a8;
 
 	/* Chat bubbles */
-	--th-user-bubble: #8b5cf6;
+	--th-user-bubble: #a855f7;
 	--th-user-bubble-text: #ffffff;
-	--th-ai-bubble: #ede6f5;
-	--th-ai-bubble-text: #2e204a;
+	--th-ai-bubble: #ebe3f3;
+	--th-ai-bubble-text: #1e1228;
 }
 
-.dark.theme-grape {
-	/* Backgrounds - Deep purple (Dracula inspired) */
-	--th-bg-primary: #1a1625;
-	--th-bg-secondary: #252033;
-	--th-bg-tertiary: #342d47;
-	--th-bg-overlay: rgba(0, 0, 0, 0.8);
+.dark.theme-aurora {
+	/* Backgrounds - 深邃的紫色夜空 */
+	--th-bg-primary: #150a24;
+	--th-bg-secondary: #1e1030;
+	--th-bg-tertiary: #2d1a48;
+	--th-bg-overlay: rgba(0, 0, 0, 0.85);
 
-	/* Text - Soft lavender whites */
-	--th-text-primary: #f3f0f8;
-	--th-text-secondary: #c9c2d6;
-	--th-text-muted: #7e7491;
-	--th-text-inverse: #1a1625;
+	/* Text - 柔和的淡紫白 */
+	--th-text-primary: #f3e8ff;
+	--th-text-secondary: #c9a8e8;
+	--th-text-muted: #7c5a9c;
+	--th-text-inverse: #150a24;
 
 	/* Borders */
-	--th-border: #342d47;
-	--th-border-focus: #a78bfa;
+	--th-border: #3d2860;
+	--th-border-focus: #c084fc;
 
-	/* Interactive - Luminous Violet */
-	--th-accent: #a78bfa;
-	--th-accent-hover: #c4b5fd;
-	--th-accent-text: #1a1625;
+	/* Interactive - 发光紫 */
+	--th-accent: #c084fc;
+	--th-accent-hover: #d8b4fe;
+	--th-accent-text: #1e1030;
 
 	/* Semantic */
 	--th-success: #4ade80;
@@ -369,12 +212,270 @@
 	--th-warning: #facc15;
 
 	/* Code */
-	--th-code-bg: #252033;
+	--th-code-bg: #1e1030;
 	--th-code-text: #e9d5ff;
 
 	/* Chat bubbles */
 	--th-user-bubble: #7c3aed;
-	--th-user-bubble-text: #f3f0f8;
-	--th-ai-bubble: #342d47;
-	--th-ai-bubble-text: #f3f0f8;
+	--th-user-bubble-text: #f3e8ff;
+	--th-ai-bubble: #2d1a48;
+	--th-ai-bubble-text: #f3e8ff;
+}
+
+/* =============================================================================
+ * THEME: EMBER
+ *
+ * 设计理念: 温暖余烬
+ * - 灵感: 壁炉余烬、温暖木屋、秋日暖阳
+ * - 色调: 温暖的棕-橙主调，舒适而放松
+ * - 强调色: 余烬橙 (Orange)
+ * - 适合: 放松编程、长时间阅读、护眼
+ * ============================================================================= */
+
+.theme-ember {
+	/* Backgrounds - 温暖的奶油白 */
+	--th-bg-primary: #fefcfa;
+	--th-bg-secondary: #faf6f2;
+	--th-bg-tertiary: #f2ebe4;
+	--th-bg-overlay: rgba(28, 20, 18, 0.65);
+
+	/* Text - 温暖的深棕 */
+	--th-text-primary: #27201c;
+	--th-text-secondary: #5c4a40;
+	--th-text-muted: #9c8878;
+	--th-text-inverse: #fefcfa;
+
+	/* Borders */
+	--th-border: #e6dbd2;
+	--th-border-focus: #ea580c;
+
+	/* Interactive - Orange */
+	--th-accent: #ea580c;
+	--th-accent-hover: #c2410c;
+	--th-accent-text: #ffffff;
+
+	/* Semantic */
+	--th-success: #16a34a;
+	--th-error: #dc2626;
+	--th-warning: #ca8a04;
+
+	/* Code */
+	--th-code-bg: #f2ebe4;
+	--th-code-text: #7c2d12;
+
+	/* Chat bubbles */
+	--th-user-bubble: #ea580c;
+	--th-user-bubble-text: #ffffff;
+	--th-ai-bubble: #f2ebe4;
+	--th-ai-bubble-text: #27201c;
+}
+
+.dark.theme-ember {
+	/* Backgrounds - 温暖的炭黑色 */
+	--th-bg-primary: #1c1412;
+	--th-bg-secondary: #261c18;
+	--th-bg-tertiary: #382a24;
+	--th-bg-overlay: rgba(0, 0, 0, 0.8);
+
+	/* Text - 温暖的米白 */
+	--th-text-primary: #f8f0e8;
+	--th-text-secondary: #d4c0b0;
+	--th-text-muted: #8a7468;
+	--th-text-inverse: #1c1412;
+
+	/* Borders */
+	--th-border: #4a3830;
+	--th-border-focus: #fb923c;
+
+	/* Interactive - 温暖橙 */
+	--th-accent: #fb923c;
+	--th-accent-hover: #fdba74;
+	--th-accent-text: #1c1412;
+
+	/* Semantic */
+	--th-success: #4ade80;
+	--th-error: #f87171;
+	--th-warning: #fbbf24;
+
+	/* Code */
+	--th-code-bg: #261c18;
+	--th-code-text: #fed7aa;
+
+	/* Chat bubbles */
+	--th-user-bubble: #c2410c;
+	--th-user-bubble-text: #fff7ed;
+	--th-ai-bubble: #382a24;
+	--th-ai-bubble-text: #f8f0e8;
+}
+
+/* =============================================================================
+ * THEME: MINT
+ *
+ * 设计理念: 清新薄荷
+ * - 灵感: 清晨露水、薄荷叶、清新自然
+ * - 色调: 清新的绿白主调，干净而有活力
+ * - 强调色: 翠绿 (Emerald/Green)
+ * - 适合: 白天使用、专注工作、健康自然
+ * ============================================================================= */
+
+.theme-mint {
+	/* Backgrounds - 清透的薄荷白 */
+	--th-bg-primary: #f8fcfa;
+	--th-bg-secondary: #f0f9f4;
+	--th-bg-tertiary: #dcf5e7;
+	--th-bg-overlay: rgba(6, 40, 28, 0.65);
+
+	/* Text - 深翠绿灰 */
+	--th-text-primary: #0a2018;
+	--th-text-secondary: #2d5443;
+	--th-text-muted: #6a9580;
+	--th-text-inverse: #f8fcfa;
+
+	/* Borders */
+	--th-border: #c8e8d8;
+	--th-border-focus: #059669;
+
+	/* Interactive - Emerald */
+	--th-accent: #059669;
+	--th-accent-hover: #047857;
+	--th-accent-text: #ffffff;
+
+	/* Semantic */
+	--th-success: #10b981;
+	--th-error: #ef4444;
+	--th-warning: #f59e0b;
+
+	/* Code */
+	--th-code-bg: #dcf5e7;
+	--th-code-text: #065f46;
+
+	/* Chat bubbles */
+	--th-user-bubble: #059669;
+	--th-user-bubble-text: #ffffff;
+	--th-ai-bubble: #dcf5e7;
+	--th-ai-bubble-text: #0a2018;
+}
+
+.dark.theme-mint {
+	/* Backgrounds - 深森林绿 */
+	--th-bg-primary: #0a1610;
+	--th-bg-secondary: #0f201a;
+	--th-bg-tertiary: #1a3328;
+	--th-bg-overlay: rgba(0, 0, 0, 0.8);
+
+	/* Text - 薄荷白 */
+	--th-text-primary: #e8f8f0;
+	--th-text-secondary: #a8d4c0;
+	--th-text-muted: #5a8a70;
+	--th-text-inverse: #0a1610;
+
+	/* Borders */
+	--th-border: #224536;
+	--th-border-focus: #34d399;
+
+	/* Interactive - 明亮翠绿 */
+	--th-accent: #34d399;
+	--th-accent-hover: #6ee7b7;
+	--th-accent-text: #052e16;
+
+	/* Semantic */
+	--th-success: #4ade80;
+	--th-error: #f87171;
+	--th-warning: #fbbf24;
+
+	/* Code */
+	--th-code-bg: #0f201a;
+	--th-code-text: #86efac;
+
+	/* Chat bubbles */
+	--th-user-bubble: #047857;
+	--th-user-bubble-text: #d1fae5;
+	--th-ai-bubble: #1a3328;
+	--th-ai-bubble-text: #e8f8f0;
+}
+
+/* =============================================================================
+ * THEME: VOID
+ *
+ * 设计理念: 极简虚空
+ * - 灵感: 纯粹、极简、专注
+ * - 色调: 纯粹的黑白灰，无杂念
+ * - 强调色: 纯白/纯黑（取决于模式）
+ * - 适合: 极致专注、程序员审美、纯粹主义
+ * ============================================================================= */
+
+.theme-void {
+	/* Backgrounds - 纯净的白 */
+	--th-bg-primary: #ffffff;
+	--th-bg-secondary: #fafafa;
+	--th-bg-tertiary: #f4f4f5;
+	--th-bg-overlay: rgba(9, 9, 11, 0.7);
+
+	/* Text - 纯黑灰阶 */
+	--th-text-primary: #09090b;
+	--th-text-secondary: #3f3f46;
+	--th-text-muted: #a1a1aa;
+	--th-text-inverse: #fafafa;
+
+	/* Borders */
+	--th-border: #e4e4e7;
+	--th-border-focus: #18181b;
+
+	/* Interactive - 纯黑 */
+	--th-accent: #18181b;
+	--th-accent-hover: #27272a;
+	--th-accent-text: #fafafa;
+
+	/* Semantic */
+	--th-success: #22c55e;
+	--th-error: #ef4444;
+	--th-warning: #eab308;
+
+	/* Code */
+	--th-code-bg: #f4f4f5;
+	--th-code-text: #18181b;
+
+	/* Chat bubbles */
+	--th-user-bubble: #18181b;
+	--th-user-bubble-text: #fafafa;
+	--th-ai-bubble: #f4f4f5;
+	--th-ai-bubble-text: #09090b;
+}
+
+.dark.theme-void {
+	/* Backgrounds - 纯粹的黑 */
+	--th-bg-primary: #09090b;
+	--th-bg-secondary: #0f0f11;
+	--th-bg-tertiary: #18181b;
+	--th-bg-overlay: rgba(0, 0, 0, 0.9);
+
+	/* Text - 纯白灰阶 */
+	--th-text-primary: #fafafa;
+	--th-text-secondary: #d4d4d8;
+	--th-text-muted: #71717a;
+	--th-text-inverse: #09090b;
+
+	/* Borders */
+	--th-border: #27272a;
+	--th-border-focus: #fafafa;
+
+	/* Interactive - 纯白 */
+	--th-accent: #fafafa;
+	--th-accent-hover: #e4e4e7;
+	--th-accent-text: #09090b;
+
+	/* Semantic */
+	--th-success: #4ade80;
+	--th-error: #f87171;
+	--th-warning: #facc15;
+
+	/* Code */
+	--th-code-bg: #18181b;
+	--th-code-text: #e4e4e7;
+
+	/* Chat bubbles */
+	--th-user-bubble: #27272a;
+	--th-user-bubble-text: #fafafa;
+	--th-ai-bubble: #18181b;
+	--th-ai-bubble-text: #fafafa;
 }

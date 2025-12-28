@@ -1,33 +1,74 @@
 import { useCallback, useEffect, useState } from "react";
 
 export type ThemeMode = "light" | "dark" | "system";
-export type ThemeName = "slate" | "cyber" | "rose" | "grape";
+export type ThemeName = "abyss" | "aurora" | "ember" | "mint" | "void";
 
-export const THEME_NAMES: ThemeName[] = ["slate", "cyber", "rose", "grape"];
+const THEME_MODES: ThemeMode[] = ["light", "dark", "system"];
+export const THEME_NAMES: ThemeName[] = [
+	"abyss",
+	"aurora",
+	"ember",
+	"mint",
+	"void",
+];
 
-export const THEME_INFO: Record<
-	ThemeName,
-	{ label: string; description: string; accentColor: string }
-> = {
-	slate: {
-		label: "Slate",
-		description: "Classic & Professional",
-		accentColor: "#6366f1", // indigo
+function isValidThemeMode(value: string | null): value is ThemeMode {
+	return value !== null && THEME_MODES.includes(value as ThemeMode);
+}
+
+function isValidThemeName(value: string | null): value is ThemeName {
+	return value !== null && THEME_NAMES.includes(value as ThemeName);
+}
+
+export interface ThemeInfo {
+	label: string;
+	description: string;
+	accentLight: string;
+	accentDark: string;
+	previewBgLight: string;
+	previewBgDark: string;
+}
+
+export const THEME_INFO: Record<ThemeName, ThemeInfo> = {
+	abyss: {
+		label: "Abyss",
+		description: "深海科技",
+		accentLight: "#0d9488",
+		accentDark: "#2dd4bf",
+		previewBgLight: "#f8fafb",
+		previewBgDark: "#0c1220",
 	},
-	cyber: {
-		label: "Cyber",
-		description: "Futuristic & Tech",
-		accentColor: "#06b6d4", // cyan
+	aurora: {
+		label: "Aurora",
+		description: "极光梦幻",
+		accentLight: "#a855f7",
+		accentDark: "#c084fc",
+		previewBgLight: "#fbf9fe",
+		previewBgDark: "#150a24",
 	},
-	rose: {
-		label: "Rose",
-		description: "Warm & Comfortable",
-		accentColor: "#e11d48", // rose
+	ember: {
+		label: "Ember",
+		description: "温暖余烬",
+		accentLight: "#ea580c",
+		accentDark: "#fb923c",
+		previewBgLight: "#fefcfa",
+		previewBgDark: "#1c1412",
 	},
-	grape: {
-		label: "Grape",
-		description: "Bold & Expressive",
-		accentColor: "#8b5cf6", // violet
+	mint: {
+		label: "Mint",
+		description: "清新薄荷",
+		accentLight: "#059669",
+		accentDark: "#34d399",
+		previewBgLight: "#f8fcfa",
+		previewBgDark: "#0a1610",
+	},
+	void: {
+		label: "Void",
+		description: "极简虚空",
+		accentLight: "#18181b",
+		accentDark: "#fafafa",
+		previewBgLight: "#ffffff",
+		previewBgDark: "#09090b",
 	},
 };
 
@@ -59,12 +100,14 @@ function applyTheme(mode: ThemeMode, name: ThemeName) {
 export function useTheme() {
 	const [mode, setModeState] = useState<ThemeMode>(() => {
 		if (typeof window === "undefined") return "system";
-		return (localStorage.getItem(MODE_STORAGE_KEY) as ThemeMode) || "system";
+		const stored = localStorage.getItem(MODE_STORAGE_KEY);
+		return isValidThemeMode(stored) ? stored : "system";
 	});
 
 	const [theme, setThemeState] = useState<ThemeName>(() => {
-		if (typeof window === "undefined") return "slate";
-		return (localStorage.getItem(NAME_STORAGE_KEY) as ThemeName) || "slate";
+		if (typeof window === "undefined") return "abyss";
+		const stored = localStorage.getItem(NAME_STORAGE_KEY);
+		return isValidThemeName(stored) ? stored : "abyss";
 	});
 
 	const setMode = useCallback(
