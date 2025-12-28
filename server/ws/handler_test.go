@@ -468,3 +468,39 @@ func TestHandler_QuestionResponse_InvalidRequestID(t *testing.T) {
 		t.Errorf("expected no pending request error, got %+v", resp)
 	}
 }
+
+func TestHandler_InvalidJSON(t *testing.T) {
+	env := newTestEnv(t, &mockAgent{})
+
+	if err := env.conn.Write(env.ctx, websocket.MessageText, []byte("{invalid json")); err != nil {
+		t.Fatalf("failed to send: %v", err)
+	}
+	resp := env.read()
+
+	if resp.Type != "error" || !strings.Contains(resp.Error, "Invalid message format") {
+		t.Errorf("expected invalid format error, got %+v", resp)
+	}
+}
+
+func TestHandler_UnknownMessageType(t *testing.T) {
+	env := newTestEnv(t, &mockAgent{})
+
+	env.send(ClientMessage{Type: "unknown_type", SessionID: "sess"})
+	resp := env.read()
+
+	if resp.Type != "error" || !strings.Contains(resp.Error, "Unknown message type") {
+		t.Errorf("expected unknown message type error, got %+v", resp)
+	}
+}
+
+func TestHandler_Message_SessionNotInStore(t *testing.T) {
+	mock := &mockAgent{}
+	env := newTestEnv(t, mock)
+
+	env.sendMessage("non-existent-session", "hello")
+	resp := env.read()
+
+	if resp.Type != "error" || !strings.Contains(resp.Error, "session not found") {
+		t.Errorf("expected session not found error, got %+v", resp)
+	}
+}
