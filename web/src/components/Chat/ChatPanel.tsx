@@ -8,7 +8,7 @@ import type {
 	WSServerMessage,
 } from "../../types/message";
 import { generateUUID } from "../../utils/uuid";
-import { ThemeToggle } from "../ui";
+import { ThemeSwitcher } from "../ui";
 import InputBar from "./InputBar";
 import MessageList from "./MessageList";
 import PermissionDialog from "./PermissionDialog";
@@ -422,7 +422,7 @@ function ChatPanel({
 				</div>
 				<div className="flex items-center gap-3">
 					<span className={`text-sm ${statusColor}`}>{statusText}</span>
-					<ThemeToggle />
+					<ThemeSwitcher />
 					{onLogout && (
 						<button
 							type="button"

@@ -128,7 +128,7 @@ function ThemePreview({
 	);
 }
 
-function ThemeToggle() {
+function ThemeSwitcher() {
 	const { mode, setMode, theme, setTheme, resolvedMode } = useTheme();
 	const [isOpen, setIsOpen] = useState(false);
 	const panelRef = useRef<HTMLDivElement>(null);
@@ -341,4 +341,4 @@ function ThemeToggle() {
 	);
 }
 
-export default ThemeToggle;
+export default ThemeSwitcher;
