@@ -43,16 +43,6 @@ func newHandler(token, workDir string, devMode bool, sessionStore session.Store)
 	return middleware.Auth(token)(mux)
 }
 
-// requireEnv returns the value of an environment variable or exits if not set.
-func requireEnv(key string) string {
-	value := os.Getenv(key)
-	if value == "" {
-		logger.Error("%s environment variable is required when GIT_ENABLED=true", key)
-		os.Exit(1)
-	}
-	return value
-}
-
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -77,16 +67,19 @@ func main() {
 		dataDir = ".pockode"
 	}
 
-	// Git initialization (optional, controlled by GIT_ENABLED)
 	if os.Getenv("GIT_ENABLED") == "true" {
-		cfg := git.Config{
-			RepoURL:   requireEnv("REPOSITORY_URL"),
-			RepoToken: requireEnv("REPOSITORY_TOKEN"),
-			UserName:  requireEnv("GIT_USER_NAME"),
-			UserEmail: requireEnv("GIT_USER_EMAIL"),
+		gitCfg := git.Config{
+			RepoURL:   os.Getenv("REPOSITORY_URL"),
+			RepoToken: os.Getenv("REPOSITORY_TOKEN"),
+			UserName:  os.Getenv("GIT_USER_NAME"),
+			UserEmail: os.Getenv("GIT_USER_EMAIL"),
 			WorkDir:   workDir,
 		}
-		if err := git.Init(cfg); err != nil {
+		if gitCfg.RepoURL == "" || gitCfg.RepoToken == "" || gitCfg.UserName == "" || gitCfg.UserEmail == "" {
+			logger.Error("GIT_ENABLED=true requires REPOSITORY_URL, REPOSITORY_TOKEN, GIT_USER_NAME, GIT_USER_EMAIL")
+			os.Exit(1)
+		}
+		if err := git.Init(gitCfg); err != nil {
 			logger.Error("Failed to initialize git: %v", err)
 			os.Exit(1)
 		}
