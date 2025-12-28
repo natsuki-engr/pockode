@@ -9,7 +9,6 @@ import (
 	"time"
 )
 
-// Store defines operations for session management.
 type Store interface {
 	// Session metadata
 	List() ([]SessionMeta, error)
@@ -24,31 +23,40 @@ type Store interface {
 	AppendToHistory(sessionID string, record any) error
 }
 
-// indexData is the structure of index.json.
 type indexData struct {
 	Sessions []SessionMeta `json:"sessions"`
 }
 
-// FileStore implements Store using file system storage.
+// FileStore is NOT safe for multiple instances sharing the same dataDir.
+// Use a single instance per data directory (e.g., via dependency injection).
 type FileStore struct {
-	dataDir string
-	mu      sync.RWMutex
+	dataDir  string
+	mu       sync.RWMutex
+	sessions []SessionMeta // in-memory cache
 }
 
-// NewFileStore creates a new FileStore with the given data directory.
 func NewFileStore(dataDir string) (*FileStore, error) {
 	sessionsDir := filepath.Join(dataDir, "sessions")
 	if err := os.MkdirAll(sessionsDir, 0755); err != nil {
 		return nil, err
 	}
-	return &FileStore{dataDir: dataDir}, nil
+
+	store := &FileStore{dataDir: dataDir}
+
+	idx, err := store.readIndexFromDisk()
+	if err != nil {
+		return nil, err
+	}
+	store.sessions = idx.Sessions
+
+	return store, nil
 }
 
 func (s *FileStore) indexPath() string {
 	return filepath.Join(s.dataDir, "sessions", "index.json")
 }
 
-func (s *FileStore) readIndex() (indexData, error) {
+func (s *FileStore) readIndexFromDisk() (indexData, error) {
 	data, err := os.ReadFile(s.indexPath())
 	if os.IsNotExist(err) {
 		return indexData{Sessions: []SessionMeta{}}, nil
@@ -64,7 +72,8 @@ func (s *FileStore) readIndex() (indexData, error) {
 	return idx, nil
 }
 
-func (s *FileStore) writeIndex(idx indexData) error {
+func (s *FileStore) persistIndex() error {
+	idx := indexData{Sessions: s.sessions}
 	data, err := json.MarshalIndent(idx, "", "  ")
 	if err != nil {
 		return err
@@ -72,29 +81,21 @@ func (s *FileStore) writeIndex(idx indexData) error {
 	return os.WriteFile(s.indexPath(), data, 0644)
 }
 
-// List returns all sessions sorted by updated_at (newest first).
 func (s *FileStore) List() ([]SessionMeta, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	idx, err := s.readIndex()
-	if err != nil {
-		return nil, err
-	}
-	return idx.Sessions, nil
+	// Return a copy to prevent external mutation
+	result := make([]SessionMeta, len(s.sessions))
+	copy(result, s.sessions)
+	return result, nil
 }
 
-// Get returns a session by ID. Returns (session, found, error).
 func (s *FileStore) Get(sessionID string) (SessionMeta, bool, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	idx, err := s.readIndex()
-	if err != nil {
-		return SessionMeta{}, false, err
-	}
-
-	for _, sess := range idx.Sessions {
+	for _, sess := range s.sessions {
 		if sess.ID == sessionID {
 			return sess, true, nil
 		}
@@ -102,15 +103,9 @@ func (s *FileStore) Get(sessionID string) (SessionMeta, bool, error) {
 	return SessionMeta{}, false, nil
 }
 
-// Create creates a new session with the given ID and default title.
 func (s *FileStore) Create(sessionID string) (SessionMeta, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
-	idx, err := s.readIndex()
-	if err != nil {
-		return SessionMeta{}, err
-	}
 
 	now := time.Now()
 	session := SessionMeta{
@@ -120,82 +115,61 @@ func (s *FileStore) Create(sessionID string) (SessionMeta, error) {
 		UpdatedAt: now,
 	}
 
-	// Prepend new session (newest first)
-	idx.Sessions = append([]SessionMeta{session}, idx.Sessions...)
+	s.sessions = append([]SessionMeta{session}, s.sessions...)
 
-	if err := s.writeIndex(idx); err != nil {
+	if err := s.persistIndex(); err != nil {
+		// Rollback on error
+		s.sessions = s.sessions[1:]
 		return SessionMeta{}, err
 	}
 	return session, nil
 }
 
-// Delete removes a session by ID, including its history.
 func (s *FileStore) Delete(sessionID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Delete session directory (includes history)
 	sessionDir := filepath.Join(s.dataDir, "sessions", sessionID)
 	if err := os.RemoveAll(sessionDir); err != nil {
 		return err
 	}
 
-	// Update index
-	idx, err := s.readIndex()
-	if err != nil {
-		return err
-	}
-
-	newSessions := make([]SessionMeta, 0, len(idx.Sessions))
-	for _, sess := range idx.Sessions {
+	newSessions := make([]SessionMeta, 0, len(s.sessions))
+	for _, sess := range s.sessions {
 		if sess.ID != sessionID {
 			newSessions = append(newSessions, sess)
 		}
 	}
-	idx.Sessions = newSessions
+	s.sessions = newSessions
 
-	return s.writeIndex(idx)
+	return s.persistIndex()
 }
 
-// Update updates a session's title by ID.
-// Returns ErrSessionNotFound if the session does not exist.
 func (s *FileStore) Update(sessionID string, title string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	idx, err := s.readIndex()
-	if err != nil {
-		return err
-	}
-
 	now := time.Now()
-	for i, sess := range idx.Sessions {
+	for i, sess := range s.sessions {
 		if sess.ID == sessionID {
-			idx.Sessions[i].Title = title
-			idx.Sessions[i].UpdatedAt = now
-			return s.writeIndex(idx)
+			s.sessions[i].Title = title
+			s.sessions[i].UpdatedAt = now
+			return s.persistIndex()
 		}
 	}
 
 	return ErrSessionNotFound
 }
 
-// Activate marks a session as activated (first message sent).
-// Returns ErrSessionNotFound if the session does not exist.
 func (s *FileStore) Activate(sessionID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	idx, err := s.readIndex()
-	if err != nil {
-		return err
-	}
-
-	for i, sess := range idx.Sessions {
+	for i, sess := range s.sessions {
 		if sess.ID == sessionID {
-			idx.Sessions[i].Activated = true
-			idx.Sessions[i].UpdatedAt = time.Now()
-			return s.writeIndex(idx)
+			s.sessions[i].Activated = true
+			s.sessions[i].UpdatedAt = time.Now()
+			return s.persistIndex()
 		}
 	}
 
@@ -206,7 +180,6 @@ func (s *FileStore) historyPath(sessionID string) string {
 	return filepath.Join(s.dataDir, "sessions", sessionID, "history.jsonl")
 }
 
-// GetHistory reads all history records from the session's JSONL file.
 func (s *FileStore) GetHistory(sessionID string) ([]json.RawMessage, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -241,26 +214,22 @@ func (s *FileStore) GetHistory(sessionID string) ([]json.RawMessage, error) {
 	return records, nil
 }
 
-// AppendToHistory appends a record to the session's history JSONL file.
 func (s *FileStore) AppendToHistory(sessionID string, record any) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	path := s.historyPath(sessionID)
 
-	// Ensure directory exists
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
 	}
 
-	// Open file for appending
 	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	// Marshal and write record
 	data, err := json.Marshal(record)
 	if err != nil {
 		return err

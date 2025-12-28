@@ -78,7 +78,7 @@ func TestFileStore_Delete(t *testing.T) {
 func TestFileStore_DeleteNonExistent(t *testing.T) {
 	store, _ := NewFileStore(t.TempDir())
 
-	// Should not error on non-existent session
+	// Delete is idempotent - no error on non-existent session
 	err := store.Delete("non-existent-id")
 	if err != nil {
 		t.Errorf("Delete non-existent should not error, got %v", err)
