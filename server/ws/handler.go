@@ -71,21 +71,22 @@ type connectionState struct {
 	writeMu sync.Mutex
 }
 
+func (c *connectionState) Close() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for sessionID, sess := range c.sessions {
+		logger.Info("connectionState.Close: closing session %s", sessionID)
+		sess.Close()
+	}
+}
+
 func (h *Handler) handleConnection(ctx context.Context, conn *websocket.Conn) {
 	logger.Info("handleConnection: new connection")
 
 	state := &connectionState{
 		sessions: make(map[string]agent.Session),
 	}
-
-	defer func() {
-		state.mu.Lock()
-		for sessionID, sess := range state.sessions {
-			logger.Info("handleConnection: closing session %s", sessionID)
-			sess.Close()
-		}
-		state.mu.Unlock()
-	}()
+	defer state.Close()
 
 	for {
 		_, data, err := conn.Read(ctx)
@@ -271,8 +272,6 @@ func (h *Handler) streamEvents(ctx context.Context, conn *websocket.Conn, sessio
 			return
 		}
 	}
-
-	logger.Info("streamEvents: session %s ended", sessionID)
 }
 
 func (h *Handler) sendWithLock(ctx context.Context, conn *websocket.Conn, state *connectionState, msg ServerMessage) error {

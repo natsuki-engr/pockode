@@ -53,6 +53,7 @@ func (a *Agent) Start(ctx context.Context, workDir string, sessionID string, res
 	cmd := exec.CommandContext(procCtx, Binary, args...)
 	cmd.Dir = workDir
 
+	// stdin ownership is transferred to session; closed by session.Close()
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		cancel()
@@ -61,17 +62,23 @@ func (a *Agent) Start(ctx context.Context, workDir string, sessionID string, res
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
+		stdin.Close()
 		cancel()
 		return nil, fmt.Errorf("failed to create stdout pipe: %w", err)
 	}
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
+		stdin.Close()
+		stdout.Close()
 		cancel()
 		return nil, fmt.Errorf("failed to create stderr pipe: %w", err)
 	}
 
 	if err := cmd.Start(); err != nil {
+		stdin.Close()
+		stdout.Close()
+		stderr.Close()
 		cancel()
 		return nil, fmt.Errorf("failed to start claude: %w", err)
 	}
@@ -94,6 +101,8 @@ func (a *Agent) Start(ctx context.Context, workDir string, sessionID string, res
 	go func() {
 		defer close(events)
 		defer cancel()
+		defer stdout.Close()
+		defer stderr.Close()
 
 		stderrCh := readStderr(stderr)
 		streamOutput(procCtx, stdout, events, pendingRequests)
@@ -116,6 +125,7 @@ type session struct {
 	stdinMu         sync.Mutex
 	pendingRequests *sync.Map
 	cancel          func()
+	closeOnce       sync.Once
 }
 
 // Events returns the event channel.
@@ -203,10 +213,15 @@ func generateRequestID() string {
 	return hex.EncodeToString(b)
 }
 
-// Close terminates the Claude process.
+// Close terminates the Claude process. Safe to call multiple times.
 func (s *session) Close() {
-	logger.Info("Session.Close: terminating claude process")
-	s.cancel()
+	s.closeOnce.Do(func() {
+		logger.Info("Session.Close: terminating claude process")
+		s.cancel()
+		s.stdinMu.Lock()
+		s.stdin.Close()
+		s.stdinMu.Unlock()
+	})
 }
 
 func (s *session) sendPermissionControlResponse(req *controlRequest, choice agent.PermissionChoice) error {
