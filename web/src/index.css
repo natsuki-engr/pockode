@@ -156,16 +156,16 @@
 	/* Text - 深紫灰 */
 	--th-text-primary: #1e1228;
 	--th-text-secondary: #4a3a5c;
-	--th-text-muted: #8a7a9c;
+	--th-text-muted: #6d5d80;
 	--th-text-inverse: #fbf9fe;
 
 	/* Borders */
 	--th-border: #ddd2ea;
-	--th-border-focus: #a855f7;
+	--th-border-focus: #9333ea;
 
-	/* Interactive - Violet */
-	--th-accent: #a855f7;
-	--th-accent-hover: #9333ea;
+	/* Interactive - Violet (加深以满足 WCAG AA 4.5:1) */
+	--th-accent: #9333ea;
+	--th-accent-hover: #7e22ce;
 	--th-accent-text: #ffffff;
 
 	/* Semantic */
@@ -178,7 +178,7 @@
 	--th-code-text: #6b21a8;
 
 	/* Chat bubbles */
-	--th-user-bubble: #a855f7;
+	--th-user-bubble: #9333ea;
 	--th-user-bubble-text: #ffffff;
 	--th-ai-bubble: #ebe3f3;
 	--th-ai-bubble-text: #1e1228;
@@ -242,16 +242,16 @@
 	/* Text - 温暖的深棕 */
 	--th-text-primary: #27201c;
 	--th-text-secondary: #5c4a40;
-	--th-text-muted: #9c8878;
+	--th-text-muted: #7a6a5c;
 	--th-text-inverse: #fefcfa;
 
 	/* Borders */
 	--th-border: #e6dbd2;
-	--th-border-focus: #ea580c;
+	--th-border-focus: #c2410c;
 
-	/* Interactive - Orange */
-	--th-accent: #ea580c;
-	--th-accent-hover: #c2410c;
+	/* Interactive - Orange (加深以满足 WCAG AA 4.5:1) */
+	--th-accent: #c2410c;
+	--th-accent-hover: #9a3412;
 	--th-accent-text: #ffffff;
 
 	/* Semantic */
@@ -264,7 +264,7 @@
 	--th-code-text: #7c2d12;
 
 	/* Chat bubbles */
-	--th-user-bubble: #ea580c;
+	--th-user-bubble: #c2410c;
 	--th-user-bubble-text: #ffffff;
 	--th-ai-bubble: #f2ebe4;
 	--th-ai-bubble-text: #27201c;
@@ -314,7 +314,7 @@
  * 设计理念: 清新薄荷
  * - 灵感: 清晨露水、薄荷叶、清新自然
  * - 色调: 清新的绿白主调，干净而有活力
- * - 强调色: 翠绿 (Emerald/Green)
+ * - 强调色: 青色 (Cyan) - 与 success 绿色区分
  * - 适合: 白天使用、专注工作、健康自然
  * ============================================================================= */
 
@@ -328,16 +328,16 @@
 	/* Text - 深翠绿灰 */
 	--th-text-primary: #0a2018;
 	--th-text-secondary: #2d5443;
-	--th-text-muted: #6a9580;
+	--th-text-muted: #4a7560;
 	--th-text-inverse: #f8fcfa;
 
 	/* Borders */
 	--th-border: #c8e8d8;
-	--th-border-focus: #059669;
+	--th-border-focus: #0891b2;
 
-	/* Interactive - Emerald */
-	--th-accent: #059669;
-	--th-accent-hover: #047857;
+	/* Interactive - Cyan (使用青色与 success 绿色区分，同时满足 WCAG AA) */
+	--th-accent: #0891b2;
+	--th-accent-hover: #0e7490;
 	--th-accent-text: #ffffff;
 
 	/* Semantic */
@@ -347,10 +347,10 @@
 
 	/* Code */
 	--th-code-bg: #dcf5e7;
-	--th-code-text: #065f46;
+	--th-code-text: #155e75;
 
 	/* Chat bubbles */
-	--th-user-bubble: #059669;
+	--th-user-bubble: #0891b2;
 	--th-user-bubble-text: #ffffff;
 	--th-ai-bubble: #dcf5e7;
 	--th-ai-bubble-text: #0a2018;
@@ -371,12 +371,12 @@
 
 	/* Borders */
 	--th-border: #224536;
-	--th-border-focus: #34d399;
+	--th-border-focus: #22d3ee;
 
-	/* Interactive - 明亮翠绿 */
-	--th-accent: #34d399;
-	--th-accent-hover: #6ee7b7;
-	--th-accent-text: #052e16;
+	/* Interactive - 明亮青色 (与 success 区分) */
+	--th-accent: #22d3ee;
+	--th-accent-hover: #67e8f9;
+	--th-accent-text: #083344;
 
 	/* Semantic */
 	--th-success: #4ade80;
@@ -385,11 +385,11 @@
 
 	/* Code */
 	--th-code-bg: #0f201a;
-	--th-code-text: #86efac;
+	--th-code-text: #a5f3fc;
 
 	/* Chat bubbles */
-	--th-user-bubble: #047857;
-	--th-user-bubble-text: #d1fae5;
+	--th-user-bubble: #0e7490;
+	--th-user-bubble-text: #ecfeff;
 	--th-ai-bubble: #1a3328;
 	--th-ai-bubble-text: #e8f8f0;
 }
@@ -405,10 +405,10 @@
  * ============================================================================= */
 
 .theme-void {
-	/* Backgrounds - 纯净的白 */
+	/* Backgrounds - 纯净的白 (增加层次差异) */
 	--th-bg-primary: #ffffff;
-	--th-bg-secondary: #fafafa;
-	--th-bg-tertiary: #f4f4f5;
+	--th-bg-secondary: #f8f8f8;
+	--th-bg-tertiary: #efefef;
 	--th-bg-overlay: rgba(9, 9, 11, 0.7);
 
 	/* Text - 纯黑灰阶 */
@@ -432,21 +432,21 @@
 	--th-warning: #eab308;
 
 	/* Code */
-	--th-code-bg: #f4f4f5;
+	--th-code-bg: #efefef;
 	--th-code-text: #18181b;
 
 	/* Chat bubbles */
 	--th-user-bubble: #18181b;
 	--th-user-bubble-text: #fafafa;
-	--th-ai-bubble: #f4f4f5;
+	--th-ai-bubble: #efefef;
 	--th-ai-bubble-text: #09090b;
 }
 
 .dark.theme-void {
-	/* Backgrounds - 纯粹的黑 */
+	/* Backgrounds - 纯粹的黑 (增加层次差异) */
 	--th-bg-primary: #09090b;
-	--th-bg-secondary: #0f0f11;
-	--th-bg-tertiary: #18181b;
+	--th-bg-secondary: #121214;
+	--th-bg-tertiary: #1c1c1f;
 	--th-bg-overlay: rgba(0, 0, 0, 0.9);
 
 	/* Text - 纯白灰阶 */
@@ -470,12 +470,12 @@
 	--th-warning: #facc15;
 
 	/* Code */
-	--th-code-bg: #18181b;
+	--th-code-bg: #1c1c1f;
 	--th-code-text: #e4e4e7;
 
 	/* Chat bubbles */
 	--th-user-bubble: #27272a;
 	--th-user-bubble-text: #fafafa;
-	--th-ai-bubble: #18181b;
+	--th-ai-bubble: #1c1c1f;
 	--th-ai-bubble-text: #fafafa;
 }

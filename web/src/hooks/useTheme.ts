@@ -41,7 +41,7 @@ export const THEME_INFO: Record<ThemeName, ThemeInfo> = {
 	aurora: {
 		label: "Aurora",
 		description: "极光梦幻",
-		accentLight: "#a855f7",
+		accentLight: "#9333ea",
 		accentDark: "#c084fc",
 		previewBgLight: "#fbf9fe",
 		previewBgDark: "#150a24",
@@ -49,7 +49,7 @@ export const THEME_INFO: Record<ThemeName, ThemeInfo> = {
 	ember: {
 		label: "Ember",
 		description: "温暖余烬",
-		accentLight: "#ea580c",
+		accentLight: "#c2410c",
 		accentDark: "#fb923c",
 		previewBgLight: "#fefcfa",
 		previewBgDark: "#1c1412",
@@ -57,8 +57,8 @@ export const THEME_INFO: Record<ThemeName, ThemeInfo> = {
 	mint: {
 		label: "Mint",
 		description: "清新薄荷",
-		accentLight: "#059669",
-		accentDark: "#34d399",
+		accentLight: "#0891b2",
+		accentDark: "#22d3ee",
 		previewBgLight: "#f8fcfa",
 		previewBgDark: "#0a1610",
 	},
