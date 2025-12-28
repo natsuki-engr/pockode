@@ -54,7 +54,7 @@ function ToolCallItem({ tool }: ToolCallItemProps) {
 			<button
 				type="button"
 				onClick={() => hasResult && setExpanded(!expanded)}
-				className={`flex w-full items-center gap-1.5 p-2 text-left ${hasResult ? "hover:bg-th-bg-tertiary" : ""}`}
+				className={`flex w-full items-center gap-1.5 rounded p-2 text-left ${hasResult ? "hover:bg-th-overlay-hover" : ""}`}
 			>
 				<span
 					className={`w-2.5 shrink-0 text-th-text-muted transition-transform ${expanded ? "rotate-90" : ""}`}
@@ -87,7 +87,7 @@ function SystemItem({ content }: SystemItemProps) {
 			<button
 				type="button"
 				onClick={() => setExpanded(!expanded)}
-				className="flex w-full items-center gap-1.5 p-2 text-left hover:bg-th-bg-tertiary"
+				className="flex w-full items-center gap-1.5 rounded p-2 text-left hover:bg-th-overlay-hover"
 			>
 				<span
 					className={`w-2.5 shrink-0 text-th-text-muted transition-transform ${expanded ? "rotate-90" : ""}`}

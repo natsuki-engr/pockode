@@ -17,6 +17,7 @@
 	--color-th-bg-secondary: var(--th-bg-secondary);
 	--color-th-bg-tertiary: var(--th-bg-tertiary);
 	--color-th-bg-overlay: var(--th-bg-overlay);
+	--color-th-overlay-hover: var(--th-overlay-hover);
 
 	/* Text */
 	--color-th-text-primary: var(--th-text-primary);
@@ -67,6 +68,9 @@
 	--th-bg-tertiary: #e4ecef;
 	--th-bg-overlay: rgba(12, 18, 32, 0.7);
 
+	/* Overlays */
+	--th-overlay-hover: rgba(0, 0, 0, 0.08);
+
 	/* Text - 深蓝灰色调 */
 	--th-text-primary: #0c1829;
 	--th-text-secondary: #3d5160;
@@ -104,6 +108,9 @@
 	--th-bg-secondary: #111b2c;
 	--th-bg-tertiary: #1a2840;
 	--th-bg-overlay: rgba(0, 0, 0, 0.8);
+
+	/* Overlays */
+	--th-overlay-hover: rgba(255, 255, 255, 0.1);
 
 	/* Text - 冷白色调 */
 	--th-text-primary: #e8f0f5;
@@ -153,6 +160,9 @@
 	--th-bg-tertiary: #ebe3f3;
 	--th-bg-overlay: rgba(21, 10, 36, 0.7);
 
+	/* Overlays */
+	--th-overlay-hover: rgba(0, 0, 0, 0.08);
+
 	/* Text - 深紫灰 */
 	--th-text-primary: #1e1228;
 	--th-text-secondary: #4a3a5c;
@@ -190,6 +200,9 @@
 	--th-bg-secondary: #1e1030;
 	--th-bg-tertiary: #2d1a48;
 	--th-bg-overlay: rgba(0, 0, 0, 0.85);
+
+	/* Overlays */
+	--th-overlay-hover: rgba(255, 255, 255, 0.1);
 
 	/* Text - 柔和的淡紫白 */
 	--th-text-primary: #f3e8ff;
@@ -239,6 +252,9 @@
 	--th-bg-tertiary: #f2ebe4;
 	--th-bg-overlay: rgba(28, 20, 18, 0.65);
 
+	/* Overlays */
+	--th-overlay-hover: rgba(0, 0, 0, 0.08);
+
 	/* Text - 温暖的深棕 */
 	--th-text-primary: #27201c;
 	--th-text-secondary: #5c4a40;
@@ -276,6 +292,9 @@
 	--th-bg-secondary: #261c18;
 	--th-bg-tertiary: #382a24;
 	--th-bg-overlay: rgba(0, 0, 0, 0.8);
+
+	/* Overlays */
+	--th-overlay-hover: rgba(255, 255, 255, 0.1);
 
 	/* Text - 温暖的米白 */
 	--th-text-primary: #f8f0e8;
@@ -325,6 +344,9 @@
 	--th-bg-tertiary: #dcf5e7;
 	--th-bg-overlay: rgba(6, 40, 28, 0.65);
 
+	/* Overlays */
+	--th-overlay-hover: rgba(0, 0, 0, 0.08);
+
 	/* Text - 深翠绿灰 */
 	--th-text-primary: #0a2018;
 	--th-text-secondary: #2d5443;
@@ -362,6 +384,9 @@
 	--th-bg-secondary: #0f201a;
 	--th-bg-tertiary: #1a3328;
 	--th-bg-overlay: rgba(0, 0, 0, 0.8);
+
+	/* Overlays */
+	--th-overlay-hover: rgba(255, 255, 255, 0.1);
 
 	/* Text - 薄荷白 */
 	--th-text-primary: #e8f8f0;
@@ -411,6 +436,9 @@
 	--th-bg-tertiary: #efefef;
 	--th-bg-overlay: rgba(9, 9, 11, 0.7);
 
+	/* Overlays */
+	--th-overlay-hover: rgba(0, 0, 0, 0.06);
+
 	/* Text - 纯黑灰阶 */
 	--th-text-primary: #09090b;
 	--th-text-secondary: #3f3f46;
@@ -448,6 +476,9 @@
 	--th-bg-secondary: #121214;
 	--th-bg-tertiary: #1c1c1f;
 	--th-bg-overlay: rgba(0, 0, 0, 0.9);
+
+	/* Overlays */
+	--th-overlay-hover: rgba(255, 255, 255, 0.1);
 
 	/* Text - 纯白灰阶 */
 	--th-text-primary: #fafafa;
