@@ -3,6 +3,8 @@ package claude
 import (
 	"bytes"
 	"encoding/json"
+	"io"
+	"log/slog"
 	"reflect"
 	"sync"
 	"testing"
@@ -235,7 +237,7 @@ func TestParseLine(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pendingRequests := &sync.Map{}
-			results := parseLine([]byte(tt.input), pendingRequests)
+			results := parseLine(testLogger(), []byte(tt.input), pendingRequests)
 
 			if !reflect.DeepEqual(results, tt.expected) {
 				t.Errorf("expected %+v, got %+v", tt.expected, results)
@@ -248,7 +250,7 @@ func TestParseControlRequest_StoresPendingRequest(t *testing.T) {
 	pendingRequests := &sync.Map{}
 
 	input := `{"type":"control_request","request_id":"req-789","request":{"subtype":"can_use_tool","tool_name":"Bash","input":{"command":"ls"},"tool_use_id":"toolu_xyz"}}`
-	results := parseLine([]byte(input), pendingRequests)
+	results := parseLine(testLogger(), []byte(input), pendingRequests)
 
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
@@ -279,6 +281,10 @@ type nopWriteCloser struct {
 
 func (nopWriteCloser) Close() error { return nil }
 
+func testLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
+
 func TestSession_SendPermissionResponse_Allow(t *testing.T) {
 	var buf bytes.Buffer
 	pendingRequests := &sync.Map{}
@@ -294,6 +300,7 @@ func TestSession_SendPermissionResponse_Allow(t *testing.T) {
 	pendingRequests.Store("req-perm-123", req)
 
 	sess := &session{
+		log:             testLogger(),
 		stdin:           nopWriteCloser{&buf},
 		pendingRequests: pendingRequests,
 	}
@@ -331,6 +338,7 @@ func TestSession_SendPermissionResponse_Deny(t *testing.T) {
 	pendingRequests.Store("req-deny-456", req)
 
 	sess := &session{
+		log:             testLogger(),
 		stdin:           nopWriteCloser{&buf},
 		pendingRequests: pendingRequests,
 	}
@@ -357,6 +365,7 @@ func TestSession_SendPermissionResponse_InvalidRequestID(t *testing.T) {
 	pendingRequests := &sync.Map{}
 
 	sess := &session{
+		log:             testLogger(),
 		stdin:           nopWriteCloser{&buf},
 		pendingRequests: pendingRequests,
 	}
@@ -394,6 +403,7 @@ func TestSession_SendPermissionResponse_AlwaysAllow(t *testing.T) {
 	pendingRequests.Store("req-always-789", req)
 
 	sess := &session{
+		log:             testLogger(),
 		stdin:           nopWriteCloser{&buf},
 		pendingRequests: pendingRequests,
 	}
@@ -419,6 +429,7 @@ func TestSession_SendPermissionResponse_AlwaysAllow(t *testing.T) {
 func TestSession_SendMessage(t *testing.T) {
 	var buf bytes.Buffer
 	sess := &session{
+		log:   testLogger(),
 		stdin: nopWriteCloser{&buf},
 	}
 
@@ -463,6 +474,7 @@ func TestSession_SendQuestionResponse(t *testing.T) {
 	pendingRequests.Store("req-q-456", req)
 
 	sess := &session{
+		log:             testLogger(),
 		stdin:           nopWriteCloser{&buf},
 		pendingRequests: pendingRequests,
 	}
@@ -520,6 +532,7 @@ func TestSession_SendQuestionResponse_Cancel(t *testing.T) {
 	pendingRequests.Store("req-q-cancel", req)
 
 	sess := &session{
+		log:             testLogger(),
 		stdin:           nopWriteCloser{&buf},
 		pendingRequests: pendingRequests,
 	}
@@ -559,6 +572,7 @@ func TestSession_SendQuestionResponse_InvalidRequestID(t *testing.T) {
 	pendingRequests := &sync.Map{}
 
 	sess := &session{
+		log:             testLogger(),
 		stdin:           nopWriteCloser{&buf},
 		pendingRequests: pendingRequests,
 	}

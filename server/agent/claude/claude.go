@@ -9,13 +9,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"os/exec"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/pockode/server/agent"
-	"github.com/pockode/server/logger"
 )
 
 const (
@@ -83,12 +83,14 @@ func (a *Agent) Start(ctx context.Context, workDir string, sessionID string, res
 		return nil, fmt.Errorf("failed to start claude: %w", err)
 	}
 
-	logger.Info("Start: claude process started (pid=%d)", cmd.Process.Pid)
+	log := slog.With("sessionId", sessionID)
+	log.Info("claude process started", "pid", cmd.Process.Pid)
 
 	events := make(chan agent.AgentEvent)
 	pendingRequests := &sync.Map{}
 
 	sess := &session{
+		log:             log,
 		events:          events,
 		stdin:           stdin,
 		pendingRequests: pendingRequests,
@@ -105,8 +107,8 @@ func (a *Agent) Start(ctx context.Context, workDir string, sessionID string, res
 		defer stderr.Close()
 
 		stderrCh := readStderr(stderr)
-		streamOutput(procCtx, stdout, events, pendingRequests)
-		waitForProcess(procCtx, cmd, stderrCh, events)
+		streamOutput(procCtx, log, stdout, events, pendingRequests)
+		waitForProcess(procCtx, log, cmd, stderrCh, events)
 
 		// Notify client that process has ended (abnormal: process should stay alive)
 		select {
@@ -120,6 +122,7 @@ func (a *Agent) Start(ctx context.Context, workDir string, sessionID string, res
 
 // session implements agent.Session for Claude CLI.
 type session struct {
+	log             *slog.Logger
 	events          chan agent.AgentEvent
 	stdin           io.WriteCloser
 	stdinMu         sync.Mutex
@@ -148,7 +151,7 @@ func (s *session) SendMessage(prompt string) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal message: %w", err)
 	}
-	logger.Debug("sendMessage: sending prompt (len=%d)", len(prompt))
+	s.log.Debug("sending prompt", "length", len(prompt))
 	return s.writeStdin(data)
 }
 
@@ -199,7 +202,7 @@ func (s *session) SendInterrupt() error {
 		return fmt.Errorf("failed to marshal interrupt request: %w", err)
 	}
 
-	logger.Info("SendInterrupt: sending interrupt signal")
+	s.log.Info("sending interrupt signal")
 	return s.writeStdin(data)
 }
 
@@ -208,7 +211,7 @@ func generateRequestID() string {
 	if _, err := rand.Read(b); err != nil {
 		// crypto/rand.Read failure is extremely rare (only on entropy exhaustion).
 		// Log and continue with zero bytes rather than failing the interrupt.
-		logger.Error("generateRequestID: rand.Read failed: %v", err)
+		slog.Error("rand.Read failed", "error", err)
 	}
 	return hex.EncodeToString(b)
 }
@@ -216,7 +219,7 @@ func generateRequestID() string {
 // Close terminates the Claude process. Safe to call multiple times.
 func (s *session) Close() {
 	s.closeOnce.Do(func() {
-		logger.Info("Session.Close: terminating claude process")
+		s.log.Info("terminating claude process")
 		s.cancel()
 		s.stdinMu.Lock()
 		s.stdin.Close()
@@ -261,7 +264,7 @@ func (s *session) sendPermissionControlResponse(req *controlRequest, choice agen
 		return fmt.Errorf("failed to marshal control response: %w", err)
 	}
 
-	logger.Debug("sendPermissionControlResponse: %s", string(data))
+	s.log.Debug("sending permission control response")
 	return s.writeStdin(data)
 }
 
@@ -302,7 +305,7 @@ func (s *session) sendQuestionControlResponse(req *controlRequest, answers map[s
 		return fmt.Errorf("failed to marshal question response: %w", err)
 	}
 
-	logger.Debug("sendQuestionControlResponse: %s", string(data))
+	s.log.Debug("sending question control response")
 	return s.writeStdin(data)
 }
 
@@ -330,7 +333,7 @@ func readStderr(stderr io.Reader) <-chan string {
 	return ch
 }
 
-func streamOutput(ctx context.Context, stdout io.Reader, events chan<- agent.AgentEvent, pendingRequests *sync.Map) {
+func streamOutput(ctx context.Context, log *slog.Logger, stdout io.Reader, events chan<- agent.AgentEvent, pendingRequests *sync.Map) {
 	scanner := bufio.NewScanner(stdout)
 	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
 
@@ -340,7 +343,7 @@ func streamOutput(ctx context.Context, stdout io.Reader, events chan<- agent.Age
 			continue
 		}
 
-		for _, event := range parseLine(line, pendingRequests) {
+		for _, event := range parseLine(log, line, pendingRequests) {
 			select {
 			case events <- event:
 			case <-ctx.Done():
@@ -350,11 +353,11 @@ func streamOutput(ctx context.Context, stdout io.Reader, events chan<- agent.Age
 	}
 
 	if err := scanner.Err(); err != nil {
-		logger.Error("stdout scanner error: %v", err)
+		log.Error("stdout scanner error", "error", err)
 	}
 }
 
-func waitForProcess(ctx context.Context, cmd *exec.Cmd, stderrCh <-chan string, events chan<- agent.AgentEvent) {
+func waitForProcess(ctx context.Context, log *slog.Logger, cmd *exec.Cmd, stderrCh <-chan string, events chan<- agent.AgentEvent) {
 	var stderrContent string
 	select {
 	case stderrContent = <-stderrCh:
@@ -374,7 +377,7 @@ func waitForProcess(ctx context.Context, cmd *exec.Cmd, stderrCh <-chan string, 
 		}
 	}
 
-	logger.Info("waitForProcess: claude process exited")
+	log.Info("claude process exited")
 }
 
 // --- Types ---
@@ -461,14 +464,14 @@ type cliContentBlock struct {
 	Content   json.RawMessage `json:"content,omitempty"`
 }
 
-func parseLine(line []byte, pendingRequests *sync.Map) []agent.AgentEvent {
+func parseLine(log *slog.Logger, line []byte, pendingRequests *sync.Map) []agent.AgentEvent {
 	if len(line) == 0 {
 		return nil
 	}
 
 	var event cliEvent
 	if err := json.Unmarshal(line, &event); err != nil {
-		logger.Error("parseLine: failed to parse JSON: %v, line: %s", err, logger.Truncate(string(line), 100))
+		log.Warn("failed to parse JSON from CLI", "error", err, "lineLength", len(line))
 		return []agent.AgentEvent{{
 			Type:    agent.EventTypeText,
 			Content: string(line),
@@ -477,9 +480,9 @@ func parseLine(line []byte, pendingRequests *sync.Map) []agent.AgentEvent {
 
 	switch event.Type {
 	case "assistant":
-		return parseAssistantEvent(event)
+		return parseAssistantEvent(log, event)
 	case "user":
-		return parseUserEvent(event)
+		return parseUserEvent(log, event)
 	case "result":
 		return []agent.AgentEvent{parseResultEvent(line)}
 	case "system":
@@ -492,12 +495,12 @@ func parseLine(line []byte, pendingRequests *sync.Map) []agent.AgentEvent {
 			Content: string(line),
 		}}
 	case "control_request":
-		return parseControlRequest(line, pendingRequests)
+		return parseControlRequest(log, line, pendingRequests)
 	case "control_response":
 		// Ignore echoed responses from our own control messages
 		return nil
 	default:
-		logger.Info("parseLine: unknown event type: %s", event.Type)
+		log.Warn("unknown event type from CLI", "type", event.Type)
 		return []agent.AgentEvent{{
 			Type:    agent.EventTypeText,
 			Content: string(line),
@@ -505,15 +508,15 @@ func parseLine(line []byte, pendingRequests *sync.Map) []agent.AgentEvent {
 	}
 }
 
-func parseControlRequest(line []byte, pendingRequests *sync.Map) []agent.AgentEvent {
+func parseControlRequest(log *slog.Logger, line []byte, pendingRequests *sync.Map) []agent.AgentEvent {
 	var req controlRequest
 	if err := json.Unmarshal(line, &req); err != nil {
-		logger.Error("parseControlRequest: failed to parse: %v", err)
+		log.Warn("failed to parse control request from CLI", "error", err)
 		return nil
 	}
 
 	if req.Request == nil {
-		logger.Debug("parseControlRequest: ignoring request with nil request data")
+		log.Debug("ignoring request with nil request data")
 		return nil
 	}
 
@@ -526,11 +529,11 @@ func parseControlRequest(line []byte, pendingRequests *sync.Map) []agent.AgentEv
 				Questions []agent.AskUserQuestion `json:"questions"`
 			}
 			if err := json.Unmarshal(req.Request.Input, &input); err != nil {
-				logger.Error("parseControlRequest: failed to parse AskUserQuestion input: %v", err)
+				log.Warn("failed to parse AskUserQuestion input from CLI", "error", err)
 				return nil
 			}
 
-			logger.Info("parseControlRequest: AskUserQuestion, requestID=%s", req.RequestID)
+			log.Info("AskUserQuestion received", "requestId", req.RequestID)
 			pendingRequests.Store(req.RequestID, &req)
 
 			return []agent.AgentEvent{{
@@ -540,7 +543,7 @@ func parseControlRequest(line []byte, pendingRequests *sync.Map) []agent.AgentEv
 			}}
 		}
 
-		logger.Info("parseControlRequest: tool=%s, requestID=%s", req.Request.ToolName, req.RequestID)
+		log.Info("tool permission request", "tool", req.Request.ToolName, "requestId", req.RequestID)
 		pendingRequests.Store(req.RequestID, &req)
 		return []agent.AgentEvent{{
 			Type:                  agent.EventTypePermissionRequest,
@@ -552,20 +555,20 @@ func parseControlRequest(line []byte, pendingRequests *sync.Map) []agent.AgentEv
 		}}
 
 	default:
-		logger.Debug("parseControlRequest: ignoring unknown subtype: %s", req.Request.Subtype)
+		log.Debug("ignoring unknown subtype", "subtype", req.Request.Subtype)
 		return nil
 	}
 }
 
-func parseAssistantEvent(event cliEvent) []agent.AgentEvent {
+func parseAssistantEvent(log *slog.Logger, event cliEvent) []agent.AgentEvent {
 	if event.Message == nil {
-		logger.Error("parseAssistantEvent: message is nil, subtype: %s", event.Subtype)
+		log.Warn("assistant event message is nil", "subtype", event.Subtype)
 		return nil
 	}
 
 	var msg cliMessage
 	if err := json.Unmarshal(event.Message, &msg); err != nil {
-		logger.Error("parseAssistantEvent: failed to parse message: %v", err)
+		log.Warn("failed to parse assistant message from CLI", "error", err)
 		return []agent.AgentEvent{{
 			Type:    agent.EventTypeText,
 			Content: string(event.Message),
@@ -609,14 +612,14 @@ func parseAssistantEvent(event cliEvent) []agent.AgentEvent {
 	return events
 }
 
-func parseUserEvent(event cliEvent) []agent.AgentEvent {
+func parseUserEvent(log *slog.Logger, event cliEvent) []agent.AgentEvent {
 	if event.Message == nil {
 		return nil
 	}
 
 	var msg cliMessage
 	if err := json.Unmarshal(event.Message, &msg); err != nil {
-		logger.Error("parseUserEvent: failed to parse message: %v", err)
+		log.Warn("failed to parse user message from CLI", "error", err)
 		return []agent.AgentEvent{{
 			Type:    agent.EventTypeText,
 			Content: string(event.Message),

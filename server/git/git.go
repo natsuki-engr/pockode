@@ -3,13 +3,12 @@ package git
 
 import (
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-
-	"github.com/pockode/server/logger"
 )
 
 // Config holds configuration for git initialization.
@@ -39,7 +38,7 @@ func Init(cfg Config) error {
 
 	// Check if already initialized
 	if _, err := os.Stat(gitDir); err == nil {
-		logger.Info("Repository already exists at %s, skipping initialization", cfg.WorkDir)
+		slog.Info("repository already exists, skipping initialization", "workDir", cfg.WorkDir)
 		return nil
 	}
 
@@ -49,7 +48,7 @@ func Init(cfg Config) error {
 		return fmt.Errorf("failed to extract host from URL: %w", err)
 	}
 
-	logger.Info("Initializing git repository at %s", cfg.WorkDir)
+	slog.Info("initializing git repository", "workDir", cfg.WorkDir)
 
 	// 1. git init
 	if err := initRepo(cfg.WorkDir); err != nil {
@@ -76,7 +75,7 @@ func Init(cfg Config) error {
 		return err
 	}
 
-	logger.Info("Git repository initialized successfully")
+	slog.Info("git repository initialized successfully")
 	return nil
 }
 
@@ -116,7 +115,7 @@ func setupLocalCredential(dir, host, token string) error {
 		return fmt.Errorf("failed to write credentials file: %w", err)
 	}
 
-	logger.Info("Local credential configured for %s", host)
+	slog.Info("local credential configured", "host", host)
 	return nil
 }
 

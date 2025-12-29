@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -44,6 +45,8 @@ func newHandler(token, workDir string, devMode bool, sessionStore session.Store)
 }
 
 func main() {
+	logger.Init()
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -51,7 +54,7 @@ func main() {
 
 	token := os.Getenv("AUTH_TOKEN")
 	if token == "" {
-		logger.Error("AUTH_TOKEN environment variable is required")
+		slog.Error("AUTH_TOKEN environment variable is required")
 		os.Exit(1)
 	}
 
@@ -76,11 +79,11 @@ func main() {
 			WorkDir:   workDir,
 		}
 		if gitCfg.RepoURL == "" || gitCfg.RepoToken == "" || gitCfg.UserName == "" || gitCfg.UserEmail == "" {
-			logger.Error("GIT_ENABLED=true requires REPOSITORY_URL, REPOSITORY_TOKEN, GIT_USER_NAME, GIT_USER_EMAIL")
+			slog.Error("GIT_ENABLED=true requires REPOSITORY_URL, REPOSITORY_TOKEN, GIT_USER_NAME, GIT_USER_EMAIL")
 			os.Exit(1)
 		}
 		if err := git.Init(gitCfg); err != nil {
-			logger.Error("Failed to initialize git: %v", err)
+			slog.Error("failed to initialize git", "error", err)
 			os.Exit(1)
 		}
 	}
@@ -88,7 +91,7 @@ func main() {
 	// Initialize session store
 	sessionStore, err := session.NewFileStore(dataDir)
 	if err != nil {
-		logger.Error("Failed to initialize session store: %v", err)
+		slog.Error("failed to initialize session store", "error", err)
 		os.Exit(1)
 	}
 
@@ -105,18 +108,18 @@ func main() {
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		<-sigCh
 
-		logger.Info("Shutting down server...")
+		slog.Info("shutting down server")
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if err := srv.Shutdown(ctx); err != nil {
-			logger.Error("Server shutdown error: %v", err)
+			slog.Error("server shutdown error", "error", err)
 		}
 	}()
 
-	logger.Info("Server starting on :%s (workDir: %s, dataDir: %s, devMode: %v)", port, workDir, dataDir, devMode)
+	slog.Info("server starting", "port", port, "workDir", workDir, "dataDir", dataDir, "devMode", devMode)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		logger.Error("Server error: %v", err)
+		slog.Error("server error", "error", err)
 		os.Exit(1)
 	}
-	logger.Info("Server stopped")
+	slog.Info("server stopped")
 }

@@ -1,34 +1,42 @@
 package logger
 
 import (
-	"log"
+	"log/slog"
 	"os"
+	"strings"
+
+	"github.com/google/uuid"
 )
 
-var debugMode = os.Getenv("DEBUG") == "true"
+// Init initializes the global slog logger. Call this at the start of main().
+func Init() {
+	level := parseLevel(os.Getenv("LOG_LEVEL"))
+	var handler slog.Handler
+	opts := &slog.HandlerOptions{Level: level}
 
-// Debug logs a message only when DEBUG=true.
-func Debug(format string, v ...any) {
-	if debugMode {
-		log.Printf("[DEBUG] "+format, v...)
+	if os.Getenv("LOG_FORMAT") == "json" {
+		handler = slog.NewJSONHandler(os.Stdout, opts)
+	} else {
+		handler = slog.NewTextHandler(os.Stdout, opts)
+	}
+
+	slog.SetDefault(slog.New(handler))
+}
+
+func parseLevel(s string) slog.Level {
+	switch strings.ToLower(s) {
+	case "debug":
+		return slog.LevelDebug
+	case "warn":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
 	}
 }
 
-// Info logs an info-level message.
-func Info(format string, v ...any) {
-	log.Printf("[INFO] "+format, v...)
-}
-
-// Error logs an error-level message.
-func Error(format string, v ...any) {
-	log.Printf("[ERROR] "+format, v...)
-}
-
-// Truncate returns a truncated version of s for safe logging.
-// Useful for logging user content without exposing full prompt.
-func Truncate(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen] + "..."
+// NewRequestLogger creates a logger with a unique requestId for API handlers.
+func NewRequestLogger() *slog.Logger {
+	return slog.With("requestId", uuid.Must(uuid.NewV7()).String())
 }

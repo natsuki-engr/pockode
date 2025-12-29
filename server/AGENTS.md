@@ -90,6 +90,21 @@ if err := json.Unmarshal(data, &parsed); err != nil {
 
 **理由**：外部系统的输出格式可能变化，解析失败不应导致用户完全无法使用。即使格式不正确，显示原始内容也比什么都不显示好。
 
+## 日志规范
+
+- 使用 `log/slog` 结构化日志
+- 需要追踪 ID 时，传递 `*slog.Logger`（通过 `slog.With()` 预设属性），而非 context
+- 注意保护用户隐私（不记录 prompt 内容）
+
+### Trace ID 结构
+
+| 层 | Trace ID | 说明 |
+|---|---|---|
+| API | `requestId` | 每个 HTTP 请求 |
+| WebSocket | `connId` | 每个 WebSocket 连接 |
+| WebSocket + Session | `connId` + `sessionId` | 连接内的会话操作 |
+| Agent | `sessionId` | Agent 进程内部 |
+
 ## 测试
 
 - 使用标准库 `testing` + `httptest`
@@ -117,6 +132,8 @@ go test -tags=integration ./agent/claude -v -run Integration
 | `AUTH_TOKEN` | 是 | — | API 认证令牌 |
 | `WORK_DIR` | 否 | `/workspace` | 工作目录 |
 | `DEV_MODE` | 否 | `false` | 开发模式 |
+| `LOG_FORMAT` | 否 | `text` | 日志格式（`json` / `text`） |
+| `LOG_LEVEL` | 否 | `info` | 日志级别（`debug` / `info` / `warn` / `error`） |
 | `GIT_ENABLED` | 否 | `false` | 启用 git 初始化 |
 | `REPOSITORY_URL` | GIT_ENABLED=true 时必需 | — | Git 仓库 URL |
 | `REPOSITORY_TOKEN` | GIT_ENABLED=true 时必需 | — | 仓库的 PAT |

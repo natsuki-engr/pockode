@@ -5,18 +5,14 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"sync"
 
 	"github.com/coder/websocket"
+	"github.com/google/uuid"
 	"github.com/pockode/server/agent"
-	"github.com/pockode/server/logger"
 	"github.com/pockode/server/session"
-)
-
-const (
-	// promptLogMaxLen limits prompt length in logs for privacy.
-	promptLogMaxLen = 50
 )
 
 type Handler struct {
@@ -53,7 +49,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		InsecureSkipVerify: h.devMode,
 	})
 	if err != nil {
-		logger.Error("Failed to accept websocket: %v", err)
+		slog.Error("failed to accept websocket", "error", err)
 		return
 	}
 	defer conn.Close(websocket.StatusNormalClosure, "")
@@ -71,63 +67,65 @@ type connectionState struct {
 	writeMu sync.Mutex
 }
 
-func (c *connectionState) Close() {
+func (c *connectionState) Close(log *slog.Logger) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	for sessionID, sess := range c.sessions {
-		logger.Info("connectionState.Close: closing session %s", sessionID)
+		log.Info("closing session", "sessionId", sessionID)
 		sess.Close()
 	}
 }
 
 func (h *Handler) handleConnection(ctx context.Context, conn *websocket.Conn) {
-	logger.Info("handleConnection: new connection")
+	connLog := slog.With("connId", uuid.Must(uuid.NewV7()).String())
+	connLog.Info("new websocket connection")
 
 	state := &connectionState{
 		sessions: make(map[string]agent.Session),
 	}
-	defer state.Close()
+	defer state.Close(connLog)
 
 	for {
 		_, data, err := conn.Read(ctx)
 		if err != nil {
-			logger.Debug("handleConnection: read error: %v", err)
+			connLog.Debug("websocket read error", "error", err)
 			return
 		}
 
-		logger.Debug("handleConnection: received message (len=%d)", len(data))
+		connLog.Debug("received message", "length", len(data))
 
 		var msg ClientMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
-			logger.Error("handleConnection: unmarshal error: %v", err)
+			connLog.Error("failed to unmarshal message", "error", err)
 			h.sendErrorWithLock(ctx, conn, state, "Invalid message format")
 			continue
 		}
 
-		logger.Debug("handleConnection: parsed message type=%s, sessionID=%s", msg.Type, msg.SessionID)
+		log := connLog.With("sessionId", msg.SessionID)
+		log.Debug("parsed message", "type", msg.Type)
 
 		switch msg.Type {
 		case "message":
-			if err := h.handleMessage(ctx, conn, msg, state); err != nil {
-				logger.Error("handleConnection: handleMessage error: %v", err)
+			if err := h.handleMessage(ctx, log, conn, msg, state); err != nil {
+				log.Error("handleMessage error", "error", err)
 				h.sendErrorWithLock(ctx, conn, state, err.Error())
 			}
 
 		case "interrupt":
-			if err := h.handleInterrupt(msg, state); err != nil {
-				logger.Error("handleConnection: interrupt error: %v", err)
+			if err := h.handleInterrupt(log, msg, state); err != nil {
+				log.Error("interrupt error", "error", err)
 				h.sendErrorWithLock(ctx, conn, state, err.Error())
 			}
 
 		case "permission_response":
 			if err := h.handlePermissionResponse(msg, state); err != nil {
-				logger.Error("handleConnection: permission response error: %v", err)
+				log.Error("permission response error", "error", err)
 				h.sendErrorWithLock(ctx, conn, state, err.Error())
 			}
 
 		case "question_response":
 			if err := h.handleQuestionResponse(msg, state); err != nil {
-				logger.Error("handleConnection: question response error: %v", err)
+				log.Error("question response error", "error", err)
 				h.sendErrorWithLock(ctx, conn, state, err.Error())
 			}
 
@@ -138,7 +136,7 @@ func (h *Handler) handleConnection(ctx context.Context, conn *websocket.Conn) {
 }
 
 // Protected by state.mu to prevent race conditions on check-and-create.
-func (h *Handler) getOrCreateSession(ctx context.Context, conn *websocket.Conn, sessionID string, state *connectionState) (agent.Session, error) {
+func (h *Handler) getOrCreateSession(ctx context.Context, log *slog.Logger, conn *websocket.Conn, sessionID string, state *connectionState) (agent.Session, error) {
 	state.mu.Lock()
 	defer state.mu.Unlock()
 
@@ -165,34 +163,34 @@ func (h *Handler) getOrCreateSession(ctx context.Context, conn *websocket.Conn, 
 
 	if !resume {
 		if err := h.sessionStore.Activate(ctx, sessionID); err != nil {
-			logger.Error("getOrCreateSession: failed to activate session: %v", err)
+			log.Error("failed to activate session", "error", err)
 		}
 	}
 
-	go h.streamEvents(ctx, conn, sessionID, sess, state)
+	go h.streamEvents(ctx, log, conn, sessionID, sess, state)
 
-	logger.Info("getOrCreateSession: started session %s (resume=%v)", sessionID, resume)
+	log.Info("started session", "resume", resume)
 
 	return sess, nil
 }
 
-func (h *Handler) handleMessage(ctx context.Context, conn *websocket.Conn, msg ClientMessage, state *connectionState) error {
-	sess, err := h.getOrCreateSession(ctx, conn, msg.SessionID, state)
+func (h *Handler) handleMessage(ctx context.Context, log *slog.Logger, conn *websocket.Conn, msg ClientMessage, state *connectionState) error {
+	sess, err := h.getOrCreateSession(ctx, log, conn, msg.SessionID, state)
 	if err != nil {
 		return err
 	}
 
-	logger.Info("handleMessage: prompt=%q, sessionID=%s", logger.Truncate(msg.Content, promptLogMaxLen), msg.SessionID)
+	log.Info("received prompt", "length", len(msg.Content))
 
 	if err := h.sessionStore.AppendToHistory(ctx, msg.SessionID, msg); err != nil {
-		logger.Error("handleMessage: failed to append to history: %v", err)
+		log.Error("failed to append to history", "error", err)
 	}
 
 	return sess.SendMessage(msg.Content)
 }
 
 // Soft stop that preserves the session for future messages.
-func (h *Handler) handleInterrupt(msg ClientMessage, state *connectionState) error {
+func (h *Handler) handleInterrupt(log *slog.Logger, msg ClientMessage, state *connectionState) error {
 	state.mu.Lock()
 	sess, exists := state.sessions[msg.SessionID]
 	state.mu.Unlock()
@@ -205,7 +203,7 @@ func (h *Handler) handleInterrupt(msg ClientMessage, state *connectionState) err
 		return fmt.Errorf("failed to send interrupt: %w", err)
 	}
 
-	logger.Info("handleInterrupt: sent interrupt to session %s", msg.SessionID)
+	log.Info("sent interrupt")
 	return nil
 }
 
@@ -245,9 +243,9 @@ func parsePermissionChoice(choice string) agent.PermissionChoice {
 	}
 }
 
-func (h *Handler) streamEvents(ctx context.Context, conn *websocket.Conn, sessionID string, sess agent.Session, state *connectionState) {
+func (h *Handler) streamEvents(ctx context.Context, log *slog.Logger, conn *websocket.Conn, sessionID string, sess agent.Session, state *connectionState) {
 	for event := range sess.Events() {
-		logger.Debug("streamEvents: sessionID=%s, type=%s", sessionID, event.Type)
+		log.Debug("streaming event", "type", event.Type)
 
 		serverMsg := ServerMessage{
 			Type:                  string(event.Type),
@@ -264,11 +262,11 @@ func (h *Handler) streamEvents(ctx context.Context, conn *websocket.Conn, sessio
 		}
 
 		if err := h.sessionStore.AppendToHistory(ctx, sessionID, serverMsg); err != nil {
-			logger.Error("streamEvents: failed to append to history: %v", err)
+			log.Error("failed to append to history", "error", err)
 		}
 
 		if err := h.sendWithLock(ctx, conn, state, serverMsg); err != nil {
-			logger.Error("streamEvents: send error: %v", err)
+			log.Error("send error", "error", err)
 			return
 		}
 	}

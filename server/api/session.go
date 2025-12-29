@@ -22,9 +22,11 @@ func NewSessionHandler(store session.Store) *SessionHandler {
 
 // HandleList handles GET /api/sessions
 func (h *SessionHandler) HandleList(w http.ResponseWriter, r *http.Request) {
+	log := logger.NewRequestLogger()
+
 	sessions, err := h.store.List()
 	if err != nil {
-		logger.Error("Failed to list sessions: %v", err)
+		log.Error("failed to list sessions", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -37,11 +39,14 @@ func (h *SessionHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 
 // HandleCreate handles POST /api/sessions
 func (h *SessionHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
+	log := logger.NewRequestLogger()
+
 	sessionID := uuid.Must(uuid.NewV7()).String()
+	log = log.With("sessionId", sessionID)
 
 	sess, err := h.store.Create(r.Context(), sessionID)
 	if err != nil {
-		logger.Error("Failed to create session: %v", err)
+		log.Error("failed to create session", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -53,14 +58,17 @@ func (h *SessionHandler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 
 // HandleDelete handles DELETE /api/sessions/{id}
 func (h *SessionHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
+	log := logger.NewRequestLogger()
+
 	sessionID := r.PathValue("id")
 	if sessionID == "" {
 		http.Error(w, "Session ID required", http.StatusBadRequest)
 		return
 	}
+	log = log.With("sessionId", sessionID)
 
 	if err := h.store.Delete(r.Context(), sessionID); err != nil {
-		logger.Error("Failed to delete session: %v", err)
+		log.Error("failed to delete session", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -70,15 +78,18 @@ func (h *SessionHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 
 // HandleGetHistory handles GET /api/sessions/{id}/history
 func (h *SessionHandler) HandleGetHistory(w http.ResponseWriter, r *http.Request) {
+	log := logger.NewRequestLogger()
+
 	sessionID := r.PathValue("id")
 	if sessionID == "" {
 		http.Error(w, "Session ID required", http.StatusBadRequest)
 		return
 	}
+	log = log.With("sessionId", sessionID)
 
 	history, err := h.store.GetHistory(r.Context(), sessionID)
 	if err != nil {
-		logger.Error("Failed to get history: %v", err)
+		log.Error("failed to get history", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -91,11 +102,14 @@ func (h *SessionHandler) HandleGetHistory(w http.ResponseWriter, r *http.Request
 
 // HandleUpdate handles PATCH /api/sessions/{id}
 func (h *SessionHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
+	log := logger.NewRequestLogger()
+
 	sessionID := r.PathValue("id")
 	if sessionID == "" {
 		http.Error(w, "Session ID required", http.StatusBadRequest)
 		return
 	}
+	log = log.With("sessionId", sessionID)
 
 	var req struct {
 		Title string `json:"title"`
@@ -115,7 +129,7 @@ func (h *SessionHandler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Session not found", http.StatusNotFound)
 			return
 		}
-		logger.Error("Failed to update session: %v", err)
+		log.Error("failed to update session", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
