@@ -14,11 +14,12 @@ import (
 	"github.com/pockode/server/git"
 	"github.com/pockode/server/logger"
 	"github.com/pockode/server/middleware"
+	"github.com/pockode/server/process"
 	"github.com/pockode/server/session"
 	"github.com/pockode/server/ws"
 )
 
-func newHandler(token, workDir string, devMode bool, sessionStore session.Store) http.Handler {
+func newHandler(token string, manager *process.Manager, devMode bool, sessionStore session.Store) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
@@ -31,14 +32,12 @@ func newHandler(token, workDir string, devMode bool, sessionStore session.Store)
 		w.Write([]byte(`{"message":"pong"}`))
 	})
 
-	claudeAgent := claude.New()
-
 	// Session REST API
 	sessionHandler := api.NewSessionHandler(sessionStore)
 	sessionHandler.Register(mux)
 
 	// WebSocket endpoint (handles its own auth via query param)
-	wsHandler := ws.NewHandler(token, claudeAgent, workDir, devMode, sessionStore)
+	wsHandler := ws.NewHandler(token, manager, devMode, sessionStore)
 	mux.Handle("GET /ws", wsHandler)
 
 	return middleware.Auth(token)(mux)
@@ -95,7 +94,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	handler := newHandler(token, workDir, devMode, sessionStore)
+	// Initialize process manager with idle timeout
+	idleTimeout := 10 * time.Minute
+	if env := os.Getenv("IDLE_TIMEOUT"); env != "" {
+		if d, err := time.ParseDuration(env); err == nil {
+			idleTimeout = d
+		} else {
+			slog.Warn("invalid IDLE_TIMEOUT, using default", "value", env, "default", idleTimeout)
+		}
+	}
+
+	claudeAgent := claude.New()
+	manager := process.NewManager(claudeAgent, workDir, sessionStore, idleTimeout)
+
+	handler := newHandler(token, manager, devMode, sessionStore)
 
 	srv := &http.Server{
 		Addr:    ":" + port,
@@ -103,6 +115,7 @@ func main() {
 	}
 
 	// Graceful shutdown
+	shutdownDone := make(chan struct{})
 	go func() {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
@@ -114,12 +127,15 @@ func main() {
 		if err := srv.Shutdown(ctx); err != nil {
 			slog.Error("server shutdown error", "error", err)
 		}
+		manager.Shutdown()
+		close(shutdownDone)
 	}()
 
-	slog.Info("server starting", "port", port, "workDir", workDir, "dataDir", dataDir, "devMode", devMode)
+	slog.Info("server starting", "port", port, "workDir", workDir, "dataDir", dataDir, "devMode", devMode, "idleTimeout", idleTimeout)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		slog.Error("server error", "error", err)
 		os.Exit(1)
 	}
+	<-shutdownDone
 	slog.Info("server stopped")
 }

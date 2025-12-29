@@ -7,27 +7,25 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"sync"
 
 	"github.com/coder/websocket"
 	"github.com/google/uuid"
 	"github.com/pockode/server/agent"
+	"github.com/pockode/server/process"
 	"github.com/pockode/server/session"
 )
 
 type Handler struct {
 	token        string
-	agent        agent.Agent
-	workDir      string
+	manager      *process.Manager
 	devMode      bool
 	sessionStore session.Store
 }
 
-func NewHandler(token string, ag agent.Agent, workDir string, devMode bool, store session.Store) *Handler {
+func NewHandler(token string, manager *process.Manager, devMode bool, store session.Store) *Handler {
 	return &Handler{
 		token:        token,
-		agent:        ag,
-		workDir:      workDir,
+		manager:      manager,
 		devMode:      devMode,
 		sessionStore: store,
 	}
@@ -57,23 +55,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.handleConnection(r.Context(), conn)
 }
 
-// connectionState holds agent processes for a single WebSocket connection.
-// Agent processes are connection-scoped; session metadata lives in sessionStore.
+// connectionState tracks attached sessions for a single WebSocket connection.
+// Sessions are globally managed; this only tracks which sessions this connection subscribes to.
 type connectionState struct {
-	mu       sync.Mutex
-	sessions map[string]agent.Session // sessionID -> session
-
-	// writeMu protects WebSocket writes from concurrent access
-	writeMu sync.Mutex
-}
-
-func (c *connectionState) Close(log *slog.Logger) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	for sessionID, sess := range c.sessions {
-		log.Info("closing session", "sessionId", sessionID)
-		sess.Close()
-	}
+	attached map[string]*process.Entry // sessionID -> entry
 }
 
 func (h *Handler) handleConnection(ctx context.Context, conn *websocket.Conn) {
@@ -81,9 +66,16 @@ func (h *Handler) handleConnection(ctx context.Context, conn *websocket.Conn) {
 	connLog.Info("new websocket connection")
 
 	state := &connectionState{
-		sessions: make(map[string]agent.Session),
+		attached: make(map[string]*process.Entry),
 	}
-	defer state.Close(connLog)
+	defer func() {
+		// Detach all sessions (but keep processes running)
+		for sessionID, entry := range state.attached {
+			entry.Detach(conn)
+			connLog.Debug("detached session", "sessionId", sessionID)
+		}
+		connLog.Info("connection closed", "attachedSessions", len(state.attached))
+	}()
 
 	for {
 		_, data, err := conn.Read(ctx)
@@ -97,7 +89,7 @@ func (h *Handler) handleConnection(ctx context.Context, conn *websocket.Conn) {
 		var msg ClientMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
 			connLog.Error("failed to unmarshal message", "error", err)
-			h.sendErrorWithLock(ctx, conn, state, "Invalid message format")
+			h.sendError(ctx, conn, "Invalid message format")
 			continue
 		}
 
@@ -108,40 +100,38 @@ func (h *Handler) handleConnection(ctx context.Context, conn *websocket.Conn) {
 		case "message":
 			if err := h.handleMessage(ctx, log, conn, msg, state); err != nil {
 				log.Error("handleMessage error", "error", err)
-				h.sendErrorWithLock(ctx, conn, state, err.Error())
+				h.sendError(ctx, conn, err.Error())
 			}
 
 		case "interrupt":
 			if err := h.handleInterrupt(log, msg, state); err != nil {
 				log.Error("interrupt error", "error", err)
-				h.sendErrorWithLock(ctx, conn, state, err.Error())
+				h.sendError(ctx, conn, err.Error())
 			}
 
 		case "permission_response":
 			if err := h.handlePermissionResponse(msg, state); err != nil {
 				log.Error("permission response error", "error", err)
-				h.sendErrorWithLock(ctx, conn, state, err.Error())
+				h.sendError(ctx, conn, err.Error())
 			}
 
 		case "question_response":
 			if err := h.handleQuestionResponse(msg, state); err != nil {
 				log.Error("question response error", "error", err)
-				h.sendErrorWithLock(ctx, conn, state, err.Error())
+				h.sendError(ctx, conn, err.Error())
 			}
 
 		default:
-			h.sendErrorWithLock(ctx, conn, state, "Unknown message type")
+			h.sendError(ctx, conn, "Unknown message type")
 		}
 	}
 }
 
-// Protected by state.mu to prevent race conditions on check-and-create.
+// getOrCreateSession gets or creates a session and attaches this connection.
 func (h *Handler) getOrCreateSession(ctx context.Context, log *slog.Logger, conn *websocket.Conn, sessionID string, state *connectionState) (agent.Session, error) {
-	state.mu.Lock()
-	defer state.mu.Unlock()
-
-	if sess, exists := state.sessions[sessionID]; exists {
-		return sess, nil
+	if entry, exists := state.attached[sessionID]; exists {
+		h.manager.Touch(sessionID)
+		return entry.Session(), nil
 	}
 
 	meta, found, err := h.sessionStore.Get(sessionID)
@@ -154,24 +144,24 @@ func (h *Handler) getOrCreateSession(ctx context.Context, log *slog.Logger, conn
 
 	resume := meta.Activated
 
-	sess, err := h.agent.Start(ctx, h.workDir, sessionID, resume)
+	entry, created, err := h.manager.GetOrCreate(ctx, sessionID, resume)
 	if err != nil {
 		return nil, err
 	}
 
-	state.sessions[sessionID] = sess
+	entry.Attach(conn)
+	state.attached[sessionID] = entry
 
-	if !resume {
+	// Mark as activated on first message to enable resume on reconnect
+	if created && !resume {
 		if err := h.sessionStore.Activate(ctx, sessionID); err != nil {
 			log.Error("failed to activate session", "error", err)
 		}
 	}
 
-	go h.streamEvents(ctx, log, conn, sessionID, sess, state)
+	log.Info("attached to session", "resume", resume, "created", created)
 
-	log.Info("started session", "resume", resume)
-
-	return sess, nil
+	return entry.Session(), nil
 }
 
 func (h *Handler) handleMessage(ctx context.Context, log *slog.Logger, conn *websocket.Conn, msg ClientMessage, state *connectionState) error {
@@ -191,15 +181,12 @@ func (h *Handler) handleMessage(ctx context.Context, log *slog.Logger, conn *web
 
 // Soft stop that preserves the session for future messages.
 func (h *Handler) handleInterrupt(log *slog.Logger, msg ClientMessage, state *connectionState) error {
-	state.mu.Lock()
-	sess, exists := state.sessions[msg.SessionID]
-	state.mu.Unlock()
-
+	entry, exists := state.attached[msg.SessionID]
 	if !exists {
-		return fmt.Errorf("session not found: %s", msg.SessionID)
+		return fmt.Errorf("session not attached: %s", msg.SessionID)
 	}
 
-	if err := sess.SendInterrupt(); err != nil {
+	if err := entry.Session().SendInterrupt(); err != nil {
 		return fmt.Errorf("failed to send interrupt: %w", err)
 	}
 
@@ -208,28 +195,22 @@ func (h *Handler) handleInterrupt(log *slog.Logger, msg ClientMessage, state *co
 }
 
 func (h *Handler) handlePermissionResponse(msg ClientMessage, state *connectionState) error {
-	state.mu.Lock()
-	sess, exists := state.sessions[msg.SessionID]
-	state.mu.Unlock()
-
+	entry, exists := state.attached[msg.SessionID]
 	if !exists {
-		return fmt.Errorf("session not found: %s", msg.SessionID)
+		return fmt.Errorf("session not attached: %s", msg.SessionID)
 	}
 
 	choice := parsePermissionChoice(msg.Choice)
-	return sess.SendPermissionResponse(msg.RequestID, choice)
+	return entry.Session().SendPermissionResponse(msg.RequestID, choice)
 }
 
 func (h *Handler) handleQuestionResponse(msg ClientMessage, state *connectionState) error {
-	state.mu.Lock()
-	sess, exists := state.sessions[msg.SessionID]
-	state.mu.Unlock()
-
+	entry, exists := state.attached[msg.SessionID]
 	if !exists {
-		return fmt.Errorf("session not found: %s", msg.SessionID)
+		return fmt.Errorf("session not attached: %s", msg.SessionID)
 	}
 
-	return sess.SendQuestionResponse(msg.RequestID, msg.Answers)
+	return entry.Session().SendQuestionResponse(msg.RequestID, msg.Answers)
 }
 
 func parsePermissionChoice(choice string) agent.PermissionChoice {
@@ -243,48 +224,13 @@ func parsePermissionChoice(choice string) agent.PermissionChoice {
 	}
 }
 
-func (h *Handler) streamEvents(ctx context.Context, log *slog.Logger, conn *websocket.Conn, sessionID string, sess agent.Session, state *connectionState) {
-	for event := range sess.Events() {
-		log.Debug("streaming event", "type", event.Type)
-
-		serverMsg := ServerMessage{
-			Type:                  string(event.Type),
-			SessionID:             sessionID,
-			Content:               event.Content,
-			ToolName:              event.ToolName,
-			ToolInput:             event.ToolInput,
-			ToolUseID:             event.ToolUseID,
-			ToolResult:            event.ToolResult,
-			Error:                 event.Error,
-			RequestID:             event.RequestID,
-			PermissionSuggestions: event.PermissionSuggestions,
-			Questions:             event.Questions,
-		}
-
-		if err := h.sessionStore.AppendToHistory(ctx, sessionID, serverMsg); err != nil {
-			log.Error("failed to append to history", "error", err)
-		}
-
-		if err := h.sendWithLock(ctx, conn, state, serverMsg); err != nil {
-			log.Error("send error", "error", err)
-			return
-		}
-	}
-}
-
-func (h *Handler) sendWithLock(ctx context.Context, conn *websocket.Conn, state *connectionState, msg ServerMessage) error {
-	data, err := json.Marshal(msg)
-	if err != nil {
-		return err
-	}
-	state.writeMu.Lock()
-	defer state.writeMu.Unlock()
-	return conn.Write(ctx, websocket.MessageText, data)
-}
-
-func (h *Handler) sendErrorWithLock(ctx context.Context, conn *websocket.Conn, state *connectionState, errMsg string) error {
-	return h.sendWithLock(ctx, conn, state, ServerMessage{
+func (h *Handler) sendError(ctx context.Context, conn *websocket.Conn, errMsg string) error {
+	data, err := json.Marshal(ServerMessage{
 		Type:  "error",
 		Error: errMsg,
 	})
+	if err != nil {
+		return err
+	}
+	return conn.Write(ctx, websocket.MessageText, data)
 }

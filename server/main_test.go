@@ -4,13 +4,19 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
+	"github.com/pockode/server/agent/claude"
+	"github.com/pockode/server/process"
 	"github.com/pockode/server/session"
 )
 
 func TestHealthEndpoint(t *testing.T) {
 	store, _ := session.NewFileStore(t.TempDir())
-	handler := newHandler("test-token", "/tmp", true, store)
+	manager := process.NewManager(claude.New(), "/tmp", store, 10*time.Minute)
+	defer manager.Shutdown()
+
+	handler := newHandler("test-token", manager, true, store)
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rec := httptest.NewRecorder()
 
@@ -27,7 +33,10 @@ func TestHealthEndpoint(t *testing.T) {
 func TestPingEndpoint(t *testing.T) {
 	const token = "test-token"
 	store, _ := session.NewFileStore(t.TempDir())
-	handler := newHandler(token, "/tmp", true, store)
+	manager := process.NewManager(claude.New(), "/tmp", store, 10*time.Minute)
+	defer manager.Shutdown()
+
+	handler := newHandler(token, manager, true, store)
 
 	t.Run("returns pong with valid token", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/ping", nil)

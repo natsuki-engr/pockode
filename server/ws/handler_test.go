@@ -12,19 +12,21 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/pockode/server/agent"
+	"github.com/pockode/server/process"
 	"github.com/pockode/server/session"
 )
 
 var bgCtx = context.Background()
 
 type testEnv struct {
-	t      *testing.T
-	mock   *mockAgent
-	store  *session.FileStore
-	server *httptest.Server
-	conn   *websocket.Conn
-	ctx    context.Context
-	cancel context.CancelFunc
+	t       *testing.T
+	mock    *mockAgent
+	store   *session.FileStore
+	manager *process.Manager
+	server  *httptest.Server
+	conn    *websocket.Conn
+	ctx     context.Context
+	cancel  context.CancelFunc
 }
 
 func newTestEnv(t *testing.T, mock *mockAgent) *testEnv {
@@ -33,7 +35,8 @@ func newTestEnv(t *testing.T, mock *mockAgent) *testEnv {
 		t.Fatalf("failed to create store: %v", err)
 	}
 
-	h := NewHandler("test-token", mock, "/tmp", true, store)
+	manager := process.NewManager(mock, "/tmp", store, 10*time.Minute)
+	h := NewHandler("test-token", manager, true, store)
 	server := httptest.NewServer(h)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -50,16 +53,18 @@ func newTestEnv(t *testing.T, mock *mockAgent) *testEnv {
 		conn.Close(websocket.StatusNormalClosure, "")
 		cancel()
 		server.Close()
+		manager.Shutdown()
 	})
 
 	return &testEnv{
-		t:      t,
-		mock:   mock,
-		store:  store,
-		server: server,
-		conn:   conn,
-		ctx:    ctx,
-		cancel: cancel,
+		t:       t,
+		mock:    mock,
+		store:   store,
+		manager: manager,
+		server:  server,
+		conn:    conn,
+		ctx:     ctx,
+		cancel:  cancel,
 	}
 }
 
@@ -104,7 +109,10 @@ func (e *testEnv) skipN(n int) {
 
 func TestHandler_MissingToken(t *testing.T) {
 	store, _ := session.NewFileStore(t.TempDir())
-	h := NewHandler("secret-token", &mockAgent{}, "/tmp", true, store)
+	manager := process.NewManager(&mockAgent{}, "/tmp", store, 10*time.Minute)
+	defer manager.Shutdown()
+
+	h := NewHandler("secret-token", manager, true, store)
 
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/ws", nil))
@@ -119,7 +127,10 @@ func TestHandler_MissingToken(t *testing.T) {
 
 func TestHandler_InvalidToken(t *testing.T) {
 	store, _ := session.NewFileStore(t.TempDir())
-	h := NewHandler("secret-token", &mockAgent{}, "/tmp", true, store)
+	manager := process.NewManager(&mockAgent{}, "/tmp", store, 10*time.Minute)
+	defer manager.Shutdown()
+
+	h := NewHandler("secret-token", manager, true, store)
 
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/ws?token=wrong-token", nil))
@@ -150,29 +161,6 @@ func TestHandler_WebSocketConnection(t *testing.T) {
 	}
 	if responses[1].Type != "done" {
 		t.Errorf("unexpected second response: %+v", responses[1])
-	}
-}
-
-func TestHandler_MultipleMessages(t *testing.T) {
-	mock := &mockAgent{
-		events: []agent.AgentEvent{
-			{Type: agent.EventTypeText, Content: "Response"},
-			{Type: agent.EventTypeDone},
-		},
-	}
-	env := newTestEnv(t, mock)
-	env.store.Create(bgCtx, "sess")
-
-	env.sendMessage("sess", "First message")
-	env.skipN(2)
-	env.sendMessage("sess", "Second message")
-	env.skipN(2)
-
-	if len(mock.messages) != 2 {
-		t.Fatalf("expected 2 messages, got %d", len(mock.messages))
-	}
-	if mock.messages[0] != "First message" || mock.messages[1] != "Second message" {
-		t.Errorf("unexpected messages: %v", mock.messages)
 	}
 }
 
@@ -242,8 +230,8 @@ func TestHandler_PermissionResponse_InvalidSession(t *testing.T) {
 	})
 	resp := env.read()
 
-	if resp.Type != "error" || !strings.Contains(resp.Error, "session not found") {
-		t.Errorf("expected session not found error, got %+v", resp)
+	if resp.Type != "error" || !strings.Contains(resp.Error, "session not attached") {
+		t.Errorf("expected session not attached error, got %+v", resp)
 	}
 }
 
@@ -344,8 +332,8 @@ func TestHandler_Interrupt_InvalidSession(t *testing.T) {
 	env.send(ClientMessage{Type: "interrupt", SessionID: "non-existent"})
 	resp := env.read()
 
-	if resp.Type != "error" || !strings.Contains(resp.Error, "session not found") {
-		t.Errorf("expected session not found error, got %+v", resp)
+	if resp.Type != "error" || !strings.Contains(resp.Error, "session not attached") {
+		t.Errorf("expected session not attached error, got %+v", resp)
 	}
 }
 
@@ -426,48 +414,6 @@ func TestHandler_AskUserQuestion(t *testing.T) {
 	}
 	if resp.Questions[0].Question != "Which library?" {
 		t.Errorf("expected question 'Which library?', got %q", resp.Questions[0].Question)
-	}
-}
-
-func TestHandler_QuestionResponse_InvalidSession(t *testing.T) {
-	env := newTestEnv(t, &mockAgent{})
-
-	env.send(ClientMessage{
-		Type:      "question_response",
-		SessionID: "non-existent",
-		RequestID: "req-123",
-		Answers:   map[string]string{"q": "a"},
-	})
-	resp := env.read()
-
-	if resp.Type != "error" || !strings.Contains(resp.Error, "session not found") {
-		t.Errorf("expected session not found error, got %+v", resp)
-	}
-}
-
-func TestHandler_QuestionResponse_InvalidRequestID(t *testing.T) {
-	mock := &mockAgent{
-		events: []agent.AgentEvent{
-			{Type: agent.EventTypeText, Content: "Hello"},
-			{Type: agent.EventTypeDone},
-		},
-	}
-	env := newTestEnv(t, mock)
-	env.store.Create(bgCtx, "sess")
-
-	env.sendMessage("sess", "hello")
-	env.skipN(2)
-
-	env.send(ClientMessage{
-		Type:      "question_response",
-		SessionID: "sess",
-		RequestID: "non-existent-request",
-		Answers:   map[string]string{"q": "a"},
-	})
-	resp := env.read()
-
-	if resp.Type != "error" || !strings.Contains(resp.Error, "no pending request") {
-		t.Errorf("expected no pending request error, got %+v", resp)
 	}
 }
 

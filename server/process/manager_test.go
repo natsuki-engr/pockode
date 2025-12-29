@@ -1,0 +1,341 @@
+package process
+
+import (
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/coder/websocket"
+	"github.com/pockode/server/agent"
+	"github.com/pockode/server/session"
+)
+
+type mockAgent struct {
+	mu         sync.Mutex
+	startCalls []startCall
+	sessions   map[string]*mockSession
+}
+
+type startCall struct {
+	sessionID string
+	resume    bool
+}
+
+func (m *mockAgent) Start(ctx context.Context, workDir string, sessionID string, resume bool) (agent.Session, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.startCalls = append(m.startCalls, startCall{sessionID, resume})
+
+	if m.sessions == nil {
+		m.sessions = make(map[string]*mockSession)
+	}
+
+	sess := &mockSession{
+		events: make(chan agent.AgentEvent, 10),
+	}
+	m.sessions[sessionID] = sess
+	return sess, nil
+}
+
+type mockSession struct {
+	events   chan agent.AgentEvent
+	closed   bool
+	closedMu sync.Mutex
+}
+
+func (s *mockSession) Events() <-chan agent.AgentEvent { return s.events }
+func (s *mockSession) SendMessage(prompt string) error { return nil }
+func (s *mockSession) SendPermissionResponse(requestID string, choice agent.PermissionChoice) error {
+	return nil
+}
+func (s *mockSession) SendQuestionResponse(requestID string, answers map[string]string) error {
+	return nil
+}
+func (s *mockSession) SendInterrupt() error { return nil }
+func (s *mockSession) Close() {
+	s.closedMu.Lock()
+	defer s.closedMu.Unlock()
+	if !s.closed {
+		s.closed = true
+		close(s.events)
+	}
+}
+func (s *mockSession) isClosed() bool {
+	s.closedMu.Lock()
+	defer s.closedMu.Unlock()
+	return s.closed
+}
+
+func TestManager_GetOrCreate_NewSession(t *testing.T) {
+	store, _ := session.NewFileStore(t.TempDir())
+	mock := &mockAgent{}
+	m := NewManager(mock, "/tmp", store, 10*time.Minute)
+	defer m.Shutdown()
+
+	entry, created, err := m.GetOrCreate(context.Background(), "sess-1", false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !created {
+		t.Error("expected created=true for new session")
+	}
+	if entry == nil {
+		t.Fatal("expected non-nil entry")
+	}
+	if len(mock.startCalls) != 1 {
+		t.Errorf("expected 1 start call, got %d", len(mock.startCalls))
+	}
+	if mock.startCalls[0].sessionID != "sess-1" {
+		t.Errorf("expected sessionID=sess-1, got %s", mock.startCalls[0].sessionID)
+	}
+	if mock.startCalls[0].resume != false {
+		t.Error("expected resume=false")
+	}
+}
+
+func TestManager_GetOrCreate_ExistingSession(t *testing.T) {
+	store, _ := session.NewFileStore(t.TempDir())
+	mock := &mockAgent{}
+	m := NewManager(mock, "/tmp", store, 10*time.Minute)
+	defer m.Shutdown()
+
+	entry1, _, _ := m.GetOrCreate(context.Background(), "sess-1", false)
+	entry2, created, _ := m.GetOrCreate(context.Background(), "sess-1", false)
+
+	if created {
+		t.Error("expected created=false for existing session")
+	}
+	if entry1 != entry2 {
+		t.Error("expected same entry for same session ID")
+	}
+	if len(mock.startCalls) != 1 {
+		t.Errorf("expected 1 start call, got %d", len(mock.startCalls))
+	}
+}
+
+func TestManager_IdleReaper(t *testing.T) {
+	store, _ := session.NewFileStore(t.TempDir())
+	mock := &mockAgent{}
+	idleTimeout := 50 * time.Millisecond
+	m := NewManager(mock, "/tmp", store, idleTimeout)
+	defer m.Shutdown()
+
+	_, _, _ = m.GetOrCreate(context.Background(), "sess-1", false)
+
+	time.Sleep(idleTimeout * 2)
+
+	if entry := m.Get("sess-1"); entry != nil {
+		t.Error("expected session to be reaped")
+	}
+	if !mock.sessions["sess-1"].isClosed() {
+		t.Error("expected session to be closed")
+	}
+}
+
+func TestManager_Touch_PreventsReaping(t *testing.T) {
+	store, _ := session.NewFileStore(t.TempDir())
+	mock := &mockAgent{}
+	idleTimeout := 50 * time.Millisecond
+	m := NewManager(mock, "/tmp", store, idleTimeout)
+	defer m.Shutdown()
+
+	_, _, _ = m.GetOrCreate(context.Background(), "sess-1", false)
+
+	// Touch periodically for 2x idleTimeout
+	// Reaper runs multiple times, but session survives due to Touch
+	for i := 0; i < 4; i++ {
+		time.Sleep(idleTimeout / 2)
+		m.Touch("sess-1")
+	}
+	// Total elapsed: 4 * 25ms = 100ms = 2x idleTimeout
+
+	if entry := m.Get("sess-1"); entry == nil {
+		t.Error("expected session to still exist after touch")
+	}
+	if mock.sessions["sess-1"].isClosed() {
+		t.Error("expected session to not be closed")
+	}
+}
+
+func TestManager_Shutdown_ClosesAllSessions(t *testing.T) {
+	store, _ := session.NewFileStore(t.TempDir())
+	mock := &mockAgent{}
+	m := NewManager(mock, "/tmp", store, 10*time.Minute)
+
+	_, _, _ = m.GetOrCreate(context.Background(), "sess-1", false)
+	_, _, _ = m.GetOrCreate(context.Background(), "sess-2", false)
+
+	m.Shutdown()
+
+	if !mock.sessions["sess-1"].isClosed() {
+		t.Error("expected sess-1 to be closed")
+	}
+	if !mock.sessions["sess-2"].isClosed() {
+		t.Error("expected sess-2 to be closed")
+	}
+	if m.Get("sess-1") != nil {
+		t.Error("expected sess-1 to be removed from manager")
+	}
+	if m.Get("sess-2") != nil {
+		t.Error("expected sess-2 to be removed from manager")
+	}
+}
+
+func TestManager_Close_SpecificSession(t *testing.T) {
+	store, _ := session.NewFileStore(t.TempDir())
+	mock := &mockAgent{}
+	m := NewManager(mock, "/tmp", store, 10*time.Minute)
+	defer m.Shutdown()
+
+	_, _, _ = m.GetOrCreate(context.Background(), "sess-1", false)
+	_, _, _ = m.GetOrCreate(context.Background(), "sess-2", false)
+
+	m.Close("sess-1")
+
+	if !mock.sessions["sess-1"].isClosed() {
+		t.Error("expected sess-1 to be closed")
+	}
+	if mock.sessions["sess-2"].isClosed() {
+		t.Error("expected sess-2 to still be open")
+	}
+	if m.Get("sess-1") != nil {
+		t.Error("expected sess-1 to be removed from manager")
+	}
+	if m.Get("sess-2") == nil {
+		t.Error("expected sess-2 to still exist in manager")
+	}
+}
+
+// newTestWebSocket creates a WebSocket connection pair for testing.
+func newTestWebSocket(t *testing.T) (*websocket.Conn, *websocket.Conn) {
+	t.Helper()
+
+	serverConnCh := make(chan *websocket.Conn, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := websocket.Accept(w, r, nil)
+		if err != nil {
+			t.Errorf("failed to accept websocket: %v", err)
+			return
+		}
+		serverConnCh <- conn
+		// Block until test cleanup to prevent premature connection close
+		<-r.Context().Done()
+	}))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+
+	clientConn, _, err := websocket.Dial(ctx, "ws"+server.URL[4:], nil)
+	if err != nil {
+		cancel()
+		server.Close()
+		t.Fatalf("failed to dial websocket: %v", err)
+	}
+
+	serverConn := <-serverConnCh
+
+	t.Cleanup(func() {
+		cancel()
+		server.Close()
+	})
+
+	return serverConn, clientConn
+}
+
+func TestEntry_AttachDetach(t *testing.T) {
+	store, _ := session.NewFileStore(t.TempDir())
+	mock := &mockAgent{}
+	m := NewManager(mock, "/tmp", store, 10*time.Minute)
+	defer m.Shutdown()
+
+	entry, _, _ := m.GetOrCreate(context.Background(), "sess-1", false)
+
+	conn1, _ := newTestWebSocket(t)
+	conn2, _ := newTestWebSocket(t)
+
+	entry.Attach(conn1)
+	entry.Attach(conn2)
+	if len(entry.conns) != 2 {
+		t.Errorf("expected 2 connections, got %d", len(entry.conns))
+	}
+
+	entry.Detach(conn1)
+	if len(entry.conns) != 1 {
+		t.Errorf("expected 1 connection after detach, got %d", len(entry.conns))
+	}
+
+	entry.Detach(conn2)
+	if len(entry.conns) != 0 {
+		t.Errorf("expected 0 connections after detach, got %d", len(entry.conns))
+	}
+}
+
+func TestEntry_Broadcast(t *testing.T) {
+	store, _ := session.NewFileStore(t.TempDir())
+	mock := &mockAgent{}
+	m := NewManager(mock, "/tmp", store, 10*time.Minute)
+	defer m.Shutdown()
+
+	entry, _, _ := m.GetOrCreate(context.Background(), "sess-1", false)
+
+	serverConn1, clientConn1 := newTestWebSocket(t)
+	serverConn2, clientConn2 := newTestWebSocket(t)
+
+	entry.Attach(serverConn1)
+	entry.Attach(serverConn2)
+
+	// Send event through agent session
+	mock.sessions["sess-1"].events <- agent.AgentEvent{
+		Type:    agent.EventTypeText,
+		Content: "hello",
+	}
+
+	// Both clients should receive the broadcast
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	_, data1, err := clientConn1.Read(ctx)
+	if err != nil {
+		t.Fatalf("client1 read error: %v", err)
+	}
+	if string(data1) == "" {
+		t.Error("client1 received empty message")
+	}
+
+	_, data2, err := clientConn2.Read(ctx)
+	if err != nil {
+		t.Fatalf("client2 read error: %v", err)
+	}
+	if string(data2) == "" {
+		t.Error("client2 received empty message")
+	}
+
+	// Both should receive the same message
+	if string(data1) != string(data2) {
+		t.Errorf("clients received different messages: %s vs %s", data1, data2)
+	}
+}
+
+func TestEntry_Detach_NonExistentConn(t *testing.T) {
+	store, _ := session.NewFileStore(t.TempDir())
+	mock := &mockAgent{}
+	m := NewManager(mock, "/tmp", store, 10*time.Minute)
+	defer m.Shutdown()
+
+	entry, _, _ := m.GetOrCreate(context.Background(), "sess-1", false)
+
+	conn1, _ := newTestWebSocket(t)
+	conn2, _ := newTestWebSocket(t)
+
+	entry.Attach(conn1)
+
+	// Detach a connection that was never attached - should not panic
+	entry.Detach(conn2)
+
+	if len(entry.conns) != 1 {
+		t.Errorf("expected 1 connection, got %d", len(entry.conns))
+	}
+}

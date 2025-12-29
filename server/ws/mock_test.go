@@ -35,7 +35,7 @@ func (s *mockSession) SendMessage(prompt string) error {
 	}
 }
 
-func (s *mockSession) SendPermissionResponse(requestID string, choice agent.PermissionChoice) error {
+func (s *mockSession) SendPermissionResponse(requestID string, _ agent.PermissionChoice) error {
 	_, ok := s.pendingRequests.LoadAndDelete(requestID)
 	if !ok {
 		return fmt.Errorf("no pending request for id: %s", requestID)
@@ -43,7 +43,7 @@ func (s *mockSession) SendPermissionResponse(requestID string, choice agent.Perm
 	return nil
 }
 
-func (s *mockSession) SendQuestionResponse(requestID string, answers map[string]string) error {
+func (s *mockSession) SendQuestionResponse(requestID string, _ map[string]string) error {
 	_, ok := s.pendingRequests.LoadAndDelete(requestID)
 	if !ok {
 		return fmt.Errorf("no pending request for id: %s", requestID)
@@ -140,7 +140,7 @@ func (m *mockAgent) Start(ctx context.Context, workDir string, sessionID string,
 				m.mu.Unlock()
 
 				for _, event := range m.events {
-					if event.Type == agent.EventTypePermissionRequest {
+					if event.Type == agent.EventTypePermissionRequest || event.Type == agent.EventTypeAskUserQuestion {
 						pendingRequests.Store(event.RequestID, true)
 					}
 					select {
