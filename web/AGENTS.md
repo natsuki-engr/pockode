@@ -72,6 +72,11 @@ export default Dialog;
 
 测试文件与源文件同目录：`ComponentName.test.tsx`
 
+遵循 [Testing Library 指导原则](https://testing-library.com/docs/guiding-principles)：
+- 按用户视角测试，优先 `getByRole` > `getByLabelText` > `getByText` > `getByTestId`
+- 不测 state/props/生命周期，只测用户可见行为
+- 适度测试，不追求 100% 覆盖
+
 ```tsx
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";

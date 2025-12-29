@@ -22,11 +22,7 @@ Pockode 是一个移动端编程平台，核心理念是「AI 编辑为主，手
 pockode/
 ├── web/            # React 前端（见 web/AGENTS.md）
 ├── server/         # Go 后端（见 server/AGENTS.md）
-├── docs/           # 技术文档
-├── README.md       # 项目愿景和功能介绍
-├── LICENSE.md      # O'Saasy License
-├── CLAUDE.md       # Claude Code 入口（指向 AGENTS.md）
-└── AGENTS.md       # AI 助手规范（本文件）
+└── docs/           # 补充文档
 ```
 
 ## 架构概览
@@ -59,13 +55,10 @@ CloudFront (React SPA)
 
 ### 注释规范
 
-- **解释 Why，而非 What** — 代码本身说明做什么，注释解释为什么这样做
-- **避免自明注释** — `i++; // increment i` 这类注释是噪音，不是价值
-- **记录意图和决策** — 说明设计选择、权衡取舍、业务背景
-- **标注陷阱和边界** — 警告非显而易见的副作用、性能考量、边界条件
-- **不记录思考过程** — 注释是给读者的指引，不是作者的草稿纸
-- **保持同步更新** — 过时的注释比没有注释更有害；修改代码时同步更新注释
-- **TODO 要有上下文** — 写明原因和条件，如 `// TODO: 待上游 API 支持后移除此 workaround`
+- **解释 Why，而非 What** — 记录意图、决策、陷阱，不解释代码本身
+- **避免噪音** — 自明注释、思考过程都是噪音
+- **保持同步** — 过时注释比没有更有害
+- **TODO 要有上下文** — 如 `// TODO: 待上游 API 支持后移除`
 
 ### Git 规范
 
@@ -87,15 +80,6 @@ CloudFront (React SPA)
 - **提供有意义的错误信息** — 错误信息应包含足够的上下文，帮助定位问题
 - **区分用户错误和系统错误** — 用户操作错误给出指导性提示，系统错误给出技术细节
 
-### 前端 UI 测试
-
-遵循 [Testing Library 指导原则](https://testing-library.com/docs/guiding-principles)：
-
-- **按用户视角测试** — 测试用户能看到和交互的内容，而非实现细节
-- **优先使用可访问性查询** — 按优先级：`getByRole` > `getByLabelText` > `getByText` > `getByTestId`
-- **避免测试实现细节** — 不测 state、props、生命周期；只测用户可见的行为
-- **适度测试** — 只为有意义的交互和边界情况编写测试，不追求 100% 覆盖
-
 ## AI 助手注意事项
 
 1. **用英语思考，用中文输出** — 内部推理使用英语以获得更好的逻辑性，但与用户交流时使用中文
@@ -109,25 +93,10 @@ CloudFront (React SPA)
 9. **退一步看全局** — 遇到问题不要盲目修复；先思考问题的根源、设计是否合理，再决定行动
 10. **遵循最佳实践** — 任何工作都要意识到并遵循行业最佳实践
 
-## 参考项目
+## 参考资料
 
-以下项目可作为 schema 和实现的参考，按需克隆到项目根目录下的 `./tmp/`：
+**参考项目**（按需克隆到 `./tmp/`）：
+- [claude-code-chat](https://github.com/andrepimenta/claude-code-chat) — stream-json 实现参考
+- [anthropic-sdk-go](https://github.com/anthropics/anthropic-sdk-go) — API 类型定义参考
 
-```bash
-# stream-json schema 和 chat 实现参考
-git clone --depth 1 https://github.com/andrepimenta/claude-code-chat.git ./tmp/claude-code-chat
-
-# stream-json schema 间接参考（通过 API 类型定义了解消息结构）
-git clone --depth 1 https://github.com/anthropics/anthropic-sdk-go.git ./tmp/anthropic-sdk-go
-```
-
-## 官方文档
-
-- [Claude Agent SDK TypeScript Reference](https://platform.claude.com/docs/en/api/agent-sdk/typescript) — SDK 类型定义，可作为 stream-json schema 的间接参考
-
-## 相关文档
-
-- [README.md](README.md) — 项目愿景和功能介绍
-- [docs/architecture.md](docs/architecture.md) — 技术架构详情
-- [docs/roadmap.md](docs/roadmap.md) — MVP 开发路线图
-- [LICENSE.md](LICENSE.md) — O'Saasy License
+**Schema 参考**：[Claude Agent SDK](https://platform.claude.com/docs/en/api/agent-sdk/typescript) — stream-json 消息结构的权威定义
