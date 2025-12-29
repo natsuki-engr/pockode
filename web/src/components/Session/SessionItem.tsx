@@ -9,28 +9,37 @@ interface Props {
 
 function SessionItem({ session, isActive, onSelect, onDelete }: Props) {
 	return (
-		<div
-			className={`group flex items-center justify-between rounded-lg p-3 ${
+		<button
+			type="button"
+			onClick={onSelect}
+			className={`group flex w-full cursor-pointer items-center justify-between rounded-lg p-3 text-left ${
 				isActive
 					? "bg-th-accent text-th-accent-text"
 					: "text-th-text-secondary hover:bg-th-bg-tertiary"
 			}`}
 		>
-			<button
-				type="button"
-				onClick={onSelect}
-				className="min-w-0 flex-1 cursor-pointer text-left"
-			>
+			<div className="min-w-0 flex-1">
 				<div className="truncate font-medium">{session.title}</div>
 				<div
 					className={`text-xs ${isActive ? "opacity-70" : "text-th-text-muted"}`}
 				>
 					{new Date(session.created_at).toLocaleDateString()}
 				</div>
-			</button>
-			<button
-				type="button"
-				onClick={onDelete}
+			</div>
+			<div
+				role="button"
+				tabIndex={0}
+				onClick={(e) => {
+					e.stopPropagation();
+					onDelete();
+				}}
+				onKeyDown={(e) => {
+					if (e.key === "Enter" || e.key === " ") {
+						e.preventDefault();
+						e.stopPropagation();
+						onDelete();
+					}
+				}}
 				className={`ml-2 rounded p-1 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 ${
 					isActive ? "hover:bg-th-accent-hover" : "hover:bg-th-bg-secondary"
 				}`}
@@ -50,8 +59,8 @@ function SessionItem({ session, isActive, onSelect, onDelete }: Props) {
 						d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
 					/>
 				</svg>
-			</button>
-		</div>
+			</div>
+		</button>
 	);
 }
 
