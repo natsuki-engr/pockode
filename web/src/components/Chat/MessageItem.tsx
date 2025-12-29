@@ -9,7 +9,7 @@ import type {
 	PermissionUpdateDestination,
 	ToolCall,
 } from "../../types/message";
-import { Spinner } from "../ui";
+import { ScrollableContent, Spinner } from "../ui";
 import { MarkdownContent } from "./MarkdownContent";
 
 interface ToolCallItemProps {
@@ -216,7 +216,7 @@ function PermissionRequestItem({
 			</button>
 
 			{expanded && (
-				<div className="max-h-64 overflow-auto border-t border-th-border p-2">
+				<ScrollableContent className="max-h-64 overflow-auto border-t border-th-border p-2">
 					{planContent ? (
 						<MarkdownContent content={planContent} />
 					) : (
@@ -248,7 +248,7 @@ function PermissionRequestItem({
 								</div>
 							</div>
 						)}
-				</div>
+				</ScrollableContent>
 			)}
 
 			{isPending && onRespond && (
