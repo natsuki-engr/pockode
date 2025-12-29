@@ -72,8 +72,9 @@ function MessageList({ messages, sessionId }: Props) {
 				<div
 					ref={containerRef}
 					onScroll={handleScroll}
-					className="h-full overflow-y-auto p-3 sm:p-4"
+					className="flex h-full flex-col overflow-y-auto p-3 sm:p-4"
 				>
+					<div className="flex-1" />
 					<div className="space-y-3 sm:space-y-4">
 						{messages.map((message) => (
 							<MessageItem key={message.id} message={message} />
