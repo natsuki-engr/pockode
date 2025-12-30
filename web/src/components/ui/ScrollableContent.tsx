@@ -1,3 +1,4 @@
+import { ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 interface Props {
@@ -47,20 +48,11 @@ function ScrollableContent({ children, className }: Props) {
 			</div>
 			{canScrollDown && (
 				<div className="pointer-events-none absolute bottom-0 left-0 right-0 flex h-8 items-end justify-center bg-gradient-to-t from-white/60 to-transparent pb-0.5 dark:from-black/50">
-					<svg
-						aria-hidden="true"
+					<ChevronDown
 						className="h-3.5 w-3.5 text-th-text-muted"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
 						strokeWidth={2.5}
-					>
-						<path
-							strokeLinecap="round"
-							strokeLinejoin="round"
-							d="M19 9l-7 7-7-7"
-						/>
-					</svg>
+						aria-hidden="true"
+					/>
 				</div>
 			)}
 		</div>

@@ -1,3 +1,4 @@
+import { Plus } from "lucide-react";
 import type { SessionMeta } from "../../types/message";
 import SessionList from "./SessionList";
 
@@ -26,20 +27,7 @@ function SessionSidebarContent({
 					onClick={onCreateSession}
 					className="flex w-full items-center justify-center gap-2 rounded-lg bg-th-accent p-3 font-medium text-th-accent-text hover:bg-th-accent-hover"
 				>
-					<svg
-						className="h-5 w-5"
-						fill="none"
-						stroke="currentColor"
-						viewBox="0 0 24 24"
-						aria-hidden="true"
-					>
-						<path
-							strokeLinecap="round"
-							strokeLinejoin="round"
-							strokeWidth={2}
-							d="M12 4v16m8-8H4"
-						/>
-					</svg>
+					<Plus className="h-5 w-5" aria-hidden="true" />
 					New Chat
 				</button>
 			</div>

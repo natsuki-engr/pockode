@@ -1,3 +1,4 @@
+import { X } from "lucide-react";
 import { useEffect } from "react";
 
 interface Props {
@@ -39,20 +40,7 @@ function Sidebar({ isOpen, onClose, title, children }: Props) {
 						className="rounded p-1 text-th-text-muted hover:bg-th-bg-tertiary hover:text-th-text-primary"
 						aria-label="Close sidebar"
 					>
-						<svg
-							className="h-5 w-5"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
-							aria-hidden="true"
-						>
-							<path
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								strokeWidth={2}
-								d="M6 18L18 6M6 6l12 12"
-							/>
-						</svg>
+						<X className="h-5 w-5" aria-hidden="true" />
 					</button>
 				</div>
 

@@ -553,20 +553,68 @@ button,
 
 /* Light mode - subtle colors for light backgrounds */
 .diff-tailwindcss-wrapper[data-theme="light"] .diff-style-root {
-	--diff-add-content--: color-mix(in srgb, var(--th-success) 12%, var(--th-bg-primary));
-	--diff-add-lineNumber--: color-mix(in srgb, var(--th-success) 18%, var(--th-bg-secondary));
-	--diff-add-content-highlight--: color-mix(in srgb, var(--th-success) 25%, var(--th-bg-primary));
-	--diff-del-content--: color-mix(in srgb, var(--th-error) 12%, var(--th-bg-primary));
-	--diff-del-lineNumber--: color-mix(in srgb, var(--th-error) 18%, var(--th-bg-secondary));
-	--diff-del-content-highlight--: color-mix(in srgb, var(--th-error) 25%, var(--th-bg-primary));
+	--diff-add-content--: color-mix(
+		in srgb,
+		var(--th-success) 12%,
+		var(--th-bg-primary)
+	);
+	--diff-add-lineNumber--: color-mix(
+		in srgb,
+		var(--th-success) 18%,
+		var(--th-bg-secondary)
+	);
+	--diff-add-content-highlight--: color-mix(
+		in srgb,
+		var(--th-success) 25%,
+		var(--th-bg-primary)
+	);
+	--diff-del-content--: color-mix(
+		in srgb,
+		var(--th-error) 12%,
+		var(--th-bg-primary)
+	);
+	--diff-del-lineNumber--: color-mix(
+		in srgb,
+		var(--th-error) 18%,
+		var(--th-bg-secondary)
+	);
+	--diff-del-content-highlight--: color-mix(
+		in srgb,
+		var(--th-error) 25%,
+		var(--th-bg-primary)
+	);
 }
 
 /* Dark mode - slightly stronger colors for dark backgrounds */
 .diff-tailwindcss-wrapper[data-theme="dark"] .diff-style-root {
-	--diff-add-content--: color-mix(in srgb, var(--th-success) 15%, var(--th-bg-primary));
-	--diff-add-lineNumber--: color-mix(in srgb, var(--th-success) 20%, var(--th-bg-secondary));
-	--diff-add-content-highlight--: color-mix(in srgb, var(--th-success) 30%, var(--th-bg-primary));
-	--diff-del-content--: color-mix(in srgb, var(--th-error) 15%, var(--th-bg-primary));
-	--diff-del-lineNumber--: color-mix(in srgb, var(--th-error) 20%, var(--th-bg-secondary));
-	--diff-del-content-highlight--: color-mix(in srgb, var(--th-error) 30%, var(--th-bg-primary));
+	--diff-add-content--: color-mix(
+		in srgb,
+		var(--th-success) 15%,
+		var(--th-bg-primary)
+	);
+	--diff-add-lineNumber--: color-mix(
+		in srgb,
+		var(--th-success) 20%,
+		var(--th-bg-secondary)
+	);
+	--diff-add-content-highlight--: color-mix(
+		in srgb,
+		var(--th-success) 30%,
+		var(--th-bg-primary)
+	);
+	--diff-del-content--: color-mix(
+		in srgb,
+		var(--th-error) 15%,
+		var(--th-bg-primary)
+	);
+	--diff-del-lineNumber--: color-mix(
+		in srgb,
+		var(--th-error) 20%,
+		var(--th-bg-secondary)
+	);
+	--diff-del-content-highlight--: color-mix(
+		in srgb,
+		var(--th-error) 30%,
+		var(--th-bg-primary)
+	);
 }

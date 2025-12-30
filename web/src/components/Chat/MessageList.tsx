@@ -1,3 +1,4 @@
+import { ArrowDown } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStickToBottom } from "../../hooks/useStickToBottom";
 import type { Message } from "../../types/message";
@@ -102,20 +103,7 @@ function MessageList({
 					className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-th-border bg-th-bg-primary p-2 text-th-text-secondary shadow-xl transition-colors hover:bg-th-bg-secondary hover:text-th-text-primary"
 					aria-label="Scroll to bottom"
 				>
-					<svg
-						className="h-5 w-5"
-						fill="none"
-						stroke="currentColor"
-						viewBox="0 0 24 24"
-						aria-hidden="true"
-					>
-						<path
-							strokeLinecap="round"
-							strokeLinejoin="round"
-							strokeWidth={2}
-							d="M19 14l-7 7m0 0l-7-7m7 7V3"
-						/>
-					</svg>
+					<ArrowDown className="h-5 w-5" aria-hidden="true" />
 				</button>
 			)}
 		</div>

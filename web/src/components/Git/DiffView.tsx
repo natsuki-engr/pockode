@@ -1,3 +1,4 @@
+import { ChevronLeft } from "lucide-react";
 import { useGitDiff } from "../../hooks/useGitDiff";
 import { Spinner } from "../ui";
 import DiffContent from "./DiffContent";
@@ -22,20 +23,7 @@ function DiffView({ path, staged, onBack }: Props) {
 					className="flex items-center gap-1 rounded-md border border-th-border bg-th-bg-tertiary px-2.5 py-1.5 text-sm font-medium text-th-text-secondary transition-all hover:border-th-border-focus hover:bg-th-bg-primary hover:text-th-text-primary focus:outline-none focus:ring-2 focus:ring-th-accent active:scale-[0.97]"
 					aria-label="Back to chat"
 				>
-					<svg
-						className="h-4 w-4"
-						fill="none"
-						stroke="currentColor"
-						viewBox="0 0 24 24"
-						aria-hidden="true"
-					>
-						<path
-							strokeLinecap="round"
-							strokeLinejoin="round"
-							strokeWidth={2}
-							d="M15 19l-7-7 7-7"
-						/>
-					</svg>
+					<ChevronLeft className="h-4 w-4" aria-hidden="true" />
 					<span>Chat</span>
 				</button>
 				<div className="min-w-0 flex-1">

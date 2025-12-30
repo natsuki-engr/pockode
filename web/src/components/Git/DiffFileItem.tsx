@@ -1,3 +1,4 @@
+import { ChevronRight } from "lucide-react";
 import type { FileStatus } from "../../types/git";
 
 interface Props {
@@ -30,20 +31,10 @@ function DiffFileItem({ file, onSelect }: Props) {
 				{file.status}
 			</span>
 			<span className="min-w-0 flex-1 truncate text-sm">{file.path}</span>
-			<svg
+			<ChevronRight
 				className="h-4 w-4 shrink-0 text-th-text-muted"
-				fill="none"
-				stroke="currentColor"
-				viewBox="0 0 24 24"
 				aria-hidden="true"
-			>
-				<path
-					strokeLinecap="round"
-					strokeLinejoin="round"
-					strokeWidth={2}
-					d="M9 5l7 7-7 7"
-				/>
-			</svg>
+			/>
 		</button>
 	);
 }

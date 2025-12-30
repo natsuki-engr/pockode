@@ -1,3 +1,4 @@
+import { Menu } from "lucide-react";
 import { ThemeSwitcher } from "../ui";
 
 interface Props {
@@ -26,20 +27,7 @@ function MainContainer({
 							className="rounded p-1 text-th-text-muted hover:bg-th-bg-tertiary hover:text-th-text-primary"
 							aria-label="Open menu"
 						>
-							<svg
-								className="h-6 w-6"
-								fill="none"
-								stroke="currentColor"
-								viewBox="0 0 24 24"
-								aria-hidden="true"
-							>
-								<path
-									strokeLinecap="round"
-									strokeLinejoin="round"
-									strokeWidth={2}
-									d="M4 6h16M4 12h16M4 18h16"
-								/>
-							</svg>
+							<Menu className="h-6 w-6" aria-hidden="true" />
 						</button>
 					)}
 					<h1 className="text-lg font-bold text-th-text-primary sm:text-xl">
