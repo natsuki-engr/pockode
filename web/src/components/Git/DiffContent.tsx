@@ -45,7 +45,6 @@ function DiffContent({ diff, fileName }: Props) {
 		getHighlighter().then(setHighlighter);
 	}, []);
 
-	// Check for binary file (git outputs "Binary files a/... and b/... differ")
 	if (/^Binary files .+ and .+ differ$/m.test(diff)) {
 		return (
 			<div className="p-4 text-center text-th-text-muted">
@@ -66,6 +65,8 @@ function DiffContent({ diff, fileName }: Props) {
 		return <div className="p-4 text-center text-th-text-muted">Loading...</div>;
 	}
 
+	// TODO: Pass oldFile.content and newFile.content for full syntax highlighting
+	// Currently only diff output is available; library needs full file content for syntax context
 	return (
 		<div className="diff-view-wrapper diff-tailwindcss-wrapper">
 			<DiffView
