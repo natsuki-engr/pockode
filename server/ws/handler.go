@@ -175,7 +175,7 @@ func (h *Handler) getOrCreateProcess(ctx context.Context, log *slog.Logger, sess
 
 	resume := meta.Activated
 
-	entry, created, err := h.manager.GetOrCreateProcess(ctx, sessionID, resume)
+	proc, created, err := h.manager.GetOrCreateProcess(ctx, sessionID, resume)
 	if err != nil {
 		return nil, err
 	}
@@ -188,10 +188,10 @@ func (h *Handler) getOrCreateProcess(ctx context.Context, log *slog.Logger, sess
 	}
 
 	if created {
-		log.Info("created process", "resume", resume)
+		log.Info("process created", "resume", resume)
 	}
 
-	return entry.Session(), nil
+	return proc.AgentSession(), nil
 }
 
 func (h *Handler) handleMessage(ctx context.Context, log *slog.Logger, msg ClientMessage) error {

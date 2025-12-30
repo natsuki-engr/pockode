@@ -76,15 +76,15 @@ func TestManager_GetOrCreateProcess_NewSession(t *testing.T) {
 	m := NewManager(mock, "/tmp", store, 10*time.Minute)
 	defer m.Shutdown()
 
-	entry, created, err := m.GetOrCreateProcess(context.Background(), "sess-1", false)
+	proc, created, err := m.GetOrCreateProcess(context.Background(), "sess-1", false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if !created {
 		t.Error("expected created=true for new session")
 	}
-	if entry == nil {
-		t.Fatal("expected non-nil entry")
+	if proc == nil {
+		t.Fatal("expected non-nil process")
 	}
 	if len(mock.startCalls) != 1 {
 		t.Errorf("expected 1 start call, got %d", len(mock.startCalls))
@@ -103,14 +103,14 @@ func TestManager_GetOrCreateProcess_ExistingSession(t *testing.T) {
 	m := NewManager(mock, "/tmp", store, 10*time.Minute)
 	defer m.Shutdown()
 
-	entry1, _, _ := m.GetOrCreateProcess(context.Background(), "sess-1", false)
-	entry2, created, _ := m.GetOrCreateProcess(context.Background(), "sess-1", false)
+	proc1, _, _ := m.GetOrCreateProcess(context.Background(), "sess-1", false)
+	proc2, created, _ := m.GetOrCreateProcess(context.Background(), "sess-1", false)
 
 	if created {
 		t.Error("expected created=false for existing session")
 	}
-	if entry1 != entry2 {
-		t.Error("expected same entry for same session ID")
+	if proc1 != proc2 {
+		t.Error("expected same process for same session ID")
 	}
 	if len(mock.startCalls) != 1 {
 		t.Errorf("expected 1 start call, got %d", len(mock.startCalls))
@@ -128,11 +128,11 @@ func TestManager_IdleReaper(t *testing.T) {
 
 	time.Sleep(idleTimeout * 2)
 
-	if entry := m.GetProcess("sess-1"); entry != nil {
-		t.Error("expected session to be reaped")
+	if proc := m.GetProcess("sess-1"); proc != nil {
+		t.Error("expected process to be reaped")
 	}
 	if !mock.sessions["sess-1"].isClosed() {
-		t.Error("expected session to be closed")
+		t.Error("expected process to be closed")
 	}
 }
 
@@ -146,22 +146,22 @@ func TestManager_Touch_PreventsReaping(t *testing.T) {
 	_, _, _ = m.GetOrCreateProcess(context.Background(), "sess-1", false)
 
 	// Touch periodically for 2x idleTimeout
-	// Reaper runs multiple times, but session survives due to Touch
+	// Reaper runs multiple times, but process survives due to Touch
 	for i := 0; i < 4; i++ {
 		time.Sleep(idleTimeout / 2)
 		m.Touch("sess-1")
 	}
 	// Total elapsed: 4 * 25ms = 100ms = 2x idleTimeout
 
-	if entry := m.GetProcess("sess-1"); entry == nil {
-		t.Error("expected session to still exist after touch")
+	if proc := m.GetProcess("sess-1"); proc == nil {
+		t.Error("expected process to still exist after touch")
 	}
 	if mock.sessions["sess-1"].isClosed() {
-		t.Error("expected session to not be closed")
+		t.Error("expected process to not be closed")
 	}
 }
 
-func TestManager_Shutdown_ClosesAllSessions(t *testing.T) {
+func TestManager_Shutdown_ClosesAllProcesses(t *testing.T) {
 	store, _ := session.NewFileStore(t.TempDir())
 	mock := &mockAgent{}
 	m := NewManager(mock, "/tmp", store, 10*time.Minute)
@@ -172,20 +172,20 @@ func TestManager_Shutdown_ClosesAllSessions(t *testing.T) {
 	m.Shutdown()
 
 	if !mock.sessions["sess-1"].isClosed() {
-		t.Error("expected sess-1 to be closed")
+		t.Error("expected process for sess-1 to be closed")
 	}
 	if !mock.sessions["sess-2"].isClosed() {
-		t.Error("expected sess-2 to be closed")
+		t.Error("expected process for sess-2 to be closed")
 	}
 	if m.GetProcess("sess-1") != nil {
-		t.Error("expected sess-1 to be removed from manager")
+		t.Error("expected process for sess-1 to be removed from manager")
 	}
 	if m.GetProcess("sess-2") != nil {
-		t.Error("expected sess-2 to be removed from manager")
+		t.Error("expected process for sess-2 to be removed from manager")
 	}
 }
 
-func TestManager_Close_SpecificSession(t *testing.T) {
+func TestManager_Close_SpecificProcess(t *testing.T) {
 	store, _ := session.NewFileStore(t.TempDir())
 	mock := &mockAgent{}
 	m := NewManager(mock, "/tmp", store, 10*time.Minute)
@@ -197,16 +197,16 @@ func TestManager_Close_SpecificSession(t *testing.T) {
 	m.Close("sess-1")
 
 	if !mock.sessions["sess-1"].isClosed() {
-		t.Error("expected sess-1 to be closed")
+		t.Error("expected process for sess-1 to be closed")
 	}
 	if mock.sessions["sess-2"].isClosed() {
-		t.Error("expected sess-2 to still be open")
+		t.Error("expected process for sess-2 to still be open")
 	}
 	if m.GetProcess("sess-1") != nil {
-		t.Error("expected sess-1 to be removed from manager")
+		t.Error("expected process for sess-1 to be removed from manager")
 	}
 	if m.GetProcess("sess-2") == nil {
-		t.Error("expected sess-2 to still exist in manager")
+		t.Error("expected process for sess-2 to still exist in manager")
 	}
 }
 

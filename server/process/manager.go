@@ -21,8 +21,8 @@ type Manager struct {
 	idleTimeout  time.Duration
 
 	// Process management: sessionID -> running process
-	entriesMu sync.Mutex
-	entries   map[string]*Entry
+	processesMu sync.Mutex
+	processes   map[string]*Process
 
 	// Subscription management: sessionID -> subscribed WebSocket connections
 	subsMu sync.Mutex
@@ -32,10 +32,10 @@ type Manager struct {
 	cancel context.CancelFunc
 }
 
-// Entry holds a running agent process. Do not cache references.
-type Entry struct {
+// Process holds a running agent process. Do not cache references.
+type Process struct {
 	sessionID    string
-	session      agent.Session
+	agentSession agent.Session
 	sessionStore session.Store
 	manager      *Manager // back-reference for broadcasting to subscribers
 
@@ -57,7 +57,7 @@ func NewManager(ag agent.Agent, workDir string, store session.Store, idleTimeout
 		workDir:      workDir,
 		sessionStore: store,
 		idleTimeout:  idleTimeout,
-		entries:      make(map[string]*Entry),
+		processes:    make(map[string]*Process),
 		subs:         make(map[string][]*connWriter),
 		ctx:          ctx,
 		cancel:       cancel,
@@ -67,13 +67,13 @@ func NewManager(ag agent.Agent, workDir string, store session.Store, idleTimeout
 }
 
 // GetOrCreateProcess returns an existing process or creates a new one.
-func (m *Manager) GetOrCreateProcess(ctx context.Context, sessionID string, resume bool) (*Entry, bool, error) {
-	m.entriesMu.Lock()
-	defer m.entriesMu.Unlock()
+func (m *Manager) GetOrCreateProcess(ctx context.Context, sessionID string, resume bool) (*Process, bool, error) {
+	m.processesMu.Lock()
+	defer m.processesMu.Unlock()
 
-	if entry, exists := m.entries[sessionID]; exists {
-		entry.touch()
-		return entry, false, nil
+	if proc, exists := m.processes[sessionID]; exists {
+		proc.touch()
+		return proc, false, nil
 	}
 
 	// Use manager's context for process lifecycle, not request context
@@ -82,31 +82,31 @@ func (m *Manager) GetOrCreateProcess(ctx context.Context, sessionID string, resu
 		return nil, false, err
 	}
 
-	entry := &Entry{
+	proc := &Process{
 		sessionID:    sessionID,
-		session:      sess,
+		agentSession: sess,
 		sessionStore: m.sessionStore,
 		manager:      m,
 		lastActive:   time.Now(),
 	}
-	m.entries[sessionID] = entry
+	m.processes[sessionID] = proc
 
 	go func() {
-		entry.streamEvents(m.ctx)
+		proc.streamEvents(m.ctx)
 		m.remove(sessionID)
-		slog.Info("session process ended", "sessionId", sessionID)
+		slog.Info("process ended", "sessionId", sessionID)
 	}()
 
-	slog.Info("created session process", "sessionId", sessionID, "resume", resume)
-	return entry, true, nil
+	slog.Info("process created", "sessionId", sessionID, "resume", resume)
+	return proc, true, nil
 }
 
 // GetProcess returns an existing process or nil.
 // Use this to check if a process is running without creating one.
-func (m *Manager) GetProcess(sessionID string) *Entry {
-	m.entriesMu.Lock()
-	defer m.entriesMu.Unlock()
-	return m.entries[sessionID]
+func (m *Manager) GetProcess(sessionID string) *Process {
+	m.processesMu.Lock()
+	defer m.processesMu.Unlock()
+	return m.processes[sessionID]
 }
 
 // HasProcess returns whether a process is running for the given session.
@@ -116,10 +116,10 @@ func (m *Manager) HasProcess(sessionID string) bool {
 
 // Touch updates the process's last active time.
 func (m *Manager) Touch(sessionID string) {
-	m.entriesMu.Lock()
-	defer m.entriesMu.Unlock()
-	if entry, exists := m.entries[sessionID]; exists {
-		entry.touch()
+	m.processesMu.Lock()
+	defer m.processesMu.Unlock()
+	if proc, exists := m.processes[sessionID]; exists {
+		proc.touch()
 	}
 }
 
@@ -187,46 +187,46 @@ func (m *Manager) broadcast(ctx context.Context, sessionID string, msg any) {
 	}
 }
 
-// remove removes an entry from the manager and returns it.
-func (m *Manager) remove(sessionID string) *Entry {
-	m.entriesMu.Lock()
-	defer m.entriesMu.Unlock()
-	entry := m.entries[sessionID]
-	delete(m.entries, sessionID)
-	return entry
+// remove removes a process from the manager and returns it.
+func (m *Manager) remove(sessionID string) *Process {
+	m.processesMu.Lock()
+	defer m.processesMu.Unlock()
+	proc := m.processes[sessionID]
+	delete(m.processes, sessionID)
+	return proc
 }
 
-// removeWhere removes entries matching the predicate and returns them.
-func (m *Manager) removeWhere(predicate func(*Entry) bool) []*Entry {
-	m.entriesMu.Lock()
-	defer m.entriesMu.Unlock()
+// removeWhere removes processes matching the predicate and returns them.
+func (m *Manager) removeWhere(predicate func(*Process) bool) []*Process {
+	m.processesMu.Lock()
+	defer m.processesMu.Unlock()
 
-	var removed []*Entry
-	for sessionID, entry := range m.entries {
-		if predicate(entry) {
-			removed = append(removed, entry)
-			delete(m.entries, sessionID)
+	var removed []*Process
+	for sessionID, proc := range m.processes {
+		if predicate(proc) {
+			removed = append(removed, proc)
+			delete(m.processes, sessionID)
 		}
 	}
 	return removed
 }
 
-// Close terminates a specific session.
+// Close terminates a specific process.
 func (m *Manager) Close(sessionID string) {
-	if entry := m.remove(sessionID); entry != nil {
-		entry.session.Close()
-		slog.Info("closed session", "sessionId", sessionID)
+	if proc := m.remove(sessionID); proc != nil {
+		proc.agentSession.Close()
+		slog.Info("process closed", "sessionId", sessionID)
 	}
 }
 
-// Shutdown closes all sessions gracefully.
+// Shutdown closes all processes gracefully.
 func (m *Manager) Shutdown() {
 	m.cancel()
-	entries := m.removeWhere(func(*Entry) bool { return true })
-	for _, e := range entries {
-		e.session.Close()
+	procs := m.removeWhere(func(*Process) bool { return true })
+	for _, p := range procs {
+		p.agentSession.Close()
 	}
-	slog.Info("manager shutdown complete", "sessionsClosed", len(entries))
+	slog.Info("manager shutdown complete", "processesClosed", len(procs))
 }
 
 func (m *Manager) runIdleReaper() {
@@ -245,48 +245,48 @@ func (m *Manager) runIdleReaper() {
 
 func (m *Manager) reapIdle() {
 	now := time.Now()
-	entries := m.removeWhere(func(e *Entry) bool {
-		return now.Sub(e.getLastActive()) > m.idleTimeout
+	procs := m.removeWhere(func(p *Process) bool {
+		return now.Sub(p.getLastActive()) > m.idleTimeout
 	})
-	for _, entry := range entries {
-		entry.session.Close()
-		slog.Info("reaped idle session", "sessionId", entry.sessionID)
+	for _, proc := range procs {
+		proc.agentSession.Close()
+		slog.Info("idle process reaped", "sessionId", proc.sessionID)
 	}
 }
 
-// Session returns the underlying agent session.
-func (e *Entry) Session() agent.Session {
-	return e.session
+// AgentSession returns the underlying agent session.
+func (p *Process) AgentSession() agent.Session {
+	return p.agentSession
 }
 
-func (e *Entry) touch() {
-	e.mu.Lock()
-	e.lastActive = time.Now()
-	e.mu.Unlock()
+func (p *Process) touch() {
+	p.mu.Lock()
+	p.lastActive = time.Now()
+	p.mu.Unlock()
 }
 
-func (e *Entry) getLastActive() time.Time {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	return e.lastActive
+func (p *Process) getLastActive() time.Time {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.lastActive
 }
 
 // streamEvents routes events to history and all subscribed WebSockets.
-func (e *Entry) streamEvents(ctx context.Context) {
-	log := slog.With("sessionId", e.sessionID)
+func (p *Process) streamEvents(ctx context.Context) {
+	log := slog.With("sessionId", p.sessionID)
 
-	for event := range e.session.Events() {
+	for event := range p.agentSession.Events() {
 		log.Debug("streaming event", "type", event.Type)
 
-		serverMsg := toServerMessage(e.sessionID, event)
+		serverMsg := toServerMessage(p.sessionID, event)
 
 		// History persists even when no WebSocket is connected
-		if err := e.sessionStore.AppendToHistory(ctx, e.sessionID, serverMsg); err != nil {
+		if err := p.sessionStore.AppendToHistory(ctx, p.sessionID, serverMsg); err != nil {
 			log.Error("failed to append to history", "error", err)
 		}
 
 		// Broadcast via manager to all subscribers
-		e.manager.broadcast(ctx, e.sessionID, serverMsg)
+		p.manager.broadcast(ctx, p.sessionID, serverMsg)
 	}
 
 	log.Info("event stream ended")
