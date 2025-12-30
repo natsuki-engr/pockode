@@ -19,7 +19,7 @@ function DiffView({ path, staged, onBack }: Props) {
 				<button
 					type="button"
 					onClick={onBack}
-					className="flex items-center gap-1 rounded-md border border-th-border bg-th-bg-tertiary px-2.5 py-1.5 text-sm font-medium text-th-text-secondary transition-colors hover:border-th-border-focus hover:bg-th-bg-primary hover:text-th-text-primary active:scale-[0.97]"
+					className="flex items-center gap-1 rounded-md border border-th-border bg-th-bg-tertiary px-2.5 py-1.5 text-sm font-medium text-th-text-secondary transition-all hover:border-th-border-focus hover:bg-th-bg-primary hover:text-th-text-primary focus:outline-none focus:ring-2 focus:ring-th-accent active:scale-[0.97]"
 					aria-label="Back to chat"
 				>
 					<svg

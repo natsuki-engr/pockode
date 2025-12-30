@@ -5,6 +5,15 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* =============================================================================
+ * BASE RESETS
+ * ============================================================================= */
+
+button,
+[role="button"] {
+	cursor: pointer;
+}
+
+/* =============================================================================
  * SEMANTIC THEME TOKENS
  *
  * All UI components use these tokens. Never hardcode colors.
@@ -552,22 +561,22 @@
 	width: 100%;
 }
 
-/* Addition lines */
+/* Addition lines - 20% for better visibility in light mode */
 .diff-view-wrapper .diff-code-insert {
-	background: color-mix(in srgb, var(--th-success) 15%, transparent);
+	background: color-mix(in srgb, var(--th-success) 20%, transparent);
 }
 
 .diff-view-wrapper .diff-gutter-insert {
-	background: color-mix(in srgb, var(--th-success) 25%, transparent);
+	background: color-mix(in srgb, var(--th-success) 30%, transparent);
 }
 
-/* Deletion lines */
+/* Deletion lines - 20% for better visibility in light mode */
 .diff-view-wrapper .diff-code-delete {
-	background: color-mix(in srgb, var(--th-error) 15%, transparent);
+	background: color-mix(in srgb, var(--th-error) 20%, transparent);
 }
 
 .diff-view-wrapper .diff-gutter-delete {
-	background: color-mix(in srgb, var(--th-error) 25%, transparent);
+	background: color-mix(in srgb, var(--th-error) 30%, transparent);
 }
 
 /* Hunk header */

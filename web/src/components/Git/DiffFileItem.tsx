@@ -20,7 +20,7 @@ function DiffFileItem({ file, onSelect }: Props) {
 		<button
 			type="button"
 			onClick={onSelect}
-			className="flex w-full min-h-[44px] items-center gap-2 rounded-lg px-3 py-2 text-left text-th-text-secondary hover:bg-th-bg-tertiary"
+			className="flex w-full min-h-[44px] items-center gap-2 rounded-lg px-3 py-2 text-left text-th-text-secondary transition-colors hover:bg-th-bg-tertiary focus:outline-none focus:ring-2 focus:ring-th-accent focus:ring-offset-1 focus:ring-offset-th-bg-secondary"
 			aria-label={`View ${statusInfo.label.toLowerCase()} file: ${file.path}`}
 		>
 			<span
