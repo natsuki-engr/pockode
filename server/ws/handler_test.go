@@ -75,6 +75,11 @@ func (e *testEnv) send(msg ClientMessage) {
 	}
 }
 
+func (e *testEnv) attach(sessionID string) {
+	e.send(ClientMessage{Type: "attach", SessionID: sessionID})
+	e.read() // consume attach_response
+}
+
 func (e *testEnv) sendMessage(sessionID, content string) {
 	e.send(ClientMessage{Type: "message", SessionID: sessionID, Content: content})
 }
@@ -143,6 +148,67 @@ func TestHandler_InvalidToken(t *testing.T) {
 	}
 }
 
+func TestHandler_Attach(t *testing.T) {
+	env := newTestEnv(t, &mockAgent{})
+	env.store.Create(bgCtx, "sess")
+
+	env.send(ClientMessage{Type: "attach", SessionID: "sess"})
+	resp := env.read()
+
+	if resp.Type != "attach_response" {
+		t.Errorf("expected attach_response, got %s", resp.Type)
+	}
+	if resp.SessionID != "sess" {
+		t.Errorf("expected session_id 'sess', got %q", resp.SessionID)
+	}
+	if resp.ProcessRunning {
+		t.Error("expected process_running=false before message")
+	}
+}
+
+func TestHandler_Attach_ProcessRunning(t *testing.T) {
+	mock := &mockAgent{
+		events: []agent.AgentEvent{
+			{Type: agent.EventTypeText, Content: "Response"},
+			{Type: agent.EventTypeDone},
+		},
+	}
+	env := newTestEnv(t, mock)
+	env.store.Create(bgCtx, "sess")
+
+	// Start process by sending message
+	env.attach("sess")
+	env.sendMessage("sess", "hello")
+	env.skipN(2) // Text + Done
+
+	// Verify process is still running
+	if !env.manager.HasProcess("sess") {
+		t.Fatal("expected process to be running")
+	}
+
+	// New attach should show process_running=true
+	env.send(ClientMessage{Type: "attach", SessionID: "sess"})
+	resp := env.read()
+
+	if resp.Type != "attach_response" {
+		t.Fatalf("expected attach_response, got %s", resp.Type)
+	}
+	if !resp.ProcessRunning {
+		t.Error("expected process_running=true after message")
+	}
+}
+
+func TestHandler_Attach_InvalidSession(t *testing.T) {
+	env := newTestEnv(t, &mockAgent{})
+
+	env.send(ClientMessage{Type: "attach", SessionID: "non-existent"})
+	resp := env.read()
+
+	if resp.Type != "error" || !strings.Contains(resp.Error, "session not found") {
+		t.Errorf("expected session not found error, got %+v", resp)
+	}
+}
+
 func TestHandler_WebSocketConnection(t *testing.T) {
 	mock := &mockAgent{
 		events: []agent.AgentEvent{
@@ -153,6 +219,7 @@ func TestHandler_WebSocketConnection(t *testing.T) {
 	env := newTestEnv(t, mock)
 	env.store.Create(bgCtx, "sess")
 
+	env.attach("sess")
 	env.sendMessage("sess", "Hello AI")
 	responses := env.readN(2)
 
@@ -175,6 +242,8 @@ func TestHandler_MultipleSessions(t *testing.T) {
 	env.store.Create(bgCtx, "session-A")
 	env.store.Create(bgCtx, "session-B")
 
+	env.attach("session-A")
+	env.attach("session-B")
 	env.sendMessage("session-A", "Hello from A")
 	env.skipN(2)
 	env.sendMessage("session-B", "Hello from B")
@@ -205,6 +274,7 @@ func TestHandler_PermissionRequest(t *testing.T) {
 	env := newTestEnv(t, mock)
 	env.store.Create(bgCtx, "sess")
 
+	env.attach("sess")
 	env.sendMessage("sess", "run ls")
 	resp := env.read()
 
@@ -245,6 +315,7 @@ func TestHandler_PermissionResponse_InvalidRequestID(t *testing.T) {
 	env := newTestEnv(t, mock)
 	env.store.Create(bgCtx, "sess")
 
+	env.attach("sess")
 	env.sendMessage("sess", "hello")
 	env.skipN(2)
 
@@ -271,6 +342,7 @@ func TestHandler_PermissionResponse_Duplicate(t *testing.T) {
 	env := newTestEnv(t, mock)
 	env.store.Create(bgCtx, "sess")
 
+	env.attach("sess")
 	env.sendMessage("sess", "test")
 	env.skipN(2)
 
@@ -309,6 +381,7 @@ func TestHandler_Interrupt(t *testing.T) {
 	env := newTestEnv(t, mock)
 	env.store.Create(bgCtx, "sess")
 
+	env.attach("sess")
 	env.sendMessage("sess", "hello")
 	env.skipN(2)
 
@@ -347,6 +420,7 @@ func TestHandler_NewSession_ResumeFalse(t *testing.T) {
 	env := newTestEnv(t, mock)
 	env.store.Create(bgCtx, "new-session")
 
+	env.attach("new-session")
 	env.sendMessage("new-session", "hello")
 	env.skipN(2)
 
@@ -371,6 +445,7 @@ func TestHandler_ActivatedSession_ResumeTrue(t *testing.T) {
 	env.store.Create(bgCtx, "activated-session")
 	env.store.Activate(bgCtx, "activated-session")
 
+	env.attach("activated-session")
 	env.sendMessage("activated-session", "hello")
 	env.skipN(2)
 
@@ -400,6 +475,7 @@ func TestHandler_AskUserQuestion(t *testing.T) {
 	env := newTestEnv(t, mock)
 	env.store.Create(bgCtx, "sess")
 
+	env.attach("sess")
 	env.sendMessage("sess", "ask me")
 	resp := env.read()
 

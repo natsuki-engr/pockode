@@ -55,10 +55,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.handleConnection(r.Context(), conn)
 }
 
-// connectionState tracks attached sessions for a single WebSocket connection.
-// Sessions are globally managed; this only tracks which sessions this connection subscribes to.
+// connectionState tracks which sessions this WebSocket connection is subscribed to.
+// This duplicates information in Manager.subs for O(1) lookup per connection.
+// Must be kept in sync: add to both on Subscribe, remove from both on Unsubscribe.
 type connectionState struct {
-	attached map[string]*process.Entry // sessionID -> entry
+	subscribed map[string]struct{}
 }
 
 func (h *Handler) handleConnection(ctx context.Context, conn *websocket.Conn) {
@@ -66,15 +67,15 @@ func (h *Handler) handleConnection(ctx context.Context, conn *websocket.Conn) {
 	connLog.Info("new websocket connection")
 
 	state := &connectionState{
-		attached: make(map[string]*process.Entry),
+		subscribed: make(map[string]struct{}),
 	}
 	defer func() {
-		// Detach all sessions (but keep processes running)
-		for sessionID, entry := range state.attached {
-			entry.Detach(conn)
-			connLog.Debug("detached session", "sessionId", sessionID)
+		// Unsubscribe from all sessions (processes keep running)
+		for sessionID := range state.subscribed {
+			h.manager.Unsubscribe(sessionID, conn)
+			connLog.Debug("unsubscribed from session", "sessionId", sessionID)
 		}
-		connLog.Info("connection closed", "attachedSessions", len(state.attached))
+		connLog.Info("connection closed", "subscriptions", len(state.subscribed))
 	}()
 
 	for {
@@ -98,31 +99,31 @@ func (h *Handler) handleConnection(ctx context.Context, conn *websocket.Conn) {
 
 		switch msg.Type {
 		case "attach":
-			if _, err := h.getOrCreateSession(ctx, log, conn, msg.SessionID, state); err != nil {
+			if err := h.handleAttach(ctx, log, conn, msg.SessionID, state); err != nil {
 				log.Error("attach error", "error", err)
 				h.sendError(ctx, conn, err.Error())
 			}
 
 		case "message":
-			if err := h.handleMessage(ctx, log, conn, msg, state); err != nil {
+			if err := h.handleMessage(ctx, log, msg); err != nil {
 				log.Error("handleMessage error", "error", err)
 				h.sendError(ctx, conn, err.Error())
 			}
 
 		case "interrupt":
-			if err := h.handleInterrupt(ctx, log, conn, msg, state); err != nil {
+			if err := h.handleInterrupt(ctx, log, msg); err != nil {
 				log.Error("interrupt error", "error", err)
 				h.sendError(ctx, conn, err.Error())
 			}
 
 		case "permission_response":
-			if err := h.handlePermissionResponse(ctx, log, conn, msg, state); err != nil {
+			if err := h.handlePermissionResponse(ctx, log, msg); err != nil {
 				log.Error("permission response error", "error", err)
 				h.sendError(ctx, conn, err.Error())
 			}
 
 		case "question_response":
-			if err := h.handleQuestionResponse(ctx, log, conn, msg, state); err != nil {
+			if err := h.handleQuestionResponse(ctx, log, msg); err != nil {
 				log.Error("question response error", "error", err)
 				h.sendError(ctx, conn, err.Error())
 			}
@@ -133,13 +134,37 @@ func (h *Handler) handleConnection(ctx context.Context, conn *websocket.Conn) {
 	}
 }
 
-// getOrCreateSession gets or creates a session and attaches this connection.
-func (h *Handler) getOrCreateSession(ctx context.Context, log *slog.Logger, conn *websocket.Conn, sessionID string, state *connectionState) (agent.Session, error) {
-	if entry, exists := state.attached[sessionID]; exists {
-		h.manager.Touch(sessionID)
-		return entry.Session(), nil
+// handleAttach subscribes this connection to a session's events.
+// It does NOT start a process - that only happens when a message is sent.
+// Responds with attach_response indicating whether a process is currently running.
+func (h *Handler) handleAttach(ctx context.Context, log *slog.Logger, conn *websocket.Conn, sessionID string, state *connectionState) error {
+	// Verify session exists in store
+	_, found, err := h.sessionStore.Get(sessionID)
+	if err != nil {
+		return fmt.Errorf("failed to get session: %w", err)
+	}
+	if !found {
+		return fmt.Errorf("session not found: %s", sessionID)
 	}
 
+	// Subscribe to session events (idempotent)
+	if _, exists := state.subscribed[sessionID]; !exists {
+		h.manager.Subscribe(sessionID, conn)
+		state.subscribed[sessionID] = struct{}{}
+	}
+
+	// Tell client whether a process is running
+	processRunning := h.manager.HasProcess(sessionID)
+	if err := h.sendAttachResponse(ctx, conn, sessionID, processRunning); err != nil {
+		return fmt.Errorf("failed to send attach response: %w", err)
+	}
+
+	log.Info("subscribed to session", "processRunning", processRunning)
+	return nil
+}
+
+// getOrCreateProcess returns an existing process or creates a new one.
+func (h *Handler) getOrCreateProcess(ctx context.Context, log *slog.Logger, sessionID string) (agent.Session, error) {
 	meta, found, err := h.sessionStore.Get(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get session: %w", err)
@@ -150,28 +175,27 @@ func (h *Handler) getOrCreateSession(ctx context.Context, log *slog.Logger, conn
 
 	resume := meta.Activated
 
-	entry, created, err := h.manager.GetOrCreate(ctx, sessionID, resume)
+	entry, created, err := h.manager.GetOrCreateProcess(ctx, sessionID, resume)
 	if err != nil {
 		return nil, err
 	}
 
-	entry.Attach(conn)
-	state.attached[sessionID] = entry
-
-	// Mark as activated on first message to enable resume on reconnect
+	// Mark as activated on first process creation to enable resume on reconnect
 	if created && !resume {
 		if err := h.sessionStore.Activate(ctx, sessionID); err != nil {
 			log.Error("failed to activate session", "error", err)
 		}
 	}
 
-	log.Info("attached to session", "resume", resume, "created", created)
+	if created {
+		log.Info("created process", "resume", resume)
+	}
 
 	return entry.Session(), nil
 }
 
-func (h *Handler) handleMessage(ctx context.Context, log *slog.Logger, conn *websocket.Conn, msg ClientMessage, state *connectionState) error {
-	sess, err := h.getOrCreateSession(ctx, log, conn, msg.SessionID, state)
+func (h *Handler) handleMessage(ctx context.Context, log *slog.Logger, msg ClientMessage) error {
+	sess, err := h.getOrCreateProcess(ctx, log, msg.SessionID)
 	if err != nil {
 		return err
 	}
@@ -185,9 +209,9 @@ func (h *Handler) handleMessage(ctx context.Context, log *slog.Logger, conn *web
 	return sess.SendMessage(msg.Content)
 }
 
-// Soft stop that preserves the session for future messages.
-func (h *Handler) handleInterrupt(ctx context.Context, log *slog.Logger, conn *websocket.Conn, msg ClientMessage, state *connectionState) error {
-	sess, err := h.getOrCreateSession(ctx, log, conn, msg.SessionID, state)
+// handleInterrupt sends a soft stop signal that preserves the session for future messages.
+func (h *Handler) handleInterrupt(ctx context.Context, log *slog.Logger, msg ClientMessage) error {
+	sess, err := h.getOrCreateProcess(ctx, log, msg.SessionID)
 	if err != nil {
 		return err
 	}
@@ -200,8 +224,8 @@ func (h *Handler) handleInterrupt(ctx context.Context, log *slog.Logger, conn *w
 	return nil
 }
 
-func (h *Handler) handlePermissionResponse(ctx context.Context, log *slog.Logger, conn *websocket.Conn, msg ClientMessage, state *connectionState) error {
-	sess, err := h.getOrCreateSession(ctx, log, conn, msg.SessionID, state)
+func (h *Handler) handlePermissionResponse(ctx context.Context, log *slog.Logger, msg ClientMessage) error {
+	sess, err := h.getOrCreateProcess(ctx, log, msg.SessionID)
 	if err != nil {
 		return err
 	}
@@ -214,8 +238,8 @@ func (h *Handler) handlePermissionResponse(ctx context.Context, log *slog.Logger
 	return sess.SendPermissionResponse(msg.RequestID, choice)
 }
 
-func (h *Handler) handleQuestionResponse(ctx context.Context, log *slog.Logger, conn *websocket.Conn, msg ClientMessage, state *connectionState) error {
-	sess, err := h.getOrCreateSession(ctx, log, conn, msg.SessionID, state)
+func (h *Handler) handleQuestionResponse(ctx context.Context, log *slog.Logger, msg ClientMessage) error {
+	sess, err := h.getOrCreateProcess(ctx, log, msg.SessionID)
 	if err != nil {
 		return err
 	}
@@ -232,6 +256,18 @@ func parsePermissionChoice(choice string) agent.PermissionChoice {
 	default:
 		return agent.PermissionDeny
 	}
+}
+
+func (h *Handler) sendAttachResponse(ctx context.Context, conn *websocket.Conn, sessionID string, processRunning bool) error {
+	data, err := json.Marshal(ServerMessage{
+		Type:           "attach_response",
+		SessionID:      sessionID,
+		ProcessRunning: processRunning,
+	})
+	if err != nil {
+		return err
+	}
+	return conn.Write(ctx, websocket.MessageText, data)
 }
 
 func (h *Handler) sendError(ctx context.Context, conn *websocket.Conn, errMsg string) error {

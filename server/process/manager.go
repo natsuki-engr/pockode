@@ -12,30 +12,35 @@ import (
 	"github.com/pockode/server/session"
 )
 
-// Manager manages global agent sessions with idle timeout.
-// Sessions persist beyond WebSocket connections until idle timeout.
+// Manager manages agent processes and WebSocket subscriptions.
+// Processes and subscriptions have independent lifecycles.
 type Manager struct {
 	agent        agent.Agent
 	workDir      string
 	sessionStore session.Store
 	idleTimeout  time.Duration
 
+	// Process management: sessionID -> running process
 	entriesMu sync.Mutex
 	entries   map[string]*Entry
+
+	// Subscription management: sessionID -> subscribed WebSocket connections
+	subsMu sync.Mutex
+	subs   map[string][]*connWriter
 
 	ctx    context.Context
 	cancel context.CancelFunc
 }
 
-// Entry holds an active agent session with its subscribers.
+// Entry holds a running agent process. Do not cache references.
 type Entry struct {
 	sessionID    string
 	session      agent.Session
 	sessionStore session.Store
+	manager      *Manager // back-reference for broadcasting to subscribers
 
 	mu         sync.Mutex
 	lastActive time.Time
-	conns      []*connWriter
 }
 
 // connWriter wraps a WebSocket connection for thread-safe writes.
@@ -44,7 +49,7 @@ type connWriter struct {
 	mu   sync.Mutex
 }
 
-// NewManager creates a new session manager with the given idle timeout.
+// NewManager creates a new manager with the given idle timeout.
 func NewManager(ag agent.Agent, workDir string, store session.Store, idleTimeout time.Duration) *Manager {
 	ctx, cancel := context.WithCancel(context.Background())
 	m := &Manager{
@@ -53,6 +58,7 @@ func NewManager(ag agent.Agent, workDir string, store session.Store, idleTimeout
 		sessionStore: store,
 		idleTimeout:  idleTimeout,
 		entries:      make(map[string]*Entry),
+		subs:         make(map[string][]*connWriter),
 		ctx:          ctx,
 		cancel:       cancel,
 	}
@@ -60,9 +66,8 @@ func NewManager(ag agent.Agent, workDir string, store session.Store, idleTimeout
 	return m
 }
 
-// GetOrCreate returns an existing session or creates a new one.
-// Returns the entry and whether it was newly created.
-func (m *Manager) GetOrCreate(ctx context.Context, sessionID string, resume bool) (*Entry, bool, error) {
+// GetOrCreateProcess returns an existing process or creates a new one.
+func (m *Manager) GetOrCreateProcess(ctx context.Context, sessionID string, resume bool) (*Entry, bool, error) {
 	m.entriesMu.Lock()
 	defer m.entriesMu.Unlock()
 
@@ -81,8 +86,8 @@ func (m *Manager) GetOrCreate(ctx context.Context, sessionID string, resume bool
 		sessionID:    sessionID,
 		session:      sess,
 		sessionStore: m.sessionStore,
+		manager:      m,
 		lastActive:   time.Now(),
-		conns:        make([]*connWriter, 0),
 	}
 	m.entries[sessionID] = entry
 
@@ -96,19 +101,89 @@ func (m *Manager) GetOrCreate(ctx context.Context, sessionID string, resume bool
 	return entry, true, nil
 }
 
-// Get returns an existing entry or nil.
-func (m *Manager) Get(sessionID string) *Entry {
+// GetProcess returns an existing process or nil.
+// Use this to check if a process is running without creating one.
+func (m *Manager) GetProcess(sessionID string) *Entry {
 	m.entriesMu.Lock()
 	defer m.entriesMu.Unlock()
 	return m.entries[sessionID]
 }
 
-// Touch updates the session's last active time.
+// HasProcess returns whether a process is running for the given session.
+func (m *Manager) HasProcess(sessionID string) bool {
+	return m.GetProcess(sessionID) != nil
+}
+
+// Touch updates the process's last active time.
 func (m *Manager) Touch(sessionID string) {
 	m.entriesMu.Lock()
 	defer m.entriesMu.Unlock()
 	if entry, exists := m.entries[sessionID]; exists {
 		entry.touch()
+	}
+}
+
+// Subscribe adds a WebSocket connection to receive events for a session.
+// The connection will receive events from any process started for this session.
+// Returns true if this is a new subscription (not already subscribed).
+func (m *Manager) Subscribe(sessionID string, conn *websocket.Conn) bool {
+	m.subsMu.Lock()
+	defer m.subsMu.Unlock()
+
+	// Check if already subscribed
+	for _, cw := range m.subs[sessionID] {
+		if cw.conn == conn {
+			return false
+		}
+	}
+
+	m.subs[sessionID] = append(m.subs[sessionID], &connWriter{conn: conn})
+	slog.Debug("subscribed to session", "sessionId", sessionID, "totalSubs", len(m.subs[sessionID]))
+	return true
+}
+
+// Unsubscribe removes a WebSocket connection from receiving events.
+func (m *Manager) Unsubscribe(sessionID string, conn *websocket.Conn) {
+	m.subsMu.Lock()
+	defer m.subsMu.Unlock()
+
+	conns := m.subs[sessionID]
+	newConns := make([]*connWriter, 0, len(conns))
+	for _, cw := range conns {
+		if cw.conn != conn {
+			newConns = append(newConns, cw)
+		}
+	}
+
+	if len(newConns) == 0 {
+		delete(m.subs, sessionID)
+	} else {
+		m.subs[sessionID] = newConns
+	}
+	slog.Debug("unsubscribed from session", "sessionId", sessionID, "totalSubs", len(newConns))
+}
+
+// broadcast sends a message to all subscribers of a session.
+func (m *Manager) broadcast(ctx context.Context, sessionID string, msg any) {
+	data, err := json.Marshal(msg)
+	if err != nil {
+		slog.Error("failed to marshal message", "error", err)
+		return
+	}
+
+	m.subsMu.Lock()
+	conns := make([]*connWriter, len(m.subs[sessionID]))
+	copy(conns, m.subs[sessionID])
+	m.subsMu.Unlock()
+
+	for _, cw := range conns {
+		cw.mu.Lock()
+		err := cw.conn.Write(ctx, websocket.MessageText, data)
+		cw.mu.Unlock()
+
+		if err != nil {
+			slog.Debug("broadcast write failed", "error", err)
+		}
 	}
 }
 
@@ -196,31 +271,7 @@ func (e *Entry) getLastActive() time.Time {
 	return e.lastActive
 }
 
-// Attach adds a WebSocket connection to receive events.
-func (e *Entry) Attach(conn *websocket.Conn) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	e.conns = append(e.conns, &connWriter{conn: conn})
-	slog.Debug("attached connection", "sessionId", e.sessionID, "totalConns", len(e.conns))
-}
-
-// Detach removes a WebSocket connection from receiving events.
-// It does not close the connection; the caller is responsible for that.
-func (e *Entry) Detach(conn *websocket.Conn) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-
-	newConns := make([]*connWriter, 0, len(e.conns))
-	for _, cw := range e.conns {
-		if cw.conn != conn {
-			newConns = append(newConns, cw)
-		}
-	}
-	e.conns = newConns
-	slog.Debug("detached connection", "sessionId", e.sessionID, "totalConns", len(e.conns))
-}
-
-// streamEvents routes events to history and all connected WebSockets.
+// streamEvents routes events to history and all subscribed WebSockets.
 func (e *Entry) streamEvents(ctx context.Context) {
 	log := slog.With("sessionId", e.sessionID)
 
@@ -234,33 +285,11 @@ func (e *Entry) streamEvents(ctx context.Context) {
 			log.Error("failed to append to history", "error", err)
 		}
 
-		e.broadcast(ctx, serverMsg)
+		// Broadcast via manager to all subscribers
+		e.manager.broadcast(ctx, e.sessionID, serverMsg)
 	}
 
 	log.Info("event stream ended")
-}
-
-func (e *Entry) broadcast(ctx context.Context, msg any) {
-	data, err := json.Marshal(msg)
-	if err != nil {
-		slog.Error("failed to marshal message", "error", err)
-		return
-	}
-
-	e.mu.Lock()
-	conns := make([]*connWriter, len(e.conns))
-	copy(conns, e.conns)
-	e.mu.Unlock()
-
-	for _, cw := range conns {
-		cw.mu.Lock()
-		err := cw.conn.Write(ctx, websocket.MessageText, data)
-		cw.mu.Unlock()
-
-		if err != nil {
-			slog.Debug("broadcast write failed", "error", err)
-		}
-	}
 }
 
 // ServerMessage represents a message sent to the client.

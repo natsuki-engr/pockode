@@ -29,4 +29,5 @@ type ServerMessage struct {
 	RequestID             string                   `json:"request_id,omitempty"`             // Request ID (for permission_request, ask_user_question)
 	PermissionSuggestions []agent.PermissionUpdate `json:"permission_suggestions,omitempty"` // Permission suggestions (for permission_request)
 	Questions             []agent.AskUserQuestion  `json:"questions,omitempty"`              // Questions to ask (for ask_user_question)
+	ProcessRunning        bool                     `json:"process_running,omitempty"`        // Whether process is running (for attach_response)
 }

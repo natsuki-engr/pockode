@@ -70,13 +70,13 @@ func (s *mockSession) isClosed() bool {
 	return s.closed
 }
 
-func TestManager_GetOrCreate_NewSession(t *testing.T) {
+func TestManager_GetOrCreateProcess_NewSession(t *testing.T) {
 	store, _ := session.NewFileStore(t.TempDir())
 	mock := &mockAgent{}
 	m := NewManager(mock, "/tmp", store, 10*time.Minute)
 	defer m.Shutdown()
 
-	entry, created, err := m.GetOrCreate(context.Background(), "sess-1", false)
+	entry, created, err := m.GetOrCreateProcess(context.Background(), "sess-1", false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -97,14 +97,14 @@ func TestManager_GetOrCreate_NewSession(t *testing.T) {
 	}
 }
 
-func TestManager_GetOrCreate_ExistingSession(t *testing.T) {
+func TestManager_GetOrCreateProcess_ExistingSession(t *testing.T) {
 	store, _ := session.NewFileStore(t.TempDir())
 	mock := &mockAgent{}
 	m := NewManager(mock, "/tmp", store, 10*time.Minute)
 	defer m.Shutdown()
 
-	entry1, _, _ := m.GetOrCreate(context.Background(), "sess-1", false)
-	entry2, created, _ := m.GetOrCreate(context.Background(), "sess-1", false)
+	entry1, _, _ := m.GetOrCreateProcess(context.Background(), "sess-1", false)
+	entry2, created, _ := m.GetOrCreateProcess(context.Background(), "sess-1", false)
 
 	if created {
 		t.Error("expected created=false for existing session")
@@ -124,11 +124,11 @@ func TestManager_IdleReaper(t *testing.T) {
 	m := NewManager(mock, "/tmp", store, idleTimeout)
 	defer m.Shutdown()
 
-	_, _, _ = m.GetOrCreate(context.Background(), "sess-1", false)
+	_, _, _ = m.GetOrCreateProcess(context.Background(), "sess-1", false)
 
 	time.Sleep(idleTimeout * 2)
 
-	if entry := m.Get("sess-1"); entry != nil {
+	if entry := m.GetProcess("sess-1"); entry != nil {
 		t.Error("expected session to be reaped")
 	}
 	if !mock.sessions["sess-1"].isClosed() {
@@ -143,7 +143,7 @@ func TestManager_Touch_PreventsReaping(t *testing.T) {
 	m := NewManager(mock, "/tmp", store, idleTimeout)
 	defer m.Shutdown()
 
-	_, _, _ = m.GetOrCreate(context.Background(), "sess-1", false)
+	_, _, _ = m.GetOrCreateProcess(context.Background(), "sess-1", false)
 
 	// Touch periodically for 2x idleTimeout
 	// Reaper runs multiple times, but session survives due to Touch
@@ -153,7 +153,7 @@ func TestManager_Touch_PreventsReaping(t *testing.T) {
 	}
 	// Total elapsed: 4 * 25ms = 100ms = 2x idleTimeout
 
-	if entry := m.Get("sess-1"); entry == nil {
+	if entry := m.GetProcess("sess-1"); entry == nil {
 		t.Error("expected session to still exist after touch")
 	}
 	if mock.sessions["sess-1"].isClosed() {
@@ -166,8 +166,8 @@ func TestManager_Shutdown_ClosesAllSessions(t *testing.T) {
 	mock := &mockAgent{}
 	m := NewManager(mock, "/tmp", store, 10*time.Minute)
 
-	_, _, _ = m.GetOrCreate(context.Background(), "sess-1", false)
-	_, _, _ = m.GetOrCreate(context.Background(), "sess-2", false)
+	_, _, _ = m.GetOrCreateProcess(context.Background(), "sess-1", false)
+	_, _, _ = m.GetOrCreateProcess(context.Background(), "sess-2", false)
 
 	m.Shutdown()
 
@@ -177,10 +177,10 @@ func TestManager_Shutdown_ClosesAllSessions(t *testing.T) {
 	if !mock.sessions["sess-2"].isClosed() {
 		t.Error("expected sess-2 to be closed")
 	}
-	if m.Get("sess-1") != nil {
+	if m.GetProcess("sess-1") != nil {
 		t.Error("expected sess-1 to be removed from manager")
 	}
-	if m.Get("sess-2") != nil {
+	if m.GetProcess("sess-2") != nil {
 		t.Error("expected sess-2 to be removed from manager")
 	}
 }
@@ -191,8 +191,8 @@ func TestManager_Close_SpecificSession(t *testing.T) {
 	m := NewManager(mock, "/tmp", store, 10*time.Minute)
 	defer m.Shutdown()
 
-	_, _, _ = m.GetOrCreate(context.Background(), "sess-1", false)
-	_, _, _ = m.GetOrCreate(context.Background(), "sess-2", false)
+	_, _, _ = m.GetOrCreateProcess(context.Background(), "sess-1", false)
+	_, _, _ = m.GetOrCreateProcess(context.Background(), "sess-2", false)
 
 	m.Close("sess-1")
 
@@ -202,10 +202,10 @@ func TestManager_Close_SpecificSession(t *testing.T) {
 	if mock.sessions["sess-2"].isClosed() {
 		t.Error("expected sess-2 to still be open")
 	}
-	if m.Get("sess-1") != nil {
+	if m.GetProcess("sess-1") != nil {
 		t.Error("expected sess-1 to be removed from manager")
 	}
-	if m.Get("sess-2") == nil {
+	if m.GetProcess("sess-2") == nil {
 		t.Error("expected sess-2 to still exist in manager")
 	}
 }
@@ -245,47 +245,50 @@ func newTestWebSocket(t *testing.T) (*websocket.Conn, *websocket.Conn) {
 	return serverConn, clientConn
 }
 
-func TestEntry_AttachDetach(t *testing.T) {
+func TestManager_SubscribeUnsubscribe(t *testing.T) {
 	store, _ := session.NewFileStore(t.TempDir())
 	mock := &mockAgent{}
 	m := NewManager(mock, "/tmp", store, 10*time.Minute)
 	defer m.Shutdown()
-
-	entry, _, _ := m.GetOrCreate(context.Background(), "sess-1", false)
 
 	conn1, _ := newTestWebSocket(t)
 	conn2, _ := newTestWebSocket(t)
 
-	entry.Attach(conn1)
-	entry.Attach(conn2)
-	if len(entry.conns) != 2 {
-		t.Errorf("expected 2 connections, got %d", len(entry.conns))
+	// Subscribe to session (no process needed)
+	if !m.Subscribe("sess-1", conn1) {
+		t.Error("expected first subscribe to return true")
+	}
+	if !m.Subscribe("sess-1", conn2) {
+		t.Error("expected second subscribe to return true")
 	}
 
-	entry.Detach(conn1)
-	if len(entry.conns) != 1 {
-		t.Errorf("expected 1 connection after detach, got %d", len(entry.conns))
+	// Duplicate subscribe should return false
+	if m.Subscribe("sess-1", conn1) {
+		t.Error("expected duplicate subscribe to return false")
 	}
 
-	entry.Detach(conn2)
-	if len(entry.conns) != 0 {
-		t.Errorf("expected 0 connections after detach, got %d", len(entry.conns))
-	}
+	m.Unsubscribe("sess-1", conn1)
+	m.Unsubscribe("sess-1", conn2)
+
+	// Unsubscribe non-existent should not panic
+	m.Unsubscribe("sess-1", conn1)
 }
 
-func TestEntry_Broadcast(t *testing.T) {
+func TestManager_Broadcast(t *testing.T) {
 	store, _ := session.NewFileStore(t.TempDir())
 	mock := &mockAgent{}
 	m := NewManager(mock, "/tmp", store, 10*time.Minute)
 	defer m.Shutdown()
 
-	entry, _, _ := m.GetOrCreate(context.Background(), "sess-1", false)
-
 	serverConn1, clientConn1 := newTestWebSocket(t)
 	serverConn2, clientConn2 := newTestWebSocket(t)
 
-	entry.Attach(serverConn1)
-	entry.Attach(serverConn2)
+	// Subscribe first
+	m.Subscribe("sess-1", serverConn1)
+	m.Subscribe("sess-1", serverConn2)
+
+	// Create process
+	_, _, _ = m.GetOrCreateProcess(context.Background(), "sess-1", false)
 
 	// Send event through agent session
 	mock.sessions["sess-1"].events <- agent.AgentEvent{
@@ -319,23 +322,21 @@ func TestEntry_Broadcast(t *testing.T) {
 	}
 }
 
-func TestEntry_Detach_NonExistentConn(t *testing.T) {
+func TestManager_HasProcess(t *testing.T) {
 	store, _ := session.NewFileStore(t.TempDir())
 	mock := &mockAgent{}
 	m := NewManager(mock, "/tmp", store, 10*time.Minute)
 	defer m.Shutdown()
 
-	entry, _, _ := m.GetOrCreate(context.Background(), "sess-1", false)
+	// No process initially
+	if m.HasProcess("sess-1") {
+		t.Error("expected HasProcess to return false before process creation")
+	}
 
-	conn1, _ := newTestWebSocket(t)
-	conn2, _ := newTestWebSocket(t)
+	// Create process
+	_, _, _ = m.GetOrCreateProcess(context.Background(), "sess-1", false)
 
-	entry.Attach(conn1)
-
-	// Detach a connection that was never attached - should not panic
-	entry.Detach(conn2)
-
-	if len(entry.conns) != 1 {
-		t.Errorf("expected 1 connection, got %d", len(entry.conns))
+	if !m.HasProcess("sess-1") {
+		t.Error("expected HasProcess to return true after process creation")
 	}
 }
