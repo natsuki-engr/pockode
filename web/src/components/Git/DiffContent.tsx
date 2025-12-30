@@ -1,7 +1,24 @@
 import { DiffModeEnum, DiffView } from "@git-diff-view/react";
 import { getDiffViewHighlighter } from "@git-diff-view/shiki";
 import "@git-diff-view/react/styles/diff-view-pure.css";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+
+// Subscribe to dark mode changes on document element
+function subscribeToDarkMode(callback: () => void) {
+	const observer = new MutationObserver((mutations) => {
+		for (const mutation of mutations) {
+			if (mutation.attributeName === "class") {
+				callback();
+			}
+		}
+	});
+	observer.observe(document.documentElement, { attributes: true });
+	return () => observer.disconnect();
+}
+
+function getIsDarkMode() {
+	return document.documentElement.classList.contains("dark");
+}
 
 interface Props {
 	diff: string;
@@ -19,6 +36,7 @@ function getHighlighter() {
 }
 
 function DiffContent({ diff, fileName }: Props) {
+	const isDark = useSyncExternalStore(subscribeToDarkMode, getIsDarkMode);
 	const [highlighter, setHighlighter] = useState<Awaited<
 		ReturnType<typeof getDiffViewHighlighter>
 	> | null>(null);
@@ -58,7 +76,7 @@ function DiffContent({ diff, fileName }: Props) {
 				}}
 				registerHighlighter={highlighter}
 				diffViewMode={DiffModeEnum.Unified}
-				diffViewTheme="dark"
+				diffViewTheme={isDark ? "dark" : "light"}
 				diffViewHighlight
 				diffViewWrap
 			/>

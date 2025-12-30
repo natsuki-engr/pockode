@@ -536,8 +536,8 @@ button,
 	line-height: 1.5;
 }
 
-/* Override diff-view colors to match our theme */
-.diff-tailwindcss-wrapper[data-theme="dark"] .diff-style-root {
+/* Override diff-view colors to match our theme - Common styles */
+.diff-tailwindcss-wrapper .diff-style-root {
 	--diff-border--: var(--th-border);
 	--diff-plain-content--: var(--th-bg-primary);
 	--diff-plain-lineNumber--: var(--th-bg-secondary);
@@ -549,38 +549,24 @@ button,
 	--diff-hunk-content--: var(--th-bg-tertiary);
 	--diff-hunk-lineNumber--: var(--th-bg-tertiary);
 	--diff-hunk-content-color--: var(--th-text-muted);
+}
 
-	/* Green for additions - subtle */
-	--diff-add-content--: color-mix(
-		in srgb,
-		var(--th-success) 15%,
-		var(--th-bg-primary)
-	);
-	--diff-add-lineNumber--: color-mix(
-		in srgb,
-		var(--th-success) 25%,
-		var(--th-bg-secondary)
-	);
-	--diff-add-content-highlight--: color-mix(
-		in srgb,
-		var(--th-success) 30%,
-		var(--th-bg-primary)
-	);
+/* Light mode - subtle colors for light backgrounds */
+.diff-tailwindcss-wrapper[data-theme="light"] .diff-style-root {
+	--diff-add-content--: color-mix(in srgb, var(--th-success) 12%, var(--th-bg-primary));
+	--diff-add-lineNumber--: color-mix(in srgb, var(--th-success) 18%, var(--th-bg-secondary));
+	--diff-add-content-highlight--: color-mix(in srgb, var(--th-success) 25%, var(--th-bg-primary));
+	--diff-del-content--: color-mix(in srgb, var(--th-error) 12%, var(--th-bg-primary));
+	--diff-del-lineNumber--: color-mix(in srgb, var(--th-error) 18%, var(--th-bg-secondary));
+	--diff-del-content-highlight--: color-mix(in srgb, var(--th-error) 25%, var(--th-bg-primary));
+}
 
-	/* Red for deletions - subtle */
-	--diff-del-content--: color-mix(
-		in srgb,
-		var(--th-error) 15%,
-		var(--th-bg-primary)
-	);
-	--diff-del-lineNumber--: color-mix(
-		in srgb,
-		var(--th-error) 25%,
-		var(--th-bg-secondary)
-	);
-	--diff-del-content-highlight--: color-mix(
-		in srgb,
-		var(--th-error) 30%,
-		var(--th-bg-primary)
-	);
+/* Dark mode - slightly stronger colors for dark backgrounds */
+.diff-tailwindcss-wrapper[data-theme="dark"] .diff-style-root {
+	--diff-add-content--: color-mix(in srgb, var(--th-success) 15%, var(--th-bg-primary));
+	--diff-add-lineNumber--: color-mix(in srgb, var(--th-success) 20%, var(--th-bg-secondary));
+	--diff-add-content-highlight--: color-mix(in srgb, var(--th-success) 30%, var(--th-bg-primary));
+	--diff-del-content--: color-mix(in srgb, var(--th-error) 15%, var(--th-bg-primary));
+	--diff-del-lineNumber--: color-mix(in srgb, var(--th-error) 20%, var(--th-bg-secondary));
+	--diff-del-content-highlight--: color-mix(in srgb, var(--th-error) 30%, var(--th-bg-primary));
 }
