@@ -183,6 +183,8 @@ export function applyEventToParts(
 					status: "pending",
 				},
 			];
+		case "system":
+			return [...parts, { type: "system", content: event.content }];
 		default:
 			return parts;
 	}
@@ -205,13 +207,6 @@ export function applyServerEvent(
 	messages: Message[],
 	event: NormalizedEvent,
 ): Message[] {
-	// System messages are always standalone
-	if (event.type === "system") {
-		const systemMessage = createAssistantMessage("complete");
-		systemMessage.parts = [{ type: "system", content: event.content }];
-		return [...messages, systemMessage];
-	}
-
 	// Permission response updates existing permission_request across all messages
 	if (event.type === "permission_response") {
 		const newStatus = event.choice === "deny" ? "denied" : "allowed";

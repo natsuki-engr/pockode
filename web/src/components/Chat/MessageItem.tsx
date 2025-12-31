@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type {
 	AskUserQuestionRequest,
 	ContentPart,
@@ -90,8 +90,19 @@ interface SystemItemProps {
 	content: string;
 }
 
+interface SystemContent {
+	subtype: string;
+	status?: string;
+}
+
 function SystemItem({ content }: SystemItemProps) {
 	const [expanded, setExpanded] = useState(false);
+	const label = useMemo(() => {
+		const parsed: SystemContent = JSON.parse(content);
+		return parsed.status
+			? `${parsed.subtype}: ${parsed.status}`
+			: parsed.subtype;
+	}, [content]);
 
 	return (
 		<div className="rounded bg-th-bg-secondary text-xs">
@@ -105,7 +116,7 @@ function SystemItem({ content }: SystemItemProps) {
 				>
 					▶
 				</span>
-				<span className="italic text-th-text-muted">system</span>
+				<span className="italic text-th-text-muted">{label}</span>
 			</button>
 			{expanded && (
 				<pre className="max-h-48 overflow-auto border-t border-th-border p-2 text-th-text-muted">

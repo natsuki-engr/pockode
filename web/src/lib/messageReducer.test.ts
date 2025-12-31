@@ -315,15 +315,16 @@ describe("messageReducer", () => {
 			expect(assistant.error).toBe("Failed");
 		});
 
-		it("creates standalone message for system event", () => {
-			const messages = applyServerEvent([], {
+		it("appends system message as content part", () => {
+			const initial = [createStreamingMessage()];
+			const messages = applyServerEvent(initial, {
 				type: "system",
-				content: "Welcome",
+				content: "Compacting...",
 			});
-			expect(messages).toHaveLength(1);
-			expect(messages[0].status).toBe("complete");
 			const assistant = messages[0] as AssistantMessage;
-			expect(assistant.parts).toEqual([{ type: "system", content: "Welcome" }]);
+			expect(assistant.parts).toEqual([
+				{ type: "system", content: "Compacting..." },
+			]);
 		});
 
 		it("updates permission_request status on permission_response allow", () => {
@@ -657,7 +658,7 @@ describe("messageReducer", () => {
 			expect(assistant2.parts).toEqual([{ type: "text", content: "Complete" }]);
 		});
 
-		it("replays system message as standalone", () => {
+		it("includes system messages as content parts", () => {
 			const history = [
 				{ type: "system", content: "Welcome!" },
 				{ type: "message", content: "Hello" },
@@ -666,9 +667,11 @@ describe("messageReducer", () => {
 			];
 			const messages = replayHistory(history);
 			expect(messages).toHaveLength(3);
-			const system = messages[0] as AssistantMessage;
-			expect(system.parts).toEqual([{ type: "system", content: "Welcome!" }]);
-			expect(system.status).toBe("complete");
+			// First is an assistant message with the system part (orphan event creates message)
+			const systemMsg = messages[0] as AssistantMessage;
+			expect(systemMsg.parts).toEqual([
+				{ type: "system", content: "Welcome!" },
+			]);
 			expect(messages[1].role).toBe("user");
 			expect(messages[2].role).toBe("assistant");
 		});

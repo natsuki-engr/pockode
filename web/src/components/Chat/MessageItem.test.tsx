@@ -237,4 +237,41 @@ describe("MessageItem", () => {
 			screen.queryByRole("button", { name: "Allow" }),
 		).not.toBeInTheDocument();
 	});
+
+	it("renders system message with subtype and status from JSON content", () => {
+		const message: Message = {
+			id: "10",
+			role: "assistant",
+			parts: [
+				{
+					type: "system",
+					content:
+						'{"type":"system","subtype":"compacting","status":"started"}',
+				},
+			],
+			status: "complete",
+			createdAt: new Date(),
+		};
+
+		render(<MessageItem message={message} />);
+		expect(screen.getByText("compacting: started")).toBeInTheDocument();
+	});
+
+	it("renders system message with subtype only when no status", () => {
+		const message: Message = {
+			id: "11",
+			role: "assistant",
+			parts: [
+				{
+					type: "system",
+					content: '{"type":"system","subtype":"init"}',
+				},
+			],
+			status: "complete",
+			createdAt: new Date(),
+		};
+
+		render(<MessageItem message={message} />);
+		expect(screen.getByText("init")).toBeInTheDocument();
+	});
 });
