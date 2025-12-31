@@ -1,5 +1,5 @@
 import { ArrowDown } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useStickToBottom } from "../../hooks/useStickToBottom";
 import type {
 	AskUserQuestionRequest,
@@ -30,85 +30,48 @@ function MessageList({
 	onQuestionRespond,
 }: Props) {
 	const containerRef = useRef<HTMLDivElement>(null);
-	const [isScrolledUp, setIsScrolledUp] = useState(false);
-	const prevScrollHeightRef = useRef(0);
 
-	// When switching sessions, reset scroll state so the messages effect will auto-scroll to bottom.
-	// Without this, if user scrolled up in Session A (isScrolledUp=true) and switches to Session B,
-	// the state persists and prevents auto-scrolling to the latest messages.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: sessionId triggers reset on session switch
+	const { isScrolledUp, scrollToBottom, resetToBottom } = useStickToBottom(
+		containerRef,
+		true, // Always enabled since containerRef is always attached
+	);
+
+	// Reset to bottom when switching sessions
+	// biome-ignore lint/correctness/useExhaustiveDependencies: sessionId change should reset scroll
 	useEffect(() => {
-		setIsScrolledUp(false);
+		resetToBottom();
 	}, [sessionId]);
-
-	// Detect user scroll: if scrolling away from bottom, mark as scrolled up
-	const handleScroll = () => {
-		const container = containerRef.current;
-		if (!container) return;
-
-		const { scrollTop, scrollHeight, clientHeight } = container;
-		const threshold = 50;
-		const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-
-		// When content height changes (e.g., markdown renders, code expands),
-		// avoid incorrectly marking as "scrolled up" due to height growth.
-		// But if we're at the bottom, ensure isScrolledUp stays false.
-		if (scrollHeight !== prevScrollHeightRef.current) {
-			prevScrollHeightRef.current = scrollHeight;
-			if (distanceFromBottom <= threshold) {
-				setIsScrolledUp(false);
-			}
-			return;
-		}
-
-		setIsScrolledUp(distanceFromBottom > threshold);
-	};
-
-	const scrollToBottom = useCallback(() => {
-		const container = containerRef.current;
-		if (container) {
-			container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
-		}
-	}, []);
-
-	// Auto scroll to bottom only if user hasn't scrolled up
-	// biome-ignore lint/correctness/useExhaustiveDependencies: messages triggers scroll on any update
-	useEffect(() => {
-		if (!isScrolledUp) {
-			scrollToBottom();
-		}
-	}, [messages]);
-
-	// Keep scrolled to bottom when content height grows (e.g., code block rendering)
-	useStickToBottom(containerRef, messages.length > 0 && !isScrolledUp);
 
 	return (
 		<div className="relative min-h-0 flex-1">
-			{messages.length === 0 ? (
-				<div className="flex h-full items-center justify-center text-th-text-muted">
-					<p>Start a conversation...</p>
-				</div>
-			) : (
-				<div
-					ref={containerRef}
-					onScroll={handleScroll}
-					className="flex h-full flex-col overflow-y-auto p-3 sm:p-4"
-				>
-					<div className="flex-1" />
-					<div className="space-y-3 sm:space-y-4">
-						{messages.map((message, index) => (
-							<MessageItem
-								key={message.id}
-								message={message}
-								isLast={index === messages.length - 1}
-								isProcessRunning={isProcessRunning}
-								onPermissionRespond={onPermissionRespond}
-								onQuestionRespond={onQuestionRespond}
-							/>
-						))}
+			<div
+				ref={containerRef}
+				className="flex h-full flex-col overflow-y-auto overscroll-contain p-3 sm:p-4"
+			>
+				{messages.length === 0 ? (
+					<div className="flex flex-1 items-center justify-center text-th-text-muted">
+						<p>Start a conversation...</p>
 					</div>
-				</div>
-			)}
+				) : (
+					<>
+						{/* Spacer to push messages to bottom when content is short */}
+						<div className="flex-1" aria-hidden="true" />
+						{/* Messages container */}
+						<div className="space-y-3 sm:space-y-4">
+							{messages.map((message, index) => (
+								<MessageItem
+									key={message.id}
+									message={message}
+									isLast={index === messages.length - 1}
+									isProcessRunning={isProcessRunning}
+									onPermissionRespond={onPermissionRespond}
+									onQuestionRespond={onQuestionRespond}
+								/>
+							))}
+						</div>
+					</>
+				)}
+			</div>
 			{isScrolledUp && (
 				<button
 					type="button"
