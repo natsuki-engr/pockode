@@ -1,4 +1,10 @@
-import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
+import {
+	type RefObject,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 
 interface UseStickToBottomResult {
 	/** Whether user has scrolled away from bottom */
