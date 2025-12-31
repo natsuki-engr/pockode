@@ -1,5 +1,6 @@
 import { ChevronRight } from "lucide-react";
 import type { FileStatus } from "../../types/git";
+import { splitPath } from "../../utils/path";
 
 interface Props {
 	file: FileStatus;
@@ -17,6 +18,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 
 function DiffFileItem({ file, onSelect, isActive }: Props) {
 	const statusInfo = STATUS_LABELS[file.status] || STATUS_LABELS["?"];
+	const { fileName, directory } = splitPath(file.path);
 
 	return (
 		<button
@@ -30,12 +32,19 @@ function DiffFileItem({ file, onSelect, isActive }: Props) {
 			aria-label={`View ${statusInfo.label.toLowerCase()} file: ${file.path}`}
 		>
 			<span
-				className={`shrink-0 text-xs font-medium ${statusInfo.color}`}
+				className={`shrink-0 self-start mt-0.5 text-xs font-medium ${statusInfo.color}`}
 				title={statusInfo.label}
 			>
 				{file.status}
 			</span>
-			<span className="min-w-0 flex-1 truncate text-sm">{file.path}</span>
+			<div className="min-w-0 flex-1">
+				<div className="truncate text-sm font-medium text-th-text-primary">
+					{fileName}
+				</div>
+				{directory && (
+					<div className="truncate text-xs text-th-text-muted">{directory}</div>
+				)}
+			</div>
 			<ChevronRight
 				className="h-4 w-4 shrink-0 text-th-text-muted"
 				aria-hidden="true"

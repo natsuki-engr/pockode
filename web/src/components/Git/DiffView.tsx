@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useGitDiff } from "../../hooks/useGitDiff";
 import { useGitStatus } from "../../hooks/useGitStatus";
 import type { DiffSearchParams } from "../../router";
+import { splitPath } from "../../utils/path";
 import { Spinner } from "../ui";
 import DiffContent from "./DiffContent";
 
@@ -11,6 +12,25 @@ interface Props {
 	path: string;
 	staged: boolean;
 	onBack: () => void;
+}
+
+function PathDisplay({ path, staged }: { path: string; staged: boolean }) {
+	const { fileName, directory } = splitPath(path);
+	return (
+		<div className="min-w-0 flex-1">
+			<div className="flex items-center gap-2">
+				<span className="truncate text-sm font-medium text-th-text-primary">
+					{fileName}
+				</span>
+				<span className="shrink-0 text-xs text-th-text-muted">
+					({staged ? "Staged" : "Unstaged"})
+				</span>
+			</div>
+			{directory && (
+				<div className="truncate text-xs text-th-text-muted">{directory}</div>
+			)}
+		</div>
+	);
 }
 
 // DiffView replaces the message area, showing file path header and diff content
@@ -87,14 +107,7 @@ function DiffView({ path, staged, onBack }: Props) {
 					</button>
 				</div>
 
-				<div className="min-w-0 flex-1">
-					<span className="truncate text-sm font-medium text-th-text-primary">
-						{path}
-					</span>
-					<span className="ml-2 text-xs text-th-text-muted">
-						({staged ? "Staged" : "Unstaged"})
-					</span>
-				</div>
+				<PathDisplay path={path} staged={staged} />
 			</div>
 
 			<div className="flex-1 overflow-auto">
