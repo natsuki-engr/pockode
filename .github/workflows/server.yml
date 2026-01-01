@@ -27,7 +27,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
-          go-version: stable
+          go-version-file: server/.go-version
           cache-dependency-path: server/go.sum
 
       - name: Check formatting
