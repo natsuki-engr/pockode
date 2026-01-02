@@ -19,9 +19,9 @@ export const authActions = {
 		useAuthStore.setState({ token });
 	},
 	logout: () => {
-		wsActions.disconnect();
 		localStorage.removeItem(TOKEN_KEY);
 		useAuthStore.setState({ token: null });
+		wsActions.disconnect();
 	},
 	getToken: () => useAuthStore.getState().token ?? "",
 };
