@@ -25,3 +25,6 @@ tmp/
 
 # Data directory
 .pockode/
+
+# Build output
+dist/

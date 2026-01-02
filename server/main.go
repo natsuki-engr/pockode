@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"flag"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -25,6 +26,8 @@ import (
 	"github.com/pockode/server/session"
 	"github.com/pockode/server/ws"
 )
+
+var version = "dev"
 
 //go:embed static/*
 var staticFS embed.FS
@@ -98,7 +101,13 @@ func main() {
 	tokenFlag := flag.String("auth-token", "", "authentication token (required)")
 	devModeFlag := flag.Bool("dev", false, "enable development mode")
 	relayFlag := flag.Bool("relay", false, "enable relay for remote access")
+	versionFlag := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Printf("pockode %s\n", version)
+		os.Exit(0)
+	}
 
 	logger.Init()
 
@@ -242,6 +251,10 @@ func main() {
 		close(shutdownDone)
 	}()
 
+	fmt.Printf("Pockode %s\n", version)
+	fmt.Printf("Server running at http://localhost:%s\n", port)
+	fmt.Println("Press Ctrl+C to stop")
+	fmt.Println()
 	slog.Info("server starting", "port", port, "workDir", workDir, "dataDir", dataDir, "devMode", devMode, "idleTimeout", idleTimeout)
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		slog.Error("server error", "error", err)
