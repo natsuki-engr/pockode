@@ -20,13 +20,12 @@ export async function getGitStatus(): Promise<GitStatus> {
 export async function getGitDiff(
 	path: string,
 	staged: boolean,
-): Promise<string> {
+): Promise<GitDiffResponse> {
 	const type = staged ? "staged" : "unstaged";
 	const encodedPath = encodePathSegments(path);
 	const response = await fetchWithAuth(`/api/git/${type}/${encodedPath}`);
 	try {
-		const data: GitDiffResponse = await response.json();
-		return data.diff;
+		return await response.json();
 	} catch (e) {
 		throw new Error(
 			`Failed to parse git diff: ${e instanceof Error ? e.message : String(e)}`,

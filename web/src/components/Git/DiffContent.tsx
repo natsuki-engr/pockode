@@ -11,9 +11,11 @@ import {
 interface Props {
 	diff: string;
 	fileName: string;
+	oldContent: string;
+	newContent: string;
 }
 
-function DiffContent({ diff, fileName }: Props) {
+function DiffContent({ diff, fileName, oldContent, newContent }: Props) {
 	const isDark = useSyncExternalStore(subscribeToDarkMode, getIsDarkMode);
 	const [highlighter, setHighlighter] = useState<Awaited<
 		ReturnType<typeof getDiffViewHighlighter>
@@ -43,14 +45,12 @@ function DiffContent({ diff, fileName }: Props) {
 		return <div className="p-4 text-center text-th-text-muted">Loading...</div>;
 	}
 
-	// TODO: Pass oldFile.content and newFile.content for full syntax highlighting
-	// Currently only diff output is available; library needs full file content for syntax context
 	return (
 		<div className="diff-view-wrapper diff-tailwindcss-wrapper">
 			<DiffView
 				data={{
-					oldFile: { fileName },
-					newFile: { fileName },
+					oldFile: { fileName, content: oldContent },
+					newFile: { fileName, content: newContent },
 					hunks: [diff],
 				}}
 				registerHighlighter={highlighter}

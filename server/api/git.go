@@ -70,7 +70,7 @@ func (h *GitHandler) handleDiff(w http.ResponseWriter, r *http.Request, staged b
 	}
 	path = cleanPath
 
-	diff, err := git.Diff(h.workDir, path, staged)
+	result, err := git.DiffWithContent(h.workDir, path, staged)
 	if err != nil {
 		log.Error("failed to get git diff", "error", err, "path", path, "staged", staged)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -78,7 +78,7 @@ func (h *GitHandler) handleDiff(w http.ResponseWriter, r *http.Request, staged b
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]string{"diff": diff}); err != nil {
+	if err := json.NewEncoder(w).Encode(result); err != nil {
 		log.Error("failed to encode git diff response", "error", err)
 	}
 }

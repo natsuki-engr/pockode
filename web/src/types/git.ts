@@ -10,4 +10,6 @@ export interface GitStatus {
 
 export interface GitDiffResponse {
 	diff: string;
+	old_content: string;
+	new_content: string;
 }

@@ -117,7 +117,12 @@ function DiffView({ path, staged, onBack }: Props) {
 						</div>
 					</div>
 				) : diff !== undefined ? (
-					<DiffContent diff={diff} fileName={path} />
+					<DiffContent
+						diff={diff.diff}
+						fileName={path}
+						oldContent={diff.old_content}
+						newContent={diff.new_content}
+					/>
 				) : null}
 			</div>
 		</div>

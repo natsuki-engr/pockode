@@ -324,6 +324,74 @@ func showUntrackedFile(dir, path string) (string, error) {
 	return result.String(), nil
 }
 
+// DiffResult contains diff output and file contents for syntax highlighting.
+type DiffResult struct {
+	Diff       string `json:"diff"`
+	OldContent string `json:"old_content"`
+	NewContent string `json:"new_content"`
+}
+
+// DiffWithContent returns the unified diff along with old and new file contents.
+// For staged changes: old = HEAD, new = index
+// For unstaged changes: old = index, new = worktree
+func DiffWithContent(dir, path string, staged bool) (*DiffResult, error) {
+	diff, err := Diff(dir, path, staged)
+	if err != nil {
+		return nil, err
+	}
+
+	var oldContent, newContent string
+
+	if staged {
+		oldContent, _ = getFileFromRef(dir, "HEAD", path)
+		newContent, _ = getFileFromIndex(dir, path)
+	} else {
+		oldContent, _ = getFileFromIndex(dir, path)
+		newContent, _ = getFileFromWorktree(dir, path)
+	}
+
+	return &DiffResult{
+		Diff:       diff,
+		OldContent: oldContent,
+		NewContent: newContent,
+	}, nil
+}
+
+// getFileFromRef gets file content from a git ref (e.g., HEAD).
+// Returns (content, found) where found indicates if the file exists in that ref.
+func getFileFromRef(dir, ref, path string) (string, bool) {
+	cmd := exec.Command("git", "show", ref+":"+path)
+	cmd.Dir = dir
+	output, err := cmd.Output()
+	if err != nil {
+		return "", false
+	}
+	return string(output), true
+}
+
+// getFileFromIndex gets file content from git index (staging area).
+// Returns (content, found) where found indicates if the file exists in the index.
+func getFileFromIndex(dir, path string) (string, bool) {
+	cmd := exec.Command("git", "show", ":"+path)
+	cmd.Dir = dir
+	output, err := cmd.Output()
+	if err != nil {
+		return "", false
+	}
+	return string(output), true
+}
+
+// getFileFromWorktree reads file content from working directory.
+// Returns (content, found) where found indicates if the file exists.
+func getFileFromWorktree(dir, path string) (string, bool) {
+	fullPath := filepath.Join(dir, path)
+	content, err := os.ReadFile(fullPath)
+	if err != nil {
+		return "", false
+	}
+	return string(content), true
+}
+
 // extractHost extracts the host from a git URL (HTTPS or SSH format).
 func extractHost(repoURL string) (string, error) {
 	if strings.HasPrefix(repoURL, "git@") {
