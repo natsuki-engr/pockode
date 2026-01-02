@@ -385,7 +385,7 @@ function MessageItem({
 	if (message.role === "user") {
 		return (
 			<div className="flex justify-end">
-				<div className="max-w-[80%] min-w-0 overflow-hidden rounded-lg bg-th-user-bubble p-2.5 text-th-user-bubble-text sm:p-3">
+				<div className="max-w-full min-w-0 overflow-hidden rounded-lg bg-th-user-bubble p-2.5 text-th-user-bubble-text sm:max-w-[80%] sm:p-3">
 					<p className="whitespace-pre-wrap">{message.content}</p>
 				</div>
 			</div>
@@ -395,7 +395,7 @@ function MessageItem({
 	// Assistant message
 	return (
 		<div className="flex justify-start">
-			<div className="max-w-[80%] min-w-0 overflow-hidden rounded-lg bg-th-ai-bubble p-2.5 text-th-ai-bubble-text sm:p-3">
+			<div className="max-w-full min-w-0 overflow-hidden rounded-lg bg-th-ai-bubble p-2.5 text-th-ai-bubble-text sm:max-w-[80%] sm:p-3">
 				{message.parts.length > 0 && (
 					<div className="space-y-2">
 						{message.parts.map((part, index) => {
