@@ -3,51 +3,62 @@
 [![Server](https://github.com/sijiaoh/pockode/actions/workflows/server.yml/badge.svg)](https://github.com/sijiaoh/pockode/actions/workflows/server.yml)
 [![Web](https://github.com/sijiaoh/pockode/actions/workflows/web.yml/badge.svg)](https://github.com/sijiaoh/pockode/actions/workflows/web.yml)
 
-Mobile coding with Claude Code, without the pain.
+**Code from anywhere with Claude Code.**
 
-## Vision
+Ever wanted to fix a quick bug from your phone? Or push that feature while waiting for coffee? Pockode makes it happen — a mobile-first interface for Claude Code that lets you code from literally anywhere.
 
-Mobile programming has always been painful: small screens, awkward keyboards, tedious operations. Pockode aims to change this entirely by providing a new mobile development experience.
+<!-- TODO: Add demo gif here -->
 
-## Core Philosophy
+## Why Pockode?
 
-**AI-first editing, manual editing as backup**
+Mobile coding has always sucked. Tiny screens, awkward keyboards, clunky editors... Traditional tools try to squeeze desktop IDEs into your phone. That's the wrong approach.
 
-Traditional solutions try to squeeze desktop editors into phone screens—this is the wrong approach. Pockode uses conversational interaction:
+Pockode flips the script: **talk to AI, not to your keyboard.**
 
-- Describe what you want in natural language
-- AI understands your intent and makes the changes
-- You just review and confirm
+- 💬 Describe what you want in natural language
+- 🤖 Claude Code does the heavy lifting
+- ✅ You review and ship
+
+No more fat-finger typos. No more hunting for that semicolon. Just conversations that turn into code.
 
 ## Features
 
-### Conversational Development
-Complete most development tasks through a chat interface with AI:
-- Write and modify code
-- Refactor and optimize
-- Debug and troubleshoot
-- Explain and learn code
+🗣️ **Conversational Coding** — Write, refactor, debug, and learn through chat. Ask Claude to "add error handling to this function" or "explain what this regex does."
 
-### Git Operations
-No need to memorize commands—use natural language for version control:
-- "Commit these changes"
-- "Create a new branch feature/login"
-- "Merge to main"
-- "Show recent commits"
+🔗 **Remote Access via Relay** — Connect to your home machine from anywhere. Your code stays on your computer, you control it from your pocket.
 
-### Manual Editing
-When you do need to edit manually:
-- Syntax highlighting
-- Quick action panel
+📦 **Git Made Simple** — "Commit these changes", "create branch feature/auth", "show me recent commits" — version control without memorizing commands.
+
+## Quick Start
+
+```bash
+# Download and install
+sudo curl -fsSL https://github.com/sijiaoh/pockode/releases/latest/download/pockode-$(uname -s)-$(uname -m) -o /usr/local/bin/pockode
+sudo chmod +x /usr/local/bin/pockode
+
+# Run it
+pockode
+```
+
+That's it. Open the URL on your phone and start coding.
+
+## Roadmap
+
+- [ ] File browser
+- [ ] Manual editing
+- [ ] Voice input
+- [ ] Multi-model support
 
 ## Status
 
-Under active development.
+Under active development. Things move fast, things might break. But that's part of the fun, right?
 
 ## Feedback
 
-Issues and suggestions are welcome. Code contributions are not accepted during early development due to frequent refactoring.
+Got ideas? Found a bug? [Open an issue](https://github.com/sijiaoh/pockode/issues) — we'd love to hear from you!
+
+> Code contributions aren't accepted yet (too much refactoring happening), but your feedback shapes the product.
 
 ## License
 
-[O'Saasy License](LICENSE.md) — Free to use, modify, and distribute, but may not be used to build a service that directly competes with Pockode.
+[O'Saasy License](LICENSE.md) — Free for personal use.
