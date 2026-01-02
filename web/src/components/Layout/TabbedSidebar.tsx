@@ -77,14 +77,14 @@ function TabbedSidebar({
 								key={tab.id}
 								type="button"
 								onClick={() => handleTabClick(tab.id)}
-								className={`flex flex-1 items-center justify-center gap-1.5 px-4 py-3 text-sm font-medium transition-colors ${
+								className={`flex flex-1 items-center justify-center py-3 transition-colors ${
 									activeTab === tab.id
 										? "border-b-2 border-th-accent text-th-accent"
 										: "text-th-text-muted hover:text-th-text-primary"
 								}`}
+								aria-label={tab.label}
 							>
-								<Icon className="h-4 w-4" aria-hidden="true" />
-								{tab.label}
+								<Icon className="h-5 w-5" />
 							</button>
 						);
 					})}
