@@ -229,6 +229,13 @@ func main() {
 		}
 
 		slog.Info("remote access enabled", "url", remoteURL)
+
+		fmt.Println()
+		fmt.Println("Remote Access URL:")
+		fmt.Printf("  %s\n", remoteURL)
+		fmt.Println()
+		relay.PrintQRCode(remoteURL)
+		fmt.Println()
 	}
 
 	// Graceful shutdown
