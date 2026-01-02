@@ -5,7 +5,8 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Configuration
 export AUTH_TOKEN="${AUTH_TOKEN:-dev-token}"
-export WORK_DIR="${WORK_DIR:-$PROJECT_DIR}"
+# Resolve to absolute path (relative paths break when subprocesses cd)
+export WORK_DIR="$(cd "${WORK_DIR:-$PROJECT_DIR}" && pwd)"
 export SERVER_PORT="${SERVER_PORT:-8080}"
 export WEB_PORT="${WEB_PORT:-5173}"
 export DEV_MODE="${DEV_MODE:-true}"
