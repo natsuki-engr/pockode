@@ -3,9 +3,8 @@ package api
 import (
 	"encoding/json"
 	"net/http"
-	"path/filepath"
-	"strings"
 
+	"github.com/pockode/server/contents"
 	"github.com/pockode/server/git"
 	"github.com/pockode/server/logger"
 )
@@ -50,25 +49,16 @@ func (h *GitHandler) HandleUnstagedDiff(w http.ResponseWriter, r *http.Request) 
 func (h *GitHandler) handleDiff(w http.ResponseWriter, r *http.Request, staged bool) {
 	log := logger.NewRequestLogger()
 
-	// Extract path from URL (after /staged/ or /unstaged/)
 	path := r.PathValue("path")
 	if path == "" {
 		http.Error(w, "Path required", http.StatusBadRequest)
 		return
 	}
 
-	// Security: validate path is within workDir
-	cleanPath := filepath.Clean(path)
-	if strings.HasPrefix(cleanPath, "..") || filepath.IsAbs(cleanPath) {
+	if err := contents.ValidatePath(h.workDir, path); err != nil {
 		http.Error(w, "Invalid path", http.StatusBadRequest)
 		return
 	}
-	fullPath := filepath.Join(h.workDir, cleanPath)
-	if !strings.HasPrefix(fullPath, h.workDir) {
-		http.Error(w, "Invalid path", http.StatusBadRequest)
-		return
-	}
-	path = cleanPath
 
 	result, err := git.DiffWithContent(h.workDir, path, staged)
 	if err != nil {

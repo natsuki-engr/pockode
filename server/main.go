@@ -53,6 +53,10 @@ func newHandler(token string, manager *process.Manager, devMode bool, sessionSto
 	gitHandler := api.NewGitHandler(workDir)
 	gitHandler.Register(mux)
 
+	// Contents REST API (file browser)
+	contentsHandler := api.NewContentsHandler(workDir)
+	contentsHandler.Register(mux)
+
 	// WebSocket endpoint (handles its own auth via query param)
 	wsHandler := ws.NewHandler(token, manager, devMode, sessionStore)
 	mux.Handle("GET /ws", wsHandler)

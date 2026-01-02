@@ -1,0 +1,157 @@
+// Package contents provides file system browsing and reading.
+package contents
+
+import (
+	"encoding/base64"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+)
+
+var (
+	ErrNotFound    = errors.New("not found")
+	ErrInvalidPath = errors.New("invalid path")
+)
+
+// ValidatePath checks if path is safe and within workDir.
+// Returns ErrInvalidPath for path traversal attempts or absolute paths.
+func ValidatePath(workDir, path string) error {
+	if path == "" {
+		return nil
+	}
+
+	cleanPath := filepath.Clean(path)
+	if strings.HasPrefix(cleanPath, "..") || filepath.IsAbs(cleanPath) {
+		return fmt.Errorf("%w: %s", ErrInvalidPath, path)
+	}
+
+	fullPath := filepath.Join(workDir, cleanPath)
+	if !strings.HasPrefix(fullPath, workDir+string(filepath.Separator)) {
+		return fmt.Errorf("%w: %s", ErrInvalidPath, path)
+	}
+
+	return nil
+}
+
+type EntryType string
+
+const (
+	TypeFile EntryType = "file"
+	TypeDir  EntryType = "dir"
+)
+
+type Encoding string
+
+const (
+	EncodingText   Encoding = "text"
+	EncodingBase64 Encoding = "base64"
+)
+
+type Entry struct {
+	Name string    `json:"name"`
+	Type EntryType `json:"type"`
+	Path string    `json:"path"`
+}
+
+type FileContent struct {
+	Name     string    `json:"name"`
+	Type     EntryType `json:"type"`
+	Path     string    `json:"path"`
+	Content  string    `json:"content"`
+	Encoding Encoding  `json:"encoding"`
+}
+
+// GetContents returns directory entries ([]Entry) or file content (*FileContent).
+// Returns ErrNotFound if path doesn't exist, ErrInvalidPath for path traversal attempts.
+func GetContents(workDir, path string) (any, error) {
+	if err := ValidatePath(workDir, path); err != nil {
+		return nil, err
+	}
+
+	fullPath := filepath.Join(workDir, path)
+	info, err := os.Stat(fullPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("%w: %s", ErrNotFound, path)
+		}
+		return nil, fmt.Errorf("failed to stat path: %w", err)
+	}
+
+	if info.IsDir() {
+		return listDir(path, fullPath)
+	}
+	return readFile(path, fullPath, info)
+}
+
+func listDir(relPath, fullPath string) ([]Entry, error) {
+	dirEntries, err := os.ReadDir(fullPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read directory: %w", err)
+	}
+
+	entries := make([]Entry, 0, len(dirEntries))
+	for _, de := range dirEntries {
+		entryPath := de.Name()
+		if relPath != "" {
+			entryPath = relPath + "/" + de.Name()
+		}
+		entry := Entry{
+			Name: de.Name(),
+			Path: entryPath,
+		}
+
+		if de.IsDir() {
+			entry.Type = TypeDir
+		} else {
+			entry.Type = TypeFile
+		}
+
+		entries = append(entries, entry)
+	}
+
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].Type != entries[j].Type {
+			return entries[i].Type == TypeDir
+		}
+		return entries[i].Name < entries[j].Name
+	})
+
+	return entries, nil
+}
+
+func readFile(relPath, fullPath string, info os.FileInfo) (*FileContent, error) {
+	content, err := os.ReadFile(fullPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	encoding := EncodingText
+	contentStr := string(content)
+
+	if isBinary(content) {
+		encoding = EncodingBase64
+		contentStr = base64.StdEncoding.EncodeToString(content)
+	}
+
+	return &FileContent{
+		Name:     info.Name(),
+		Type:     TypeFile,
+		Path:     relPath,
+		Content:  contentStr,
+		Encoding: encoding,
+	}, nil
+}
+
+// isBinary detects binary content by checking for null bytes in the first 512 bytes.
+func isBinary(content []byte) bool {
+	checkLen := min(512, len(content))
+	for i := 0; i < checkLen; i++ {
+		if content[i] == 0 {
+			return true
+		}
+	}
+	return false
+}
