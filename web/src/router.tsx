@@ -6,11 +6,11 @@ import {
 import { z } from "zod";
 import AppShell from "./components/AppShell";
 
-const diffSearchSchema = z.object({
+const overlaySearchSchema = z.object({
 	session: z.string().optional(),
 });
 
-export type DiffSearchParams = z.infer<typeof diffSearchSchema>;
+export type OverlaySearchParams = z.infer<typeof overlaySearchSchema>;
 
 const rootRoute = createRootRoute({
 	component: AppShell,
@@ -24,13 +24,19 @@ const sessionRoute = createRoute({
 const stagedDiffRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/staged/$",
-	validateSearch: (search) => diffSearchSchema.parse(search),
+	validateSearch: (search) => overlaySearchSchema.parse(search),
 });
 
 const unstagedDiffRoute = createRoute({
 	getParentRoute: () => rootRoute,
 	path: "/unstaged/$",
-	validateSearch: (search) => diffSearchSchema.parse(search),
+	validateSearch: (search) => overlaySearchSchema.parse(search),
+});
+
+const fileViewRoute = createRoute({
+	getParentRoute: () => rootRoute,
+	path: "/files/$",
+	validateSearch: (search) => overlaySearchSchema.parse(search),
 });
 
 const indexRoute = createRoute({
@@ -43,6 +49,7 @@ const routeTree = rootRoute.addChildren([
 	sessionRoute,
 	stagedDiffRoute,
 	unstagedDiffRoute,
+	fileViewRoute,
 ]);
 
 export const router = createRouter({

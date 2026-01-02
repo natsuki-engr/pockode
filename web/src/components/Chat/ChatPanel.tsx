@@ -8,6 +8,7 @@ import type {
 	PermissionRequest,
 } from "../../types/message";
 import type { OverlayState } from "../../types/overlay";
+import { FileView } from "../Files";
 import { DiffView } from "../Git";
 import MainContainer from "../Layout/MainContainer";
 import InputBar from "./InputBar";
@@ -149,6 +150,10 @@ function ChatPanel({
 						staged={overlay.staged}
 						onBack={onCloseOverlay ?? (() => {})}
 					/>
+				);
+			case "file":
+				return (
+					<FileView path={overlay.path} onBack={onCloseOverlay ?? (() => {})} />
 				);
 		}
 	};

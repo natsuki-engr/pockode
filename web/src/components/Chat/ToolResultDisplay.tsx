@@ -5,16 +5,13 @@ import { createPatch } from "diff";
 import { Check, Circle, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
-	CodeHighlighter,
 	getDiffHighlighter,
 	getIsDarkMode,
-	getLanguageFromPath,
 	subscribeToDarkMode,
 } from "../../lib/shikiUtils";
 import { parseReadResult } from "../../lib/toolResultParser";
-import { MarkdownContent } from "./MarkdownContent";
+import { FileContentDisplay } from "../ui";
 
-// Singleton AnsiUp instance
 const ansiUp = new AnsiUp();
 ansiUp.use_classes = true;
 
@@ -49,11 +46,6 @@ interface TodoWriteInput {
 	}>;
 }
 
-function isMarkdownFile(filePath: string): boolean {
-	const ext = filePath.split(".").pop()?.toLowerCase();
-	return ext === "md" || ext === "mdx";
-}
-
 function ReadResultDisplay({
 	result,
 	filePath,
@@ -65,16 +57,10 @@ function ReadResultDisplay({
 	const code = useMemo(() => lines.map((l) => l.content).join("\n"), [lines]);
 
 	if (lines.length === 0) {
-		// Fallback to plain text if parsing fails
 		return <pre className="text-th-text-muted">{result}</pre>;
 	}
 
-	if (filePath && isMarkdownFile(filePath)) {
-		return <MarkdownContent content={code} />;
-	}
-
-	const language = filePath ? getLanguageFromPath(filePath) : undefined;
-	return <CodeHighlighter language={language}>{code}</CodeHighlighter>;
+	return <FileContentDisplay content={code} filePath={filePath} />;
 }
 
 function EditResultDisplay({ input }: { input: EditInput }) {
@@ -158,11 +144,9 @@ function MultiEditResultDisplay({ input }: { input: MultiEditInput }) {
 }
 
 function WriteResultDisplay({ input }: { input: WriteInput }) {
-	if (isMarkdownFile(input.file_path)) {
-		return <MarkdownContent content={input.content} />;
-	}
-	const language = getLanguageFromPath(input.file_path);
-	return <CodeHighlighter language={language}>{input.content}</CodeHighlighter>;
+	return (
+		<FileContentDisplay content={input.content} filePath={input.file_path} />
+	);
 }
 
 function TodoWriteResultDisplay({ input }: { input: TodoWriteInput }) {

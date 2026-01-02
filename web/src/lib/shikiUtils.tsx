@@ -3,7 +3,6 @@ import { useSyncExternalStore } from "react";
 import ShikiHighlighter from "react-shiki";
 import { bundledLanguagesInfo } from "shiki";
 
-// Build extension map from Shiki's bundled languages
 const EXT_MAP: Record<string, string> = {};
 for (const lang of bundledLanguagesInfo) {
 	EXT_MAP[lang.id] = lang.id;
@@ -14,14 +13,9 @@ for (const lang of bundledLanguagesInfo) {
 	}
 }
 
-/**
- * Infer language from file path for syntax highlighting.
- * Uses Shiki's bundled language definitions.
- */
 export function getLanguageFromPath(path: string): string | undefined {
 	const fileName = path.split("/").pop() ?? "";
 
-	// Handle special filenames
 	if (fileName.toLowerCase() === "dockerfile") return "docker";
 	if (fileName.startsWith(".env")) return "shellscript";
 
@@ -29,12 +23,13 @@ export function getLanguageFromPath(path: string): string | undefined {
 	return ext ? EXT_MAP[ext] : undefined;
 }
 
-// Cache the highlighter instance globally
+export function isMarkdownFile(path: string): boolean {
+	const ext = path.split(".").pop()?.toLowerCase();
+	return ext === "md" || ext === "mdx";
+}
+
 let highlighterPromise: ReturnType<typeof getDiffViewHighlighter> | null = null;
 
-/**
- * Get cached diff view highlighter instance.
- */
 export function getDiffHighlighter() {
 	if (!highlighterPromise) {
 		highlighterPromise = getDiffViewHighlighter();
@@ -42,7 +37,6 @@ export function getDiffHighlighter() {
 	return highlighterPromise;
 }
 
-// Dark mode detection via MutationObserver
 export function subscribeToDarkMode(callback: () => void) {
 	const observer = new MutationObserver((mutations) => {
 		for (const mutation of mutations) {
@@ -63,7 +57,6 @@ export function getShikiTheme() {
 	return getIsDarkMode() ? "github-dark" : "github-light";
 }
 
-/** Code highlighter component with automatic dark/light theme switching */
 export function CodeHighlighter({
 	children,
 	language,

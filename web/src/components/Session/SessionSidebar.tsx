@@ -1,10 +1,12 @@
-import { GitCompare, MessageSquare } from "lucide-react";
+import { FolderOpen, GitCompare, MessageSquare } from "lucide-react";
+import { FilesTab } from "../Files";
 import { DiffTab } from "../Git";
 import { TabbedSidebar, type TabConfig } from "../Layout";
 import SessionsTab from "./SessionsTab";
 
 const TABS: TabConfig[] = [
 	{ id: "sessions", label: "Sessions", icon: MessageSquare },
+	{ id: "files", label: "Files", icon: FolderOpen },
 	{ id: "diff", label: "Diff", icon: GitCompare },
 ];
 
@@ -16,7 +18,9 @@ interface Props {
 	onCreateSession: () => void;
 	onDeleteSession: (id: string) => void;
 	onSelectDiffFile: (path: string, staged: boolean) => void;
-	activeFile: { path: string; staged: boolean } | null;
+	activeDiffFile: { path: string; staged: boolean } | null;
+	onSelectFile: (path: string) => void;
+	activeFilePath: string | null;
 	isDesktop: boolean;
 }
 
@@ -28,7 +32,9 @@ function SessionSidebar({
 	onCreateSession,
 	onDeleteSession,
 	onSelectDiffFile,
-	activeFile,
+	activeDiffFile,
+	onSelectFile,
+	activeFilePath,
 	isDesktop,
 }: Props) {
 	const handleSelectSession = (id: string) => {
@@ -36,8 +42,13 @@ function SessionSidebar({
 		if (!isDesktop) onClose();
 	};
 
-	const handleSelectFile = (path: string, staged: boolean) => {
+	const handleSelectDiffFile = (path: string, staged: boolean) => {
 		onSelectDiffFile(path, staged);
+		if (!isDesktop) onClose();
+	};
+
+	const handleSelectFile = (path: string) => {
+		onSelectFile(path);
 		if (!isDesktop) onClose();
 	};
 
@@ -56,7 +67,14 @@ function SessionSidebar({
 				onCreateSession={onCreateSession}
 				onDeleteSession={onDeleteSession}
 			/>
-			<DiffTab onSelectFile={handleSelectFile} activeFile={activeFile} />
+			<FilesTab
+				onSelectFile={handleSelectFile}
+				activeFilePath={activeFilePath}
+			/>
+			<DiffTab
+				onSelectFile={handleSelectDiffFile}
+				activeFile={activeDiffFile}
+			/>
 		</TabbedSidebar>
 	);
 }

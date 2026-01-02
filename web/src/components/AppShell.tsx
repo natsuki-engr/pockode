@@ -7,7 +7,7 @@ import {
 	selectIsAuthenticated,
 	useAuthStore,
 } from "../lib/authStore";
-import type { DiffSearchParams } from "../router";
+import type { OverlaySearchParams } from "../router";
 import type { OverlayState } from "../types/overlay";
 import TokenInput from "./Auth/TokenInput";
 import { ChatPanel } from "./Chat";
@@ -34,6 +34,10 @@ function useRouteState(): RouteInfo {
 		from: "/unstaged/$",
 		shouldThrow: false,
 	});
+	const fileMatch = useMatch({
+		from: "/files/$",
+		shouldThrow: false,
+	});
 
 	if (sessionMatch) {
 		return {
@@ -43,7 +47,7 @@ function useRouteState(): RouteInfo {
 	}
 
 	if (stagedMatch) {
-		const search = stagedMatch.search as DiffSearchParams;
+		const search = stagedMatch.search as OverlaySearchParams;
 		return {
 			overlay: {
 				type: "diff",
@@ -55,12 +59,23 @@ function useRouteState(): RouteInfo {
 	}
 
 	if (unstagedMatch) {
-		const search = unstagedMatch.search as DiffSearchParams;
+		const search = unstagedMatch.search as OverlaySearchParams;
 		return {
 			overlay: {
 				type: "diff",
 				path: unstagedMatch.params._splat ?? "",
 				staged: false,
+			},
+			sessionId: search.session ?? null,
+		};
+	}
+
+	if (fileMatch) {
+		const search = fileMatch.search as OverlaySearchParams;
+		return {
+			overlay: {
+				type: "file",
+				path: fileMatch.params._splat ?? "",
 			},
 			sessionId: search.session ?? null,
 		};
@@ -81,10 +96,12 @@ function AppShell() {
 
 	const { overlay, sessionId: routeSessionId } = useRouteState();
 
-	const activeFile =
+	const activeDiffFile =
 		overlay?.type === "diff"
 			? { path: overlay.path, staged: overlay.staged }
 			: null;
+
+	const activeFilePath = overlay?.type === "file" ? overlay.path : null;
 
 	const {
 		sessions,
@@ -177,6 +194,17 @@ function AppShell() {
 		[navigate, currentSessionId],
 	);
 
+	const handleSelectFile = useCallback(
+		(path: string) => {
+			navigate({
+				to: "/files/$",
+				params: { _splat: path },
+				search: currentSessionId ? { session: currentSessionId } : {},
+			});
+		},
+		[navigate, currentSessionId],
+	);
+
 	const handleCloseOverlay = useCallback(() => {
 		if (currentSessionId) {
 			navigate({
@@ -210,7 +238,9 @@ function AppShell() {
 				onCreateSession={handleCreateSession}
 				onDeleteSession={handleDeleteSession}
 				onSelectDiffFile={handleSelectDiffFile}
-				activeFile={activeFile}
+				activeDiffFile={activeDiffFile}
+				onSelectFile={handleSelectFile}
+				activeFilePath={activeFilePath}
 				isDesktop={isDesktop}
 			/>
 			<ChatPanel
