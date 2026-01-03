@@ -1,4 +1,5 @@
 import { FolderOpen, GitCompare, MessageSquare } from "lucide-react";
+import { unreadActions } from "../../lib/unreadStore";
 import { FilesTab } from "../Files";
 import { DiffTab } from "../Git";
 import { TabbedSidebar, type TabConfig } from "../Layout";
@@ -38,6 +39,7 @@ function SessionSidebar({
 	isDesktop,
 }: Props) {
 	const handleSelectSession = (id: string) => {
+		unreadActions.markRead(id);
 		onSelectSession(id);
 		if (!isDesktop) onClose();
 	};
