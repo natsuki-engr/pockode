@@ -18,17 +18,19 @@ function SessionsTab({
 	const { sessions, isLoading, refresh } = useSession();
 	const { isActive } = useSidebarRefresh("sessions", refresh);
 
-	if (!isActive) return null;
-
 	return (
-		<SessionSidebarContent
-			sessions={sessions}
-			currentSessionId={currentSessionId}
-			onSelectSession={onSelectSession}
-			onCreateSession={onCreateSession}
-			onDeleteSession={onDeleteSession}
-			isLoading={isLoading}
-		/>
+		<div
+			className={isActive ? "flex flex-1 flex-col overflow-hidden" : "hidden"}
+		>
+			<SessionSidebarContent
+				sessions={sessions}
+				currentSessionId={currentSessionId}
+				onSelectSession={onSelectSession}
+				onCreateSession={onCreateSession}
+				onDeleteSession={onDeleteSession}
+				isLoading={isLoading}
+			/>
+		</div>
 	);
 }
 

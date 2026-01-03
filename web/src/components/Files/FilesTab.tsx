@@ -17,10 +17,12 @@ function FilesTab({ onSelectFile, activeFilePath }: Props) {
 
 	const { isActive } = useSidebarRefresh("files", handleRefresh);
 
-	if (!isActive) return null;
-
 	return (
-		<FileTree onSelectFile={onSelectFile} activeFilePath={activeFilePath} />
+		<div
+			className={isActive ? "flex flex-1 flex-col overflow-hidden" : "hidden"}
+		>
+			<FileTree onSelectFile={onSelectFile} activeFilePath={activeFilePath} />
+		</div>
 	);
 }
 
