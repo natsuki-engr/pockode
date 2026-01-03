@@ -7,6 +7,7 @@ export interface TabConfig {
 	id: string;
 	label: string;
 	icon: LucideIcon;
+	showBadge?: boolean;
 }
 
 interface Props {
@@ -77,7 +78,7 @@ function TabbedSidebar({
 								key={tab.id}
 								type="button"
 								onClick={() => handleTabClick(tab.id)}
-								className={`flex flex-1 items-center justify-center py-3 transition-colors ${
+								className={`relative flex flex-1 items-center justify-center py-3 transition-colors ${
 									activeTab === tab.id
 										? "border-b-2 border-th-accent text-th-accent"
 										: "text-th-text-muted hover:text-th-text-primary"
@@ -85,6 +86,9 @@ function TabbedSidebar({
 								aria-label={tab.label}
 							>
 								<Icon className="h-5 w-5" />
+								{tab.showBadge && (
+									<span className="absolute top-2 right-1/4 h-2 w-2 rounded-full bg-th-accent" />
+								)}
 							</button>
 						);
 					})}

@@ -31,3 +31,7 @@ export const unreadActions = {
 export function useHasUnread(sessionId: string): boolean {
 	return useUnreadStore((state) => state.unreadSessionIds.has(sessionId));
 }
+
+export function useHasAnyUnread(): boolean {
+	return useUnreadStore((state) => state.unreadSessionIds.size > 0);
+}

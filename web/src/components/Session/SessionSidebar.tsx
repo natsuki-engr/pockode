@@ -1,15 +1,10 @@
 import { FolderOpen, GitCompare, MessageSquare } from "lucide-react";
-import { unreadActions } from "../../lib/unreadStore";
+import { useMemo } from "react";
+import { unreadActions, useHasAnyUnread } from "../../lib/unreadStore";
 import { FilesTab } from "../Files";
 import { DiffTab } from "../Git";
 import { TabbedSidebar, type TabConfig } from "../Layout";
 import SessionsTab from "./SessionsTab";
-
-const TABS: TabConfig[] = [
-	{ id: "sessions", label: "Sessions", icon: MessageSquare },
-	{ id: "files", label: "Files", icon: FolderOpen },
-	{ id: "diff", label: "Diff", icon: GitCompare },
-];
 
 interface Props {
 	isOpen: boolean;
@@ -38,6 +33,17 @@ function SessionSidebar({
 	activeFilePath,
 	isDesktop,
 }: Props) {
+	const hasAnyUnread = useHasAnyUnread();
+
+	const tabs: TabConfig[] = useMemo(
+		() => [
+			{ id: "sessions", label: "Sessions", icon: MessageSquare, showBadge: hasAnyUnread },
+			{ id: "files", label: "Files", icon: FolderOpen },
+			{ id: "diff", label: "Diff", icon: GitCompare },
+		],
+		[hasAnyUnread],
+	);
+
 	const handleSelectSession = (id: string) => {
 		unreadActions.markRead(id);
 		onSelectSession(id);
@@ -59,7 +65,7 @@ function SessionSidebar({
 			isOpen={isOpen}
 			onClose={onClose}
 			title="Pockode"
-			tabs={TABS}
+			tabs={tabs}
 			defaultTab="sessions"
 			isDesktop={isDesktop}
 		>
