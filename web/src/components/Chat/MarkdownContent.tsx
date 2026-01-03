@@ -4,6 +4,7 @@ import Markdown from "react-markdown";
 import { isInlineCode } from "react-shiki";
 import remarkGfm from "remark-gfm";
 import { CodeHighlighter } from "../../lib/shikiUtils";
+import { MermaidBlock } from "./MermaidBlock";
 
 type CodeProps = ComponentPropsWithoutRef<"code"> & {
 	node?: Element;
@@ -21,6 +22,10 @@ function CodeBlock({ className, children, node }: CodeProps) {
 				{children}
 			</code>
 		);
+	}
+
+	if (language === "mermaid") {
+		return <MermaidBlock code={code} />;
 	}
 
 	return <CodeHighlighter language={language}>{code}</CodeHighlighter>;
