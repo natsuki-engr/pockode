@@ -2,13 +2,23 @@ import { create } from "zustand";
 
 interface UnreadState {
 	unreadSessionIds: Set<string>;
+	viewingSessionId: string | null;
 }
 
 export const useUnreadStore = create<UnreadState>(() => ({
 	unreadSessionIds: new Set(),
+	viewingSessionId: null,
 }));
 
 export const unreadActions = {
+	setViewingSession: (sessionId: string | null) => {
+		useUnreadStore.setState({ viewingSessionId: sessionId });
+	},
+
+	isViewing: (sessionId: string) => {
+		return useUnreadStore.getState().viewingSessionId === sessionId;
+	},
+
 	markUnread: (sessionId: string) => {
 		useUnreadStore.setState((state) => {
 			if (state.unreadSessionIds.has(sessionId)) return state;

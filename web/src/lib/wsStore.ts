@@ -29,7 +29,6 @@ let ws: WebSocket | null = null;
 let reconnectAttempts = 0;
 let reconnectTimeout: number | undefined;
 let authFailed = false;
-let attachedSessionId: string | null = null;
 const messageListeners = new Set<MessageListener>();
 
 const MAX_RECONNECT_ATTEMPTS = 5;
@@ -79,11 +78,11 @@ export const useWSStore = create<WSState>((set, get) => ({
 						return;
 					}
 
-					// Mark session as unread if message is from a different session
+					// Mark session as unread if not currently viewing it
 					const messageSessionId = data.session_id;
 					if (
 						messageSessionId &&
-						messageSessionId !== attachedSessionId &&
+						!unreadActions.isViewing(messageSessionId) &&
 						data.type !== "attach_response"
 					) {
 						unreadActions.markUnread(messageSessionId);
@@ -136,10 +135,6 @@ export const useWSStore = create<WSState>((set, get) => ({
 
 		send: (message) => {
 			if (ws?.readyState === WebSocket.OPEN) {
-				// Track attached session for unread detection
-				if (message.type === "attach") {
-					attachedSessionId = message.session_id;
-				}
 				ws.send(JSON.stringify(message));
 				return true;
 			}
@@ -171,7 +166,6 @@ export function resetWSStore() {
 	}
 	reconnectAttempts = 0;
 	authFailed = false;
-	attachedSessionId = null;
 	messageListeners.clear();
 	useWSStore.setState({ status: "disconnected" });
 }

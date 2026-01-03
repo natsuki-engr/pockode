@@ -3,6 +3,7 @@ import {
 	type ConnectionStatus,
 	useChatMessages,
 } from "../../hooks/useChatMessages";
+import { unreadActions } from "../../lib/unreadStore";
 import type {
 	AskUserQuestionRequest,
 	PermissionRequest,
@@ -54,6 +55,17 @@ function ChatPanel({
 	} = useChatMessages({
 		sessionId,
 	});
+
+	// Mark session as viewing when chat is visible (not showing overlay)
+	useEffect(() => {
+		if (!overlay) {
+			unreadActions.setViewingSession(sessionId);
+			unreadActions.markRead(sessionId);
+		} else {
+			unreadActions.setViewingSession(null);
+		}
+		return () => unreadActions.setViewingSession(null);
+	}, [sessionId, overlay]);
 
 	const handleSend = useCallback(
 		(content: string) => {
