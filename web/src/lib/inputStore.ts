@@ -1,12 +1,20 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 interface InputState {
 	inputs: Record<string, string>;
 }
 
-export const useInputStore = create<InputState>(() => ({
-	inputs: {},
-}));
+export const useInputStore = create<InputState>()(
+	persist(
+		() => ({
+			inputs: {},
+		}),
+		{
+			name: "input_drafts",
+		},
+	),
+);
 
 export const inputActions = {
 	set: (sessionId: string, content: string) =>
