@@ -13,6 +13,12 @@ button,
 	cursor: pointer;
 }
 
+/* Prevent accidental page reload from pull-to-refresh gesture on mobile */
+html,
+body {
+	overscroll-behavior-y: contain;
+}
+
 /* CJK text wrapping: use phrase-based breaking where supported (Chrome 119+),
    fall back to anywhere for older browsers to prevent overflow */
 :root {
