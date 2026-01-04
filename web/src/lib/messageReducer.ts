@@ -224,7 +224,12 @@ export function applyServerEvent(
 			"denied",
 		);
 		if (updated !== messages) return updated;
-		updated = updateQuestionStatus(messages, event.requestId, "cancelled", null);
+		updated = updateQuestionStatus(
+			messages,
+			event.requestId,
+			"cancelled",
+			null,
+		);
 		return updated;
 	}
 

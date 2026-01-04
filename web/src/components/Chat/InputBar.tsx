@@ -1,4 +1,5 @@
 import { type KeyboardEvent, useCallback, useEffect, useRef } from "react";
+import TextareaAutosize from "react-textarea-autosize";
 import { useInputHistory } from "../../hooks/useInputHistory";
 import { inputActions, useInputStore } from "../../lib/inputStore";
 import { isMobile } from "../../utils/breakpoints";
@@ -22,15 +23,6 @@ function InputBar({
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const { saveToHistory, getPrevious, getNext, resetNavigation } =
 		useInputHistory();
-
-	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally re-run when input changes to adjust height
-	useEffect(() => {
-		const textarea = textareaRef.current;
-		if (textarea) {
-			textarea.style.height = "auto";
-			textarea.style.height = `${textarea.scrollHeight}px`;
-		}
-	}, [input]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally re-run when sessionId changes to focus input
 	useEffect(() => {
@@ -124,7 +116,7 @@ function InputBar({
 	return (
 		<div className="border-t border-th-border p-3 sm:p-4">
 			<div className="flex items-end gap-2">
-				<textarea
+				<TextareaAutosize
 					ref={textareaRef}
 					value={input}
 					onChange={(e) => inputActions.set(sessionId, e.target.value)}
@@ -134,7 +126,6 @@ function InputBar({
 							? "Type a message..."
 							: "Type a message... (Shift+Enter for newline)"
 					}
-					rows={1}
 					className="min-h-[44px] max-h-[40vh] flex-1 resize-none overflow-y-auto rounded-lg bg-th-bg-secondary px-3 py-2 text-th-text-primary placeholder:text-th-text-muted focus:outline-none focus:ring-2 focus:ring-th-border-focus sm:max-h-[200px] sm:px-4"
 				/>
 				{isStreaming ? (
