@@ -24,6 +24,7 @@ type Store interface {
 
 	// History persistence
 	GetHistory(ctx context.Context, sessionID string) ([]json.RawMessage, error)
+	// AppendToHistory appends a JSON-serializable record (ClientMessage or ServerMessage) to history.
 	AppendToHistory(ctx context.Context, sessionID string, record any) error
 }
 

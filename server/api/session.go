@@ -32,9 +32,7 @@ func (h *SessionHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
-		"sessions": sessions,
-	})
+	json.NewEncoder(w).Encode(SessionListResponse{Sessions: sessions})
 }
 
 // HandleCreate handles POST /api/sessions
@@ -95,9 +93,7 @@ func (h *SessionHandler) HandleGetHistory(w http.ResponseWriter, r *http.Request
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{
-		"history": history,
-	})
+	json.NewEncoder(w).Encode(HistoryResponse{History: history})
 }
 
 // HandleUpdate handles PATCH /api/sessions/{id}

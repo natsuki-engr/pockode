@@ -94,31 +94,31 @@ func (h *Handler) handleConnection(ctx context.Context, conn *websocket.Conn) {
 		log.Debug("parsed message", "type", msg.Type)
 
 		switch msg.Type {
-		case "attach":
+		case ClientMessageAttach:
 			if err := h.handleAttach(ctx, log, conn, msg.SessionID, state); err != nil {
 				log.Error("attach error", "error", err)
 				h.sendError(ctx, conn, err.Error())
 			}
 
-		case "message":
+		case ClientMessageMessage:
 			if err := h.handleMessage(ctx, log, msg); err != nil {
 				log.Error("handleMessage error", "error", err)
 				h.sendError(ctx, conn, err.Error())
 			}
 
-		case "interrupt":
+		case ClientMessageInterrupt:
 			if err := h.handleInterrupt(ctx, log, msg); err != nil {
 				log.Error("interrupt error", "error", err)
 				h.sendError(ctx, conn, err.Error())
 			}
 
-		case "permission_response":
+		case ClientMessagePermissionResponse:
 			if err := h.handlePermissionResponse(ctx, log, msg); err != nil {
 				log.Error("permission response error", "error", err)
 				h.sendError(ctx, conn, err.Error())
 			}
 
-		case "question_response":
+		case ClientMessageQuestionResponse:
 			if err := h.handleQuestionResponse(ctx, log, msg); err != nil {
 				log.Error("question response error", "error", err)
 				h.sendError(ctx, conn, err.Error())
@@ -149,7 +149,7 @@ func (h *Handler) waitForAuth(ctx context.Context, conn *websocket.Conn, log *sl
 		return false
 	}
 
-	if msg.Type != "auth" {
+	if msg.Type != ClientMessageAuth {
 		log.Warn("first message is not auth", "type", msg.Type)
 		h.sendAuthResponse(ctx, conn, false, "First message must be auth")
 		return false
@@ -171,8 +171,8 @@ func (h *Handler) waitForAuth(ctx context.Context, conn *websocket.Conn, log *sl
 }
 
 func (h *Handler) sendAuthResponse(ctx context.Context, conn *websocket.Conn, success bool, errMsg string) error {
-	data, err := json.Marshal(ServerMessage{
-		Type:    "auth_response",
+	data, err := json.Marshal(agent.ServerMessage{
+		Type:    ServerMessageAuthResponse,
 		Success: success,
 		Error:   errMsg,
 	})
@@ -326,8 +326,8 @@ func parsePermissionChoice(choice string) agent.PermissionChoice {
 }
 
 func (h *Handler) sendAttachResponse(ctx context.Context, conn *websocket.Conn, sessionID string, processRunning bool) error {
-	data, err := json.Marshal(ServerMessage{
-		Type:           "attach_response",
+	data, err := json.Marshal(agent.ServerMessage{
+		Type:           ServerMessageAttachResponse,
 		SessionID:      sessionID,
 		ProcessRunning: processRunning,
 	})
@@ -338,8 +338,8 @@ func (h *Handler) sendAttachResponse(ctx context.Context, conn *websocket.Conn, 
 }
 
 func (h *Handler) sendError(ctx context.Context, conn *websocket.Conn, errMsg string) error {
-	data, err := json.Marshal(ServerMessage{
-		Type:  "error",
+	data, err := json.Marshal(agent.ServerMessage{
+		Type:  agent.EventTypeError,
 		Error: errMsg,
 	})
 	if err != nil {

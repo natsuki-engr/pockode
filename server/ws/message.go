@@ -6,9 +6,21 @@ import (
 	"github.com/pockode/server/agent"
 )
 
+// ClientMessageType represents the type of client-to-server messages.
+type ClientMessageType string
+
+const (
+	ClientMessageAuth               ClientMessageType = "auth"
+	ClientMessageAttach             ClientMessageType = "attach"
+	ClientMessageMessage            ClientMessageType = "message"
+	ClientMessageInterrupt          ClientMessageType = "interrupt"
+	ClientMessagePermissionResponse ClientMessageType = "permission_response"
+	ClientMessageQuestionResponse   ClientMessageType = "question_response"
+)
+
 // ClientMessage represents a message sent by the client.
 type ClientMessage struct {
-	Type      string            `json:"type"`                 // "auth", "attach", "message", "interrupt", "permission_response", or "question_response"
+	Type      ClientMessageType `json:"type"`
 	Token     string            `json:"token,omitempty"`      // Auth token (for "auth" type)
 	Content   string            `json:"content"`              // User input (for "message" type)
 	SessionID string            `json:"session_id,omitempty"` // Session identifier
@@ -22,19 +34,9 @@ type ClientMessage struct {
 	PermissionSuggestions []agent.PermissionUpdate `json:"permission_suggestions,omitempty"`
 }
 
-// ServerMessage represents a message sent by the server.
-type ServerMessage struct {
-	Type                  string                   `json:"type"`                             // Event type
-	SessionID             string                   `json:"session_id,omitempty"`             // Session identifier
-	Content               string                   `json:"content,omitempty"`                // Text content
-	ToolName              string                   `json:"tool_name,omitempty"`              // Tool name (for tool_call, permission_request)
-	ToolInput             json.RawMessage          `json:"tool_input,omitempty"`             // Tool input (for tool_call, permission_request)
-	ToolUseID             string                   `json:"tool_use_id,omitempty"`            // Tool use ID (for tool_call, tool_result, permission_request)
-	ToolResult            string                   `json:"tool_result,omitempty"`            // Tool result content
-	Error                 string                   `json:"error,omitempty"`                  // Error message
-	RequestID             string                   `json:"request_id,omitempty"`             // Request ID (for permission_request, ask_user_question)
-	PermissionSuggestions []agent.PermissionUpdate `json:"permission_suggestions,omitempty"` // Permission suggestions (for permission_request)
-	Questions             []agent.AskUserQuestion  `json:"questions,omitempty"`              // Questions to ask (for ask_user_question)
-	ProcessRunning        bool                     `json:"process_running"`                  // Whether process is running (for attach_response)
-	Success               bool                     `json:"success,omitempty"`                // Auth result (for auth_response)
-}
+// ServerMessageType for ws-specific message types (auth, attach responses).
+// For agent events, use agent.EventType directly (e.g., agent.EventTypeError).
+const (
+	ServerMessageAuthResponse   agent.EventType = "auth_response"
+	ServerMessageAttachResponse agent.EventType = "attach_response"
+)

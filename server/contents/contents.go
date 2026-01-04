@@ -64,26 +64,47 @@ type FileContent struct {
 	Encoding Encoding  `json:"encoding"`
 }
 
-// GetContents returns directory entries ([]Entry) or file content (*FileContent).
+// ContentsResult holds the result of GetContents.
+// Either Entries (for directories) or File (for files) is set, never both.
+type ContentsResult struct {
+	Entries []Entry      // Directory listing (nil if file)
+	File    *FileContent // File content (nil if directory)
+}
+
+// IsDir returns true if the result is a directory listing.
+func (r ContentsResult) IsDir() bool {
+	return r.File == nil
+}
+
+// GetContents returns directory entries or file content.
 // Returns ErrNotFound if path doesn't exist, ErrInvalidPath for path traversal attempts.
-func GetContents(workDir, path string) (any, error) {
+func GetContents(workDir, path string) (ContentsResult, error) {
 	if err := ValidatePath(workDir, path); err != nil {
-		return nil, err
+		return ContentsResult{}, err
 	}
 
 	fullPath := filepath.Join(workDir, path)
 	info, err := os.Stat(fullPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("%w: %s", ErrNotFound, path)
+			return ContentsResult{}, fmt.Errorf("%w: %s", ErrNotFound, path)
 		}
-		return nil, fmt.Errorf("failed to stat path: %w", err)
+		return ContentsResult{}, fmt.Errorf("failed to stat path: %w", err)
 	}
 
 	if info.IsDir() {
-		return listDir(path, fullPath)
+		entries, err := listDir(path, fullPath)
+		if err != nil {
+			return ContentsResult{}, err
+		}
+		return ContentsResult{Entries: entries}, nil
 	}
-	return readFile(path, fullPath, info)
+
+	file, err := readFile(path, fullPath, info)
+	if err != nil {
+		return ContentsResult{}, err
+	}
+	return ContentsResult{File: file}, nil
 }
 
 func listDir(relPath, fullPath string) ([]Entry, error) {

@@ -164,7 +164,7 @@ func (m *Manager) Unsubscribe(sessionID string, conn *websocket.Conn) {
 }
 
 // broadcast sends a message to all subscribers of a session.
-func (m *Manager) broadcast(ctx context.Context, sessionID string, msg any) {
+func (m *Manager) broadcast(ctx context.Context, sessionID string, msg agent.ServerMessage) {
 	data, err := json.Marshal(msg)
 	if err != nil {
 		slog.Error("failed to marshal message", "error", err)
@@ -278,7 +278,7 @@ func (p *Process) streamEvents(ctx context.Context) {
 	for event := range p.agentSession.Events() {
 		log.Debug("streaming event", "type", event.Type)
 
-		serverMsg := toServerMessage(p.sessionID, event)
+		serverMsg := agent.NewServerMessage(p.sessionID, event)
 
 		// History persists even when no WebSocket is connected
 		if err := p.sessionStore.AppendToHistory(ctx, p.sessionID, serverMsg); err != nil {
@@ -290,35 +290,4 @@ func (p *Process) streamEvents(ctx context.Context) {
 	}
 
 	log.Info("event stream ended")
-}
-
-// ServerMessage represents a message sent to the client.
-type ServerMessage struct {
-	Type                  string                   `json:"type"`
-	SessionID             string                   `json:"session_id"`
-	Content               string                   `json:"content,omitempty"`
-	ToolName              string                   `json:"tool_name,omitempty"`
-	ToolInput             json.RawMessage          `json:"tool_input,omitempty"`
-	ToolUseID             string                   `json:"tool_use_id,omitempty"`
-	ToolResult            string                   `json:"tool_result,omitempty"`
-	Error                 string                   `json:"error,omitempty"`
-	RequestID             string                   `json:"request_id,omitempty"`
-	PermissionSuggestions []agent.PermissionUpdate `json:"permission_suggestions,omitempty"`
-	Questions             []agent.AskUserQuestion  `json:"questions,omitempty"`
-}
-
-func toServerMessage(sessionID string, event agent.AgentEvent) ServerMessage {
-	return ServerMessage{
-		Type:                  string(event.Type),
-		SessionID:             sessionID,
-		Content:               event.Content,
-		ToolName:              event.ToolName,
-		ToolInput:             event.ToolInput,
-		ToolUseID:             event.ToolUseID,
-		ToolResult:            event.ToolResult,
-		Error:                 event.Error,
-		RequestID:             event.RequestID,
-		PermissionSuggestions: event.PermissionSuggestions,
-		Questions:             event.Questions,
-	}
 }

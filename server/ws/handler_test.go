@@ -94,20 +94,20 @@ func (e *testEnv) sendMessage(sessionID, content string) {
 	e.send(ClientMessage{Type: "message", SessionID: sessionID, Content: content})
 }
 
-func (e *testEnv) read() ServerMessage {
+func (e *testEnv) read() agent.ServerMessage {
 	_, data, err := e.conn.Read(e.ctx)
 	if err != nil {
 		e.t.Fatalf("failed to read: %v", err)
 	}
-	var msg ServerMessage
+	var msg agent.ServerMessage
 	if err := json.Unmarshal(data, &msg); err != nil {
 		e.t.Fatalf("failed to unmarshal: %v", err)
 	}
 	return msg
 }
 
-func (e *testEnv) readN(n int) []ServerMessage {
-	msgs := make([]ServerMessage, n)
+func (e *testEnv) readN(n int) []agent.ServerMessage {
+	msgs := make([]agent.ServerMessage, n)
 	for i := 0; i < n; i++ {
 		msgs[i] = e.read()
 	}
@@ -151,7 +151,7 @@ func TestHandler_Auth_InvalidToken(t *testing.T) {
 		t.Fatalf("failed to read: %v", err)
 	}
 
-	var resp ServerMessage
+	var resp agent.ServerMessage
 	if err := json.Unmarshal(respData, &resp); err != nil {
 		t.Fatalf("failed to unmarshal: %v", err)
 	}
@@ -196,7 +196,7 @@ func TestHandler_Auth_FirstMessageMustBeAuth(t *testing.T) {
 		t.Fatalf("failed to read: %v", err)
 	}
 
-	var resp ServerMessage
+	var resp agent.ServerMessage
 	if err := json.Unmarshal(respData, &resp); err != nil {
 		t.Fatalf("failed to unmarshal: %v", err)
 	}

@@ -6,17 +6,17 @@ import "encoding/json"
 type EventType string
 
 const (
-	EventTypeText                EventType = "text"
-	EventTypeToolCall            EventType = "tool_call"
-	EventTypeToolResult          EventType = "tool_result"
-	EventTypeError               EventType = "error"
-	EventTypeDone                EventType = "done"
-	EventTypeInterrupted         EventType = "interrupted"
+	EventTypeText              EventType = "text"
+	EventTypeToolCall          EventType = "tool_call"
+	EventTypeToolResult        EventType = "tool_result"
+	EventTypeError             EventType = "error"
+	EventTypeDone              EventType = "done"
+	EventTypeInterrupted       EventType = "interrupted"
 	EventTypePermissionRequest EventType = "permission_request"
 	EventTypeRequestCancelled  EventType = "request_cancelled"
 	EventTypeAskUserQuestion   EventType = "ask_user_question"
-	EventTypeSystem              EventType = "system"
-	EventTypeProcessEnded        EventType = "process_ended"
+	EventTypeSystem            EventType = "system"
+	EventTypeProcessEnded      EventType = "process_ended"
 )
 
 // PermissionBehavior represents the permission action.
@@ -102,4 +102,39 @@ type AgentEvent struct {
 	RequestID             string             `json:"request_id,omitempty"`
 	PermissionSuggestions []PermissionUpdate `json:"permission_suggestions,omitempty"`
 	Questions             []AskUserQuestion  `json:"questions,omitempty"`
+}
+
+// ServerMessage represents a message sent from the server to the client.
+// This is the canonical type used for WebSocket communication and history persistence.
+type ServerMessage struct {
+	Type                  EventType          `json:"type"`
+	SessionID             string             `json:"session_id,omitempty"`
+	Content               string             `json:"content,omitempty"`
+	ToolName              string             `json:"tool_name,omitempty"`
+	ToolInput             json.RawMessage    `json:"tool_input,omitempty"`
+	ToolUseID             string             `json:"tool_use_id,omitempty"`
+	ToolResult            string             `json:"tool_result,omitempty"`
+	Error                 string             `json:"error,omitempty"`
+	RequestID             string             `json:"request_id,omitempty"`
+	PermissionSuggestions []PermissionUpdate `json:"permission_suggestions,omitempty"`
+	Questions             []AskUserQuestion  `json:"questions,omitempty"`
+	ProcessRunning        bool               `json:"process_running"`
+	Success               bool               `json:"success,omitempty"`
+}
+
+// NewServerMessage creates a ServerMessage from an AgentEvent.
+func NewServerMessage(sessionID string, event AgentEvent) ServerMessage {
+	return ServerMessage{
+		Type:                  event.Type,
+		SessionID:             sessionID,
+		Content:               event.Content,
+		ToolName:              event.ToolName,
+		ToolInput:             event.ToolInput,
+		ToolUseID:             event.ToolUseID,
+		ToolResult:            event.ToolResult,
+		Error:                 event.Error,
+		RequestID:             event.RequestID,
+		PermissionSuggestions: event.PermissionSuggestions,
+		Questions:             event.Questions,
+	}
 }

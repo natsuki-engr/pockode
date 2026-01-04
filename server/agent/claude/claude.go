@@ -193,7 +193,7 @@ func (s *session) SendQuestionResponse(data agent.QuestionRequestData, answers m
 			ToolUseID: data.ToolUseID,
 		}
 	} else {
-		updatedInput, err := json.Marshal(map[string]any{"answers": answers})
+		updatedInput, err := json.Marshal(questionAnswerInput{Answers: answers})
 		if err != nil {
 			return fmt.Errorf("failed to marshal updated input: %w", err)
 		}
@@ -408,6 +408,11 @@ type interruptRequest struct {
 
 type interruptRequestData struct {
 	Subtype string `json:"subtype"`
+}
+
+// questionAnswerInput is the UpdatedInput format for question responses.
+type questionAnswerInput struct {
+	Answers map[string]string `json:"answers"`
 }
 
 // --- Parsing ---

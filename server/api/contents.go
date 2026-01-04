@@ -37,8 +37,14 @@ func (h *ContentsHandler) HandleContents(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(result); err != nil {
-		log.Error("failed to encode contents response", "error", err)
+	if result.IsDir() {
+		if err := json.NewEncoder(w).Encode(result.Entries); err != nil {
+			log.Error("failed to encode directory entries", "error", err)
+		}
+	} else {
+		if err := json.NewEncoder(w).Encode(result.File); err != nil {
+			log.Error("failed to encode file content", "error", err)
+		}
 	}
 }
 
