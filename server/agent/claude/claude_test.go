@@ -233,6 +233,14 @@ func TestParseLine(t *testing.T) {
 			input:    `{"type":"control_response","response":{"subtype":"success","request_id":"abc123"}}`,
 			expected: nil,
 		},
+		{
+			name:  "control_cancel_request cancels request",
+			input: `{"type":"control_cancel_request","request_id":"req-cancel-123"}`,
+			expected: []agent.AgentEvent{{
+				Type:      agent.EventTypeRequestCancelled,
+				RequestID: "req-cancel-123",
+			}},
+		},
 	}
 
 	for _, tt := range tests {

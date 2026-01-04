@@ -467,6 +467,8 @@ func parseLine(log *slog.Logger, line []byte, pendingRequests *sync.Map) []agent
 		return parseControlRequest(log, line)
 	case "control_response":
 		return parseControlResponse(log, line, pendingRequests)
+	case "control_cancel_request":
+		return parseControlCancelRequest(log, line)
 	default:
 		log.Warn("unknown event type from CLI", "type", event.Type)
 		return []agent.AgentEvent{{
@@ -554,6 +556,26 @@ func parseControlResponse(log *slog.Logger, line []byte, pendingRequests *sync.M
 
 	// Other control responses (permission, question) don't need client notification.
 	return nil
+}
+
+// controlCancelRequest represents a control_cancel_request from Claude CLI.
+type controlCancelRequest struct {
+	Type      string `json:"type"`
+	RequestID string `json:"request_id"`
+}
+
+func parseControlCancelRequest(log *slog.Logger, line []byte) []agent.AgentEvent {
+	var req controlCancelRequest
+	if err := json.Unmarshal(line, &req); err != nil {
+		log.Warn("failed to parse control cancel request from CLI", "error", err)
+		return nil
+	}
+
+	log.Debug("control cancel request received", "requestId", req.RequestID)
+	return []agent.AgentEvent{{
+		Type:      agent.EventTypeRequestCancelled,
+		RequestID: req.RequestID,
+	}}
 }
 
 func parseAssistantEvent(log *slog.Logger, event cliEvent) []agent.AgentEvent {

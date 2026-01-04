@@ -157,6 +157,17 @@ describe("messageReducer", () => {
 				answers: null,
 			});
 		});
+
+		it("normalizes request_cancelled event", () => {
+			const event = normalizeEvent({
+				type: "request_cancelled",
+				request_id: "req-1",
+			});
+			expect(event).toEqual({
+				type: "request_cancelled",
+				requestId: "req-1",
+			});
+		});
 	});
 
 	describe("applyEventToParts", () => {
@@ -394,6 +405,65 @@ describe("messageReducer", () => {
 			expect(assistant.parts[0]).toMatchObject({
 				type: "permission_request",
 				status: "allowed",
+			});
+		});
+
+		it("updates permission_request status to denied on request_cancelled", () => {
+			const initial: AssistantMessage = {
+				id: "msg-1",
+				role: "assistant",
+				parts: [
+					{
+						type: "permission_request",
+						request: {
+							requestId: "req-1",
+							toolName: "Bash",
+							toolInput: { command: "ls" },
+							toolUseId: "tool-1",
+						},
+						status: "pending",
+					},
+				],
+				status: "streaming",
+				createdAt: new Date(),
+			};
+			const messages = applyServerEvent([initial], {
+				type: "request_cancelled",
+				requestId: "req-1",
+			});
+			const assistant = messages[0] as AssistantMessage;
+			expect(assistant.parts[0]).toMatchObject({
+				type: "permission_request",
+				status: "denied",
+			});
+		});
+
+		it("updates ask_user_question status to cancelled on request_cancelled", () => {
+			const initial: AssistantMessage = {
+				id: "msg-1",
+				role: "assistant",
+				parts: [
+					{
+						type: "ask_user_question",
+						request: {
+							requestId: "q-1",
+							toolUseId: "toolu_q_1",
+							questions: sampleQuestions,
+						},
+						status: "pending",
+					},
+				],
+				status: "streaming",
+				createdAt: new Date(),
+			};
+			const messages = applyServerEvent([initial], {
+				type: "request_cancelled",
+				requestId: "q-1",
+			});
+			const assistant = messages[0] as AssistantMessage;
+			expect(assistant.parts[0]).toMatchObject({
+				type: "ask_user_question",
+				status: "cancelled",
 			});
 		});
 

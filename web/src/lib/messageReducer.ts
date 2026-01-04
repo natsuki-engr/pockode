@@ -40,6 +40,10 @@ export type NormalizedEvent =
 			choice: "deny" | "allow" | "always_allow";
 	  }
 	| {
+			type: "request_cancelled";
+			requestId: string;
+	  }
+	| {
 			type: "ask_user_question";
 			requestId: string;
 			toolUseId: string;
@@ -102,6 +106,11 @@ export function normalizeEvent(
 				type: "permission_response",
 				requestId: record.request_id as string,
 				choice: record.choice as "deny" | "allow" | "always_allow",
+			};
+		case "request_cancelled":
+			return {
+				type: "request_cancelled",
+				requestId: record.request_id as string,
 			};
 		case "ask_user_question":
 			return {
@@ -207,6 +216,18 @@ export function applyServerEvent(
 		return updatePermissionRequestStatus(messages, event.requestId, newStatus);
 	}
 
+	// Request cancelled (CLI cancelled either permission or question request)
+	if (event.type === "request_cancelled") {
+		let updated = updatePermissionRequestStatus(
+			messages,
+			event.requestId,
+			"denied",
+		);
+		if (updated !== messages) return updated;
+		updated = updateQuestionStatus(messages, event.requestId, "cancelled", null);
+		return updated;
+	}
+
 	// Question response updates existing ask_user_question across all messages
 	if (event.type === "question_response") {
 		const newStatus: QuestionStatus =
@@ -283,7 +304,8 @@ function updatePermissionRequestStatus(
 	requestId: string,
 	newStatus: "allowed" | "denied",
 ): Message[] {
-	return messages.map((msg) => {
+	let anyChanged = false;
+	const updated = messages.map((msg) => {
 		if (msg.role !== "assistant") return msg;
 
 		let changed = false;
@@ -299,8 +321,10 @@ function updatePermissionRequestStatus(
 		});
 
 		if (!changed) return msg;
+		anyChanged = true;
 		return { ...msg, parts: updatedParts };
 	});
+	return anyChanged ? updated : messages;
 }
 
 function updateQuestionStatus(

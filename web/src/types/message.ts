@@ -216,6 +216,10 @@ export type WSServerMessage =
 			tool_use_id: string;
 			questions: AskUserQuestion[];
 	  })
+	| (WSServerMessageBase & {
+			type: "request_cancelled";
+			request_id: string;
+	  })
 	| (WSServerMessageBase & { type: "system"; content: string })
 	| (WSServerMessageBase & {
 			type: "attach_response";

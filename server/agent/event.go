@@ -6,16 +6,17 @@ import "encoding/json"
 type EventType string
 
 const (
-	EventTypeText              EventType = "text"
-	EventTypeToolCall          EventType = "tool_call"
-	EventTypeToolResult        EventType = "tool_result"
-	EventTypeError             EventType = "error"
-	EventTypeDone              EventType = "done"
-	EventTypeInterrupted       EventType = "interrupted"
+	EventTypeText                EventType = "text"
+	EventTypeToolCall            EventType = "tool_call"
+	EventTypeToolResult          EventType = "tool_result"
+	EventTypeError               EventType = "error"
+	EventTypeDone                EventType = "done"
+	EventTypeInterrupted         EventType = "interrupted"
 	EventTypePermissionRequest EventType = "permission_request"
+	EventTypeRequestCancelled  EventType = "request_cancelled"
 	EventTypeAskUserQuestion   EventType = "ask_user_question"
-	EventTypeSystem            EventType = "system"
-	EventTypeProcessEnded      EventType = "process_ended"
+	EventTypeSystem              EventType = "system"
+	EventTypeProcessEnded        EventType = "process_ended"
 )
 
 // PermissionBehavior represents the permission action.
