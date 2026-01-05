@@ -190,10 +190,8 @@ type ProcessEndedEvent struct{}
 func (ProcessEndedEvent) EventType() EventType { return EventTypeProcessEnded }
 func (ProcessEndedEvent) isAgentEvent()        {}
 
-// --- ServerMessage: For WebSocket communication ---
-
-// ServerMessage represents a message sent from the server to the client.
-// This is the canonical type used for WebSocket communication and history persistence.
+// ServerMessage is the JSON wire format for WebSocket communication.
+// For type-safe event handling, use AgentEvent interface instead.
 type ServerMessage struct {
 	Type                  EventType          `json:"type"`
 	SessionID             string             `json:"session_id,omitempty"`

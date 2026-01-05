@@ -18,7 +18,7 @@ const (
 	ClientMessageQuestionResponse   ClientMessageType = "question_response"
 )
 
-// ClientMessage represents a message sent by the client.
+// ClientMessage is the JSON wire format for client-to-server messages.
 type ClientMessage struct {
 	Type      ClientMessageType `json:"type"`
 	Token     string            `json:"token,omitempty"`      // Auth token (for "auth" type)
