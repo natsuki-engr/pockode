@@ -4,15 +4,12 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/json"
-	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"sync"
 
 	"github.com/coder/websocket"
 	"github.com/google/uuid"
-	"github.com/pockode/server/agent"
 	"github.com/pockode/server/process"
 	"github.com/pockode/server/rpc"
 	"github.com/pockode/server/session"
@@ -27,7 +24,6 @@ type RPCHandler struct {
 	sessionStore session.Store
 }
 
-// NewRPCHandler creates a new JSON-RPC handler.
 func NewRPCHandler(token string, manager *process.Manager, devMode bool, store session.Store) *RPCHandler {
 	return &RPCHandler{
 		token:        token,
@@ -118,7 +114,6 @@ func (s *rpcConnState) cleanup() {
 	}
 }
 
-// rpcMethodHandler handles JSON-RPC method calls.
 type rpcMethodHandler struct {
 	*RPCHandler
 	state         *rpcConnState
@@ -143,6 +138,7 @@ func (h *rpcMethodHandler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req 
 
 	// Dispatch to method handlers
 	switch req.Method {
+	// chat namespace
 	case "chat.attach":
 		h.handleAttach(ctx, conn, req)
 	case "chat.message":
@@ -153,6 +149,7 @@ func (h *rpcMethodHandler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req 
 		h.handlePermissionResponse(ctx, conn, req)
 	case "chat.question_response":
 		h.handleQuestionResponse(ctx, conn, req)
+	// session namespace
 	case "session.list":
 		h.handleSessionList(ctx, conn, req)
 	case "session.create":
@@ -182,7 +179,7 @@ func (h *rpcMethodHandler) setAuthenticated() {
 
 func (h *rpcMethodHandler) handleAuth(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
 	var params rpc.AuthParams
-	if err := json.Unmarshal(*req.Params, &params); err != nil {
+	if err := unmarshalParams(req, &params); err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid params")
 		conn.Close()
 		return
@@ -203,221 +200,6 @@ func (h *rpcMethodHandler) handleAuth(ctx context.Context, conn *jsonrpc2.Conn, 
 	}
 }
 
-func (h *rpcMethodHandler) handleAttach(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
-	var params rpc.AttachParams
-	if err := json.Unmarshal(*req.Params, &params); err != nil {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid params")
-		return
-	}
-
-	log := h.log.With("sessionId", params.SessionID)
-
-	// Verify session exists
-	_, found, err := h.sessionStore.Get(params.SessionID)
-	if err != nil {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, "failed to get session")
-		return
-	}
-	if !found {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "session not found")
-		return
-	}
-
-	// Subscribe to session events
-	h.state.subscribe(params.SessionID, conn)
-
-	// Return whether process is running
-	processRunning := h.manager.HasProcess(params.SessionID)
-	result := rpc.AttachResult{ProcessRunning: processRunning}
-
-	if err := conn.Reply(ctx, req.ID, result); err != nil {
-		log.Error("failed to send attach response", "error", err)
-		return
-	}
-
-	log.Info("subscribed to session", "processRunning", processRunning)
-}
-
-func (h *rpcMethodHandler) handleMessage(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
-	var params rpc.MessageParams
-	if err := json.Unmarshal(*req.Params, &params); err != nil {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid params")
-		return
-	}
-
-	log := h.log.With("sessionId", params.SessionID)
-
-	sess, err := h.getOrCreateProcess(ctx, log, params.SessionID)
-	if err != nil {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, err.Error())
-		return
-	}
-
-	log.Info("received prompt", "length", len(params.Content))
-
-	// Persist user message to history
-	event := agent.MessageEvent{Content: params.Content}
-	if err := h.sessionStore.AppendToHistory(ctx, params.SessionID, agent.NewHistoryRecord(event)); err != nil {
-		log.Error("failed to append to history", "error", err)
-	}
-
-	// Send message to agent
-	if err := sess.SendMessage(params.Content); err != nil {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, err.Error())
-		return
-	}
-
-	if err := conn.Reply(ctx, req.ID, struct{}{}); err != nil {
-		log.Error("failed to send message response", "error", err)
-	}
-}
-
-func (h *rpcMethodHandler) handleInterrupt(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
-	var params rpc.InterruptParams
-	if err := json.Unmarshal(*req.Params, &params); err != nil {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid params")
-		return
-	}
-
-	log := h.log.With("sessionId", params.SessionID)
-
-	sess, err := h.getOrCreateProcess(ctx, log, params.SessionID)
-	if err != nil {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, err.Error())
-		return
-	}
-
-	if err := sess.SendInterrupt(); err != nil {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, err.Error())
-		return
-	}
-
-	log.Info("sent interrupt")
-
-	if err := conn.Reply(ctx, req.ID, struct{}{}); err != nil {
-		log.Error("failed to send interrupt response", "error", err)
-	}
-}
-
-func (h *rpcMethodHandler) handlePermissionResponse(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
-	var params rpc.PermissionResponseParams
-	if err := json.Unmarshal(*req.Params, &params); err != nil {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid params")
-		return
-	}
-
-	log := h.log.With("sessionId", params.SessionID)
-
-	sess, err := h.getOrCreateProcess(ctx, log, params.SessionID)
-	if err != nil {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, err.Error())
-		return
-	}
-
-	data := agent.PermissionRequestData{
-		RequestID:             params.RequestID,
-		ToolInput:             params.ToolInput,
-		ToolUseID:             params.ToolUseID,
-		PermissionSuggestions: params.PermissionSuggestions,
-	}
-	choice := parsePermissionChoice(params.Choice)
-
-	if err := sess.SendPermissionResponse(data, choice); err != nil {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, err.Error())
-		return
-	}
-
-	// Persist permission response to history
-	permEvent := agent.PermissionResponseEvent{RequestID: params.RequestID, Choice: params.Choice}
-	if err := h.sessionStore.AppendToHistory(ctx, params.SessionID, agent.NewHistoryRecord(permEvent)); err != nil {
-		log.Error("failed to append to history", "error", err)
-	}
-
-	log.Info("sent permission response", "choice", params.Choice)
-
-	if err := conn.Reply(ctx, req.ID, struct{}{}); err != nil {
-		log.Error("failed to send permission response", "error", err)
-	}
-}
-
-func (h *rpcMethodHandler) handleQuestionResponse(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
-	var params rpc.QuestionResponseParams
-	if err := json.Unmarshal(*req.Params, &params); err != nil {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid params")
-		return
-	}
-
-	log := h.log.With("sessionId", params.SessionID)
-
-	sess, err := h.getOrCreateProcess(ctx, log, params.SessionID)
-	if err != nil {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, err.Error())
-		return
-	}
-
-	data := agent.QuestionRequestData{
-		RequestID: params.RequestID,
-		ToolUseID: params.ToolUseID,
-	}
-
-	if err := sess.SendQuestionResponse(data, params.Answers); err != nil {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, err.Error())
-		return
-	}
-
-	// Persist question response to history
-	qEvent := agent.QuestionResponseEvent{RequestID: params.RequestID, Answers: params.Answers}
-	if err := h.sessionStore.AppendToHistory(ctx, params.SessionID, agent.NewHistoryRecord(qEvent)); err != nil {
-		log.Error("failed to append to history", "error", err)
-	}
-
-	log.Info("sent question response", "cancelled", params.Answers == nil)
-
-	if err := conn.Reply(ctx, req.ID, struct{}{}); err != nil {
-		log.Error("failed to send question response", "error", err)
-	}
-}
-
-func parsePermissionChoice(choice string) agent.PermissionChoice {
-	switch choice {
-	case "allow":
-		return agent.PermissionAllow
-	case "always_allow":
-		return agent.PermissionAlwaysAllow
-	default:
-		return agent.PermissionDeny
-	}
-}
-
-func (h *rpcMethodHandler) getOrCreateProcess(ctx context.Context, log *slog.Logger, sessionID string) (agent.Session, error) {
-	meta, found, err := h.sessionStore.Get(sessionID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get session: %w", err)
-	}
-	if !found {
-		return nil, fmt.Errorf("session not found: %s", sessionID)
-	}
-
-	resume := meta.Activated
-	proc, created, err := h.manager.GetOrCreateProcess(ctx, sessionID, resume)
-	if err != nil {
-		return nil, err
-	}
-
-	// Mark as activated on first process creation
-	if created && !resume {
-		if err := h.sessionStore.Activate(ctx, sessionID); err != nil {
-			log.Error("failed to activate session", "error", err)
-		}
-	}
-
-	if created {
-		log.Info("process created", "resume", resume)
-	}
-
-	return proc.AgentSession(), nil
-}
-
 func (h *rpcMethodHandler) replyError(ctx context.Context, conn *jsonrpc2.Conn, id jsonrpc2.ID, code int64, message string) {
 	err := &jsonrpc2.Error{
 		Code:    code,
@@ -428,107 +210,8 @@ func (h *rpcMethodHandler) replyError(ctx context.Context, conn *jsonrpc2.Conn, 
 	}
 }
 
-// Session management handlers
-
-func (h *rpcMethodHandler) handleSessionList(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
-	sessions, err := h.sessionStore.List()
-	if err != nil {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, "failed to list sessions")
-		return
-	}
-
-	result := struct {
-		Sessions []session.SessionMeta `json:"sessions"`
-	}{Sessions: sessions}
-
-	if err := conn.Reply(ctx, req.ID, result); err != nil {
-		h.log.Error("failed to send session list response", "error", err)
-	}
-}
-
-func (h *rpcMethodHandler) handleSessionCreate(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
-	sessionID := uuid.Must(uuid.NewV7()).String()
-
-	sess, err := h.sessionStore.Create(ctx, sessionID)
-	if err != nil {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, "failed to create session")
-		return
-	}
-
-	h.log.Info("session created", "sessionId", sessionID)
-
-	if err := conn.Reply(ctx, req.ID, sess); err != nil {
-		h.log.Error("failed to send session create response", "error", err)
-	}
-}
-
-func (h *rpcMethodHandler) handleSessionDelete(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
-	var params rpc.SessionDeleteParams
-	if err := json.Unmarshal(*req.Params, &params); err != nil {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid params")
-		return
-	}
-
-	if err := h.sessionStore.Delete(ctx, params.SessionID); err != nil {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, "failed to delete session")
-		return
-	}
-
-	h.log.Info("session deleted", "sessionId", params.SessionID)
-
-	if err := conn.Reply(ctx, req.ID, struct{}{}); err != nil {
-		h.log.Error("failed to send session delete response", "error", err)
-	}
-}
-
-func (h *rpcMethodHandler) handleSessionUpdateTitle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
-	var params rpc.SessionUpdateTitleParams
-	if err := json.Unmarshal(*req.Params, &params); err != nil {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid params")
-		return
-	}
-
-	if params.Title == "" {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "title required")
-		return
-	}
-
-	if err := h.sessionStore.Update(ctx, params.SessionID, params.Title); err != nil {
-		if errors.Is(err, session.ErrSessionNotFound) {
-			h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "session not found")
-			return
-		}
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, "failed to update session")
-		return
-	}
-
-	h.log.Info("session title updated", "sessionId", params.SessionID, "title", params.Title)
-
-	if err := conn.Reply(ctx, req.ID, struct{}{}); err != nil {
-		h.log.Error("failed to send session update response", "error", err)
-	}
-}
-
-func (h *rpcMethodHandler) handleSessionGetHistory(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
-	var params rpc.SessionGetHistoryParams
-	if err := json.Unmarshal(*req.Params, &params); err != nil {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid params")
-		return
-	}
-
-	history, err := h.sessionStore.GetHistory(ctx, params.SessionID)
-	if err != nil {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, "failed to get history")
-		return
-	}
-
-	result := struct {
-		History []json.RawMessage `json:"history"`
-	}{History: history}
-
-	if err := conn.Reply(ctx, req.ID, result); err != nil {
-		h.log.Error("failed to send history response", "error", err)
-	}
+func unmarshalParams(req *jsonrpc2.Request, v interface{}) error {
+	return json.Unmarshal(*req.Params, v)
 }
 
 // webSocketStream adapts coder/websocket to jsonrpc2.ObjectStream.

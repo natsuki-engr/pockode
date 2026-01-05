@@ -1,24 +1,9 @@
 import { JSONRPCClient } from "json-rpc-2.0";
 import { create } from "zustand";
-import type {
-	AttachParams,
-	AttachResult,
-	AuthParams,
-	InterruptParams,
-	MessageParams,
-	PermissionResponseParams,
-	QuestionResponseParams,
-	ServerMethod,
-	ServerNotification,
-	SessionDeleteParams,
-	SessionGetHistoryParams,
-	SessionGetHistoryResult,
-	SessionListResult,
-	SessionMeta,
-	SessionUpdateTitleParams,
-} from "../types/message";
+import type { AuthParams, ServerMethod, ServerNotification } from "../types/message";
 import { getWebSocketUrl } from "../utils/config";
 import { authActions } from "./authStore";
+import { type ChatActions, type SessionActions, createChatActions, createSessionActions } from "./rpc";
 import { unreadActions } from "./unreadStore";
 
 // Events that should NOT trigger unread notifications.
@@ -39,22 +24,13 @@ export type ConnectionStatus =
 
 type NotificationListener = (notification: ServerNotification) => void;
 
-interface RPCActions {
+interface ConnectionActions {
 	connect: () => void;
 	disconnect: () => void;
-	attach: (sessionId: string) => Promise<AttachResult>;
-	sendMessage: (sessionId: string, content: string) => Promise<void>;
-	interrupt: (sessionId: string) => Promise<void>;
-	permissionResponse: (params: PermissionResponseParams) => Promise<void>;
-	questionResponse: (params: QuestionResponseParams) => Promise<void>;
 	subscribeNotification: (listener: NotificationListener) => () => void;
-	// Session management
-	listSessions: () => Promise<SessionMeta[]>;
-	createSession: () => Promise<SessionMeta>;
-	deleteSession: (sessionId: string) => Promise<void>;
-	updateSessionTitle: (sessionId: string, title: string) => Promise<void>;
-	getHistory: (sessionId: string) => Promise<unknown[]>;
 }
+
+type RPCActions = ConnectionActions & ChatActions & SessionActions;
 
 interface WSState {
 	status: ConnectionStatus;
@@ -71,6 +47,10 @@ const notificationListeners = new Set<NotificationListener>();
 
 const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_INTERVAL = 3000;
+
+function getClient(): JSONRPCClient | null {
+	return rpcClient;
+}
 
 function createRPCClient(socket: WebSocket): JSONRPCClient {
 	return new JSONRPCClient((request) => {
@@ -108,6 +88,10 @@ function handleNotification(method: string, params: unknown): void {
 		listener(notification);
 	}
 }
+
+// Create namespace-specific actions
+const chatActions = createChatActions(getClient);
+const sessionActions = createSessionActions(getClient);
 
 export const useWSStore = create<WSState>((set, get) => ({
 	status: "disconnected",
@@ -208,50 +192,6 @@ export const useWSStore = create<WSState>((set, get) => ({
 			set({ status: "disconnected" });
 		},
 
-		attach: async (sessionId: string): Promise<AttachResult> => {
-			if (!rpcClient) {
-				throw new Error("Not connected");
-			}
-			return rpcClient.request("chat.attach", {
-				session_id: sessionId,
-			} as AttachParams);
-		},
-
-		sendMessage: async (sessionId: string, content: string): Promise<void> => {
-			if (!rpcClient) {
-				throw new Error("Not connected");
-			}
-			await rpcClient.request("chat.message", {
-				session_id: sessionId,
-				content,
-			} as MessageParams);
-		},
-
-		interrupt: async (sessionId: string): Promise<void> => {
-			if (!rpcClient) {
-				throw new Error("Not connected");
-			}
-			await rpcClient.request("chat.interrupt", {
-				session_id: sessionId,
-			} as InterruptParams);
-		},
-
-		permissionResponse: async (
-			params: PermissionResponseParams,
-		): Promise<void> => {
-			if (!rpcClient) {
-				throw new Error("Not connected");
-			}
-			await rpcClient.request("chat.permission_response", params);
-		},
-
-		questionResponse: async (params: QuestionResponseParams): Promise<void> => {
-			if (!rpcClient) {
-				throw new Error("Not connected");
-			}
-			await rpcClient.request("chat.question_response", params);
-		},
-
 		subscribeNotification: (listener: NotificationListener) => {
 			notificationListeners.add(listener);
 			return () => {
@@ -259,59 +199,9 @@ export const useWSStore = create<WSState>((set, get) => ({
 			};
 		},
 
-		// Session management
-		listSessions: async (): Promise<SessionMeta[]> => {
-			if (!rpcClient) {
-				throw new Error("Not connected");
-			}
-			const result: SessionListResult = await rpcClient.request(
-				"session.list",
-				{},
-			);
-			return result.sessions;
-		},
-
-		createSession: async (): Promise<SessionMeta> => {
-			if (!rpcClient) {
-				throw new Error("Not connected");
-			}
-			return rpcClient.request("session.create", {});
-		},
-
-		deleteSession: async (sessionId: string): Promise<void> => {
-			if (!rpcClient) {
-				throw new Error("Not connected");
-			}
-			await rpcClient.request("session.delete", {
-				session_id: sessionId,
-			} as SessionDeleteParams);
-		},
-
-		updateSessionTitle: async (
-			sessionId: string,
-			title: string,
-		): Promise<void> => {
-			if (!rpcClient) {
-				throw new Error("Not connected");
-			}
-			await rpcClient.request("session.update_title", {
-				session_id: sessionId,
-				title,
-			} as SessionUpdateTitleParams);
-		},
-
-		getHistory: async (sessionId: string): Promise<unknown[]> => {
-			if (!rpcClient) {
-				throw new Error("Not connected");
-			}
-			const result: SessionGetHistoryResult = await rpcClient.request(
-				"session.get_history",
-				{
-					session_id: sessionId,
-				} as SessionGetHistoryParams,
-			);
-			return result.history;
-		},
+		// Spread namespace-specific actions
+		...chatActions,
+		...sessionActions,
 	},
 }));
 
