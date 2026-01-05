@@ -126,6 +126,10 @@ function InputBar({
 							? "Type a message..."
 							: "Type a message... (Shift+Enter for newline)"
 					}
+					spellCheck={false}
+					autoComplete="off"
+					autoCorrect="off"
+					autoCapitalize="off"
 					className="min-h-[44px] max-h-[40vh] flex-1 resize-none overflow-y-auto rounded-lg bg-th-bg-secondary px-3 py-2 text-th-text-primary placeholder:text-th-text-muted focus:outline-none focus:ring-2 focus:ring-th-border-focus sm:max-h-[200px] sm:px-4"
 				/>
 				{isStreaming ? (
