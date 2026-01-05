@@ -45,7 +45,7 @@ interface UseChatMessagesReturn {
 type ConnectionStatus = "connecting" | "connected" | "disconnected" | "error";
 
 // Actions are stable references - get once at module level
-const { connect, attach, sendMessage, subscribeNotification } =
+const { attach, sendMessage, subscribeNotification } =
 	useWSStore.getState().actions;
 
 export function useChatMessages({
@@ -83,14 +83,6 @@ export function useChatMessages({
 	useEffect(() => {
 		return subscribeNotification(handleNotification);
 	}, [handleNotification]);
-
-	// Connect on mount (only once per app lifecycle)
-	useEffect(() => {
-		const currentStatus = useWSStore.getState().status;
-		if (currentStatus === "disconnected") {
-			connect();
-		}
-	}, []);
 
 	useEffect(() => {
 		setMessages([]);

@@ -4,9 +4,10 @@ import { useIsDesktop } from "../hooks/useIsDesktop";
 import { useSession } from "../hooks/useSession";
 import {
 	authActions,
-	selectIsAuthenticated,
+	selectHasAuthToken,
 	useAuthStore,
 } from "../lib/authStore";
+import { useWSStore, wsActions } from "../lib/wsStore";
 import type { OverlaySearchParams } from "../router";
 import type { OverlayState } from "../types/overlay";
 import TokenInput from "./Auth/TokenInput";
@@ -88,13 +89,21 @@ function useRouteState(): RouteInfo {
 }
 
 function AppShell() {
-	const isAuthenticated = useAuthStore(selectIsAuthenticated);
+	const hasAuthToken = useAuthStore(selectHasAuthToken);
+	const wsStatus = useWSStore((state) => state.status);
 	const navigate = useNavigate();
 	const isDesktop = useIsDesktop();
 	const [sidebarOpen, setSidebarOpen] = useState(false);
 	const isCreatingSession = useRef(false);
 
 	const { overlay, sessionId: routeSessionId } = useRouteState();
+
+	// Connect to WebSocket when auth token is available
+	useEffect(() => {
+		if (hasAuthToken && wsStatus === "disconnected") {
+			wsActions.connect();
+		}
+	}, [hasAuthToken, wsStatus]);
 
 	const activeDiffFile =
 		overlay?.type === "diff"
@@ -112,7 +121,7 @@ function AppShell() {
 		createSession,
 		deleteSession,
 		updateTitle,
-	} = useSession({ enabled: isAuthenticated, routeSessionId });
+	} = useSession({ enabled: hasAuthToken, routeSessionId });
 
 	useEffect(() => {
 		if (redirectSessionId) {
@@ -216,7 +225,7 @@ function AppShell() {
 		}
 	}, [navigate, currentSessionId]);
 
-	if (!isAuthenticated) {
+	if (!hasAuthToken) {
 		return <TokenInput onSubmit={handleTokenSubmit} />;
 	}
 

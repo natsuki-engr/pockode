@@ -55,8 +55,8 @@ describe("useSession", () => {
 		vi.clearAllMocks();
 		// Reset useWSStore mock to connected status
 		vi.mocked(useWSStore).mockImplementation((selector) => {
-			const state = { status: "connected" };
-			return selector(state);
+			const state = { status: "connected" } as { status: string };
+			return selector(state as Parameters<typeof selector>[0]);
 		});
 	});
 
@@ -93,8 +93,8 @@ describe("useSession", () => {
 
 		it("does not load when WebSocket is disconnected", async () => {
 			vi.mocked(useWSStore).mockImplementation((selector) => {
-				const state = { status: "disconnected" };
-				return selector(state);
+				const state = { status: "disconnected" } as { status: string };
+				return selector(state as Parameters<typeof selector>[0]);
 			});
 
 			vi.mocked(sessionApi.listSessions).mockResolvedValue([]);

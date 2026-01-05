@@ -11,7 +11,7 @@ export const useAuthStore = create<AuthState>(() => ({
 	token: localStorage.getItem(TOKEN_KEY),
 }));
 
-export const selectIsAuthenticated = (state: AuthState) => !!state.token;
+export const selectHasAuthToken = (state: AuthState) => !!state.token;
 
 export const authActions = {
 	login: (token: string) => {
