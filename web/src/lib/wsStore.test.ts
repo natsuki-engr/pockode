@@ -9,6 +9,7 @@ vi.mock("../utils/config", () => ({
 vi.mock("./authStore", () => ({
 	authActions: {
 		getToken: vi.fn(() => "test-token"),
+		logout: vi.fn(),
 	},
 }));
 
@@ -73,6 +74,20 @@ class MockWebSocket {
 	simulateClose() {
 		this.readyState = MockWebSocket.CLOSED;
 		this.onclose?.();
+	}
+	mockAuthFailure() {
+		this.send = vi.fn((data: string) => {
+			const parsed = JSON.parse(data);
+			if (parsed.id !== undefined && parsed.method === "auth") {
+				queueMicrotask(() => {
+					this.simulateMessage({
+						jsonrpc: "2.0",
+						id: parsed.id,
+						error: { code: -32600, message: "Invalid token" },
+					});
+				});
+			}
+		});
 	}
 	simulateNotification(method: string, params: unknown) {
 		this.simulateMessage({
@@ -170,25 +185,24 @@ describe("wsStore", () => {
 
 			wsActions.connect();
 			const ws = getMockWs();
-			if (ws) {
-				// Override send to return auth error instead of success
-				ws.send = vi.fn((data: string) => {
-					const parsed = JSON.parse(data);
-					if (parsed.id !== undefined && parsed.method === "auth") {
-						queueMicrotask(() => {
-							ws.simulateMessage({
-								jsonrpc: "2.0",
-								id: parsed.id,
-								error: { code: -32600, message: "Invalid token" },
-							});
-						});
-					}
-				});
-			}
+			ws?.mockAuthFailure();
 			ws?.simulateOpen();
 
 			await vi.runAllTimersAsync();
 			expect(useWSStore.getState().status).toBe("error");
+		});
+
+		it("logs out user on auth failure", async () => {
+			const { authActions } = await import("./authStore");
+			const wsActions = await getWsActions();
+
+			wsActions.connect();
+			const ws = getMockWs();
+			ws?.mockAuthFailure();
+			ws?.simulateOpen();
+
+			await vi.runAllTimersAsync();
+			expect(authActions.logout).toHaveBeenCalled();
 		});
 
 		it("sets status to error when no token", async () => {

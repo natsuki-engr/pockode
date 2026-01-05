@@ -130,6 +130,7 @@ export const useWSStore = create<WSState>((set, get) => ({
 					authFailed = true;
 					set({ status: "error" });
 					socket.close();
+					authActions.logout();
 				}
 			};
 
