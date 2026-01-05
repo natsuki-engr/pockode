@@ -269,15 +269,13 @@ func (p *Process) streamEvents(ctx context.Context) {
 		eventType := event.EventType()
 		log.Debug("streaming event", "type", eventType)
 
-		// Build notification params for history and broadcast
-		params := rpc.NewNotifyParams(p.sessionID, event)
-
-		// History persists even when no connection is active
-		if err := p.sessionStore.AppendToHistory(ctx, p.sessionID, params); err != nil {
+		// Persist event to history (with type field for replay)
+		if err := p.sessionStore.AppendToHistory(ctx, p.sessionID, agent.NewHistoryRecord(event)); err != nil {
 			log.Error("failed to append to history", "error", err)
 		}
 
 		// Send as JSON-RPC notification
+		params := rpc.NewNotifyParams(p.sessionID, event)
 		p.manager.Notify(ctx, p.sessionID, string(eventType), params)
 	}
 

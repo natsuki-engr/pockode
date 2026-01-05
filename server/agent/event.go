@@ -6,17 +6,20 @@ import "encoding/json"
 type EventType string
 
 const (
-	EventTypeText              EventType = "text"
-	EventTypeToolCall          EventType = "tool_call"
-	EventTypeToolResult        EventType = "tool_result"
-	EventTypeError             EventType = "error"
-	EventTypeDone              EventType = "done"
-	EventTypeInterrupted       EventType = "interrupted"
-	EventTypePermissionRequest EventType = "permission_request"
-	EventTypeRequestCancelled  EventType = "request_cancelled"
-	EventTypeAskUserQuestion   EventType = "ask_user_question"
-	EventTypeSystem            EventType = "system"
-	EventTypeProcessEnded      EventType = "process_ended"
+	EventTypeText               EventType = "text"
+	EventTypeToolCall           EventType = "tool_call"
+	EventTypeToolResult         EventType = "tool_result"
+	EventTypeError              EventType = "error"
+	EventTypeDone               EventType = "done"
+	EventTypeInterrupted        EventType = "interrupted"
+	EventTypePermissionRequest  EventType = "permission_request"
+	EventTypeRequestCancelled   EventType = "request_cancelled"
+	EventTypeAskUserQuestion    EventType = "ask_user_question"
+	EventTypeSystem             EventType = "system"
+	EventTypeProcessEnded       EventType = "process_ended"
+	EventTypeMessage            EventType = "message"             // User message
+	EventTypePermissionResponse EventType = "permission_response" // User permission response
+	EventTypeQuestionResponse   EventType = "question_response"   // User question response
 )
 
 // PermissionBehavior represents the permission action.
@@ -187,3 +190,29 @@ type ProcessEndedEvent struct{}
 
 func (ProcessEndedEvent) EventType() EventType { return EventTypeProcessEnded }
 func (ProcessEndedEvent) isAgentEvent()        {}
+
+// MessageEvent represents a user message.
+type MessageEvent struct {
+	Content string
+}
+
+func (MessageEvent) EventType() EventType { return EventTypeMessage }
+func (MessageEvent) isAgentEvent()        {}
+
+// PermissionResponseEvent represents a user's response to a permission request.
+type PermissionResponseEvent struct {
+	RequestID string
+	Choice    string // "deny", "allow", "always_allow"
+}
+
+func (PermissionResponseEvent) EventType() EventType { return EventTypePermissionResponse }
+func (PermissionResponseEvent) isAgentEvent()        {}
+
+// QuestionResponseEvent represents a user's response to a question.
+type QuestionResponseEvent struct {
+	RequestID string
+	Answers   map[string]string // nil = cancelled
+}
+
+func (QuestionResponseEvent) EventType() EventType { return EventTypeQuestionResponse }
+func (QuestionResponseEvent) isAgentEvent()        {}

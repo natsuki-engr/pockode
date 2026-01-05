@@ -244,8 +244,9 @@ func (h *rpcMethodHandler) handleMessage(ctx context.Context, conn *jsonrpc2.Con
 
 	log.Info("received prompt", "length", len(params.Content))
 
-	// Append to history
-	if err := h.sessionStore.AppendToHistory(ctx, params.SessionID, params); err != nil {
+	// Persist user message to history
+	event := agent.MessageEvent{Content: params.Content}
+	if err := h.sessionStore.AppendToHistory(ctx, params.SessionID, agent.NewHistoryRecord(event)); err != nil {
 		log.Error("failed to append to history", "error", err)
 	}
 
@@ -315,7 +316,9 @@ func (h *rpcMethodHandler) handlePermissionResponse(ctx context.Context, conn *j
 		return
 	}
 
-	if err := h.sessionStore.AppendToHistory(ctx, params.SessionID, params); err != nil {
+	// Persist permission response to history
+	permEvent := agent.PermissionResponseEvent{RequestID: params.RequestID, Choice: params.Choice}
+	if err := h.sessionStore.AppendToHistory(ctx, params.SessionID, agent.NewHistoryRecord(permEvent)); err != nil {
 		log.Error("failed to append to history", "error", err)
 	}
 
@@ -351,7 +354,9 @@ func (h *rpcMethodHandler) handleQuestionResponse(ctx context.Context, conn *jso
 		return
 	}
 
-	if err := h.sessionStore.AppendToHistory(ctx, params.SessionID, params); err != nil {
+	// Persist question response to history
+	qEvent := agent.QuestionResponseEvent{RequestID: params.RequestID, Answers: params.Answers}
+	if err := h.sessionStore.AppendToHistory(ctx, params.SessionID, agent.NewHistoryRecord(qEvent)); err != nil {
 		log.Error("failed to append to history", "error", err)
 	}
 
