@@ -1,12 +1,16 @@
 package relay
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 )
+
+var ErrInvalidToken = errors.New("invalid relay token")
 
 type Client struct {
 	baseURL    string
@@ -37,6 +41,37 @@ func (c *Client) Register(ctx context.Context) (*StoredConfig, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
+		return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
+	}
+
+	var cfg StoredConfig
+	if err := json.NewDecoder(resp.Body).Decode(&cfg); err != nil {
+		return nil, fmt.Errorf("decode response: %w", err)
+	}
+
+	return &cfg, nil
+}
+
+func (c *Client) Refresh(ctx context.Context, relayToken string) (*StoredConfig, error) {
+	url := c.baseURL + "/api/relay/refresh"
+
+	body, _ := json.Marshal(map[string]string{"relay_token": relayToken})
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, ErrInvalidToken
+	}
+	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
 	}
 

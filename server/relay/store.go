@@ -54,3 +54,11 @@ func (s *Store) Save(cfg *StoredConfig) error {
 
 	return os.WriteFile(s.path, data, 0600)
 }
+
+func (s *Store) Delete() error {
+	err := os.Remove(s.path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	return err
+}

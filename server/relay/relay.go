@@ -2,6 +2,7 @@ package relay
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -61,7 +62,26 @@ func (m *Manager) Start(ctx context.Context) (string, error) {
 
 		m.log.Info("registered with cloud", "subdomain", storedCfg.Subdomain)
 	} else {
-		m.log.Info("using stored config", "subdomain", storedCfg.Subdomain)
+		m.log.Info("refreshing config from cloud", "subdomain", storedCfg.Subdomain)
+
+		refreshedCfg, err := m.client.Refresh(ctx, storedCfg.RelayToken)
+		if errors.Is(err, ErrInvalidToken) {
+			m.log.Warn("stored token is invalid, re-registering")
+			if err := m.store.Delete(); err != nil {
+				return "", fmt.Errorf("delete config: %w", err)
+			}
+			return m.Start(ctx)
+		}
+		if err != nil {
+			return "", fmt.Errorf("refresh: %w", err)
+		}
+
+		if err := m.store.Save(refreshedCfg); err != nil {
+			return "", fmt.Errorf("save config: %w", err)
+		}
+
+		storedCfg = refreshedCfg
+		m.log.Info("config refreshed", "subdomain", storedCfg.Subdomain)
 	}
 
 	m.remoteURL = buildRemoteURL(storedCfg)
