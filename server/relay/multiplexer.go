@@ -11,13 +11,21 @@ import (
 	"github.com/sourcegraph/jsonrpc2"
 )
 
-// Envelope wraps JSON-RPC messages for multiplexing over a single WebSocket.
-// Multiple client connections are multiplexed by connection_id.
-// Type "disconnected" signals that a client has disconnected.
+type EnvelopeType string
+
+const (
+	EnvelopeTypeJSONRPC      EnvelopeType = "jsonrpc"
+	EnvelopeTypeDisconnected EnvelopeType = "disconnected"
+	EnvelopeTypeHTTPRequest  EnvelopeType = "http_request"
+	EnvelopeTypeHTTPResponse EnvelopeType = "http_response"
+)
+
 type Envelope struct {
 	ConnectionID string          `json:"connection_id"`
-	Type         string          `json:"type,omitempty"`
+	Type         EnvelopeType    `json:"type,omitempty"`
 	Payload      json.RawMessage `json:"payload,omitempty"`
+	HTTPRequest  *HTTPRequest    `json:"http_request,omitempty"`
+	HTTPResponse *HTTPResponse   `json:"http_response,omitempty"`
 }
 
 type Multiplexer struct {
@@ -26,14 +34,16 @@ type Multiplexer struct {
 	streamsMu   sync.RWMutex
 	writeMu     sync.Mutex
 	newStreamCh chan<- *VirtualStream
+	httpHandler *HTTPHandler
 	log         *slog.Logger
 }
 
-func NewMultiplexer(conn *websocket.Conn, newStreamCh chan<- *VirtualStream, log *slog.Logger) *Multiplexer {
+func NewMultiplexer(conn *websocket.Conn, newStreamCh chan<- *VirtualStream, httpHandler *HTTPHandler, log *slog.Logger) *Multiplexer {
 	return &Multiplexer{
 		conn:        conn,
 		streams:     make(map[string]*VirtualStream),
 		newStreamCh: newStreamCh,
+		httpHandler: httpHandler,
 		log:         log,
 	}
 }
@@ -52,9 +62,7 @@ func (m *Multiplexer) Run(ctx context.Context) error {
 		}
 
 		switch env.Type {
-		case "disconnected":
-			m.closeStream(env.ConnectionID)
-		default:
+		case EnvelopeTypeJSONRPC:
 			stream, isNew := m.getOrCreateStream(env.ConnectionID)
 			if isNew {
 				select {
@@ -66,6 +74,12 @@ func (m *Multiplexer) Run(ctx context.Context) error {
 			if !stream.deliver(env.Payload) {
 				m.closeStream(env.ConnectionID)
 			}
+		case EnvelopeTypeDisconnected:
+			m.closeStream(env.ConnectionID)
+		case EnvelopeTypeHTTPRequest:
+			go m.handleHTTPRequest(ctx, env.ConnectionID, env.HTTPRequest)
+		default:
+			m.log.Warn("unknown envelope type", "type", env.Type)
 		}
 	}
 }
@@ -87,6 +101,34 @@ func (m *Multiplexer) getOrCreateStream(connectionID string) (*VirtualStream, bo
 	m.streams[connectionID] = stream
 	m.log.Info("new virtual stream", "connectionId", connectionID)
 	return stream, true
+}
+
+func (m *Multiplexer) handleHTTPRequest(ctx context.Context, connectionID string, req *HTTPRequest) {
+	if req == nil {
+		m.log.Warn("nil http request", "connectionId", connectionID)
+		return
+	}
+
+	resp := m.httpHandler.Handle(ctx, req)
+
+	env := Envelope{
+		ConnectionID: connectionID,
+		Type:         EnvelopeTypeHTTPResponse,
+		HTTPResponse: resp,
+	}
+
+	m.writeMu.Lock()
+	defer m.writeMu.Unlock()
+
+	envData, err := json.Marshal(env)
+	if err != nil {
+		m.log.Error("failed to marshal http response", "error", err)
+		return
+	}
+
+	if err := m.conn.Write(ctx, websocket.MessageText, envData); err != nil {
+		m.log.Error("failed to send http response", "error", err)
+	}
 }
 
 func (m *Multiplexer) closeStream(connectionID string) {
@@ -111,6 +153,7 @@ func (m *Multiplexer) send(connectionID string, payload interface{}) error {
 
 	env := Envelope{
 		ConnectionID: connectionID,
+		Type:         EnvelopeTypeJSONRPC,
 		Payload:      data,
 	}
 
@@ -125,9 +168,6 @@ func (m *Multiplexer) send(connectionID string, payload interface{}) error {
 	return m.conn.Write(context.Background(), websocket.MessageText, envData)
 }
 
-// VirtualStream abstracts a single client connection multiplexed over a shared
-// relay WebSocket. The relay uses connection_id to distinguish clients, but
-// VirtualStream hides this, presenting each client as an independent stream.
 type VirtualStream struct {
 	connectionID string
 	incoming     chan json.RawMessage

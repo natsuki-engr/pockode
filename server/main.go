@@ -204,7 +204,12 @@ func main() {
 			DataDir:  dataDir,
 		}
 
-		relayManager = relay.NewManager(relayCfg, slog.Default())
+		backendPort, _ := strconv.Atoi(port)
+		frontendPort := backendPort
+		if envFrontendPort := os.Getenv("RELAY_FRONTEND_PORT"); envFrontendPort != "" {
+			frontendPort, _ = strconv.Atoi(envFrontendPort)
+		}
+		relayManager = relay.NewManager(relayCfg, backendPort, frontendPort, slog.Default())
 
 		remoteURL, err := relayManager.Start(context.Background())
 		if err != nil {

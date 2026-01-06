@@ -17,23 +17,27 @@ type Config struct {
 }
 
 type Manager struct {
-	config      Config
-	store       *Store
-	client      *Client
-	log         *slog.Logger
-	cancel      context.CancelFunc
-	remoteURL   string
-	wg          sync.WaitGroup
-	newStreamCh chan *VirtualStream
+	config       Config
+	backendPort  int
+	frontendPort int
+	store        *Store
+	client       *Client
+	log          *slog.Logger
+	cancel       context.CancelFunc
+	remoteURL    string
+	wg           sync.WaitGroup
+	newStreamCh  chan *VirtualStream
 }
 
-func NewManager(cfg Config, log *slog.Logger) *Manager {
+func NewManager(cfg Config, backendPort, frontendPort int, log *slog.Logger) *Manager {
 	return &Manager{
-		config:      cfg,
-		store:       NewStore(cfg.DataDir),
-		client:      NewClient(cfg.CloudURL),
-		log:         log.With("module", "relay"),
-		newStreamCh: make(chan *VirtualStream),
+		config:       cfg,
+		backendPort:  backendPort,
+		frontendPort: frontendPort,
+		store:        NewStore(cfg.DataDir),
+		client:       NewClient(cfg.CloudURL),
+		log:          log.With("module", "relay"),
+		newStreamCh:  make(chan *VirtualStream),
 	}
 }
 
@@ -77,31 +81,27 @@ func (m *Manager) Start(ctx context.Context) (string, error) {
 func (m *Manager) runWithReconnect(ctx context.Context, cfg *StoredConfig) {
 	backoff := time.Second
 
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-		}
-
+	for ctx.Err() == nil {
 		start := time.Now()
 		err := m.connectAndRun(ctx, cfg)
 		if ctx.Err() != nil {
 			return
 		}
 
-		// Reset backoff if connection was stable (> 1 minute)
+		m.log.Error("relay connection failed", "error", err, "backoff", backoff)
+
+		// Skip wait and reset backoff if connection was stable (> 1 minute)
 		if time.Since(start) > time.Minute {
 			backoff = time.Second
+			continue
 		}
 
-		m.log.Error("relay connection failed", "error", err, "backoff", backoff)
-		time.Sleep(backoff)
-
-		backoff *= 2
-		if backoff > 30*time.Second {
-			backoff = 30 * time.Second
+		select {
+		case <-time.After(backoff):
+		case <-ctx.Done():
+			return
 		}
+		backoff = min(backoff*2, 30*time.Second)
 	}
 }
 
@@ -113,6 +113,7 @@ func (m *Manager) connectAndRun(ctx context.Context, cfg *StoredConfig) error {
 	if err != nil {
 		return fmt.Errorf("dial: %w", err)
 	}
+	conn.SetReadLimit(10 * 1024 * 1024) // 10MB for HTTP responses
 	defer conn.Close(websocket.StatusNormalClosure, "")
 
 	if err := m.register(ctx, conn, cfg.RelayToken); err != nil {
@@ -121,7 +122,8 @@ func (m *Manager) connectAndRun(ctx context.Context, cfg *StoredConfig) error {
 
 	m.log.Info("connected to relay")
 
-	mux := NewMultiplexer(conn, m.newStreamCh, m.log)
+	httpHandler := NewHTTPHandler(m.backendPort, m.frontendPort, m.log)
+	mux := NewMultiplexer(conn, m.newStreamCh, httpHandler, m.log)
 	return mux.Run(ctx)
 }
 

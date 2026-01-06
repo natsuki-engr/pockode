@@ -44,6 +44,7 @@ git/git.go              # Git 仓库初始化
 - 显式错误处理，禁止忽略
 - 表驱动测试：见 `middleware/auth_test.go`
 - 中间件模式：见 `middleware/auth.go`
+- Mutex 命名：不用 `mu`，用明确说明保护对象的名称（如 `requestsMu`、`streamsMu`）
 
 ### 解析外部输出
 
