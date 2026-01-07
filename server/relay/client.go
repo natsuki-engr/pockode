@@ -52,6 +52,35 @@ func (c *Client) Register(ctx context.Context) (*StoredConfig, error) {
 	return &cfg, nil
 }
 
+func (c *Client) GetAnnouncement(ctx context.Context) string {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/api/announcement", nil)
+	if err != nil {
+		return ""
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return ""
+	}
+
+	var ann struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&ann); err != nil {
+		return ""
+	}
+
+	return ann.Message
+}
+
 func (c *Client) Refresh(ctx context.Context, relayToken string) (*StoredConfig, error) {
 	url := c.baseURL + "/api/relay/refresh"
 

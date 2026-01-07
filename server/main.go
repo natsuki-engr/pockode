@@ -189,16 +189,16 @@ func main() {
 		Handler: handler,
 	}
 
+	cloudURL := os.Getenv("CLOUD_URL")
+	if cloudURL == "" {
+		cloudURL = "https://cloud.pockode.com"
+	}
+
 	// Initialize relay if enabled
 	var relayManager *relay.Manager
 	var cancelRelayStreams context.CancelFunc
 	relayEnabled := *relayFlag || os.Getenv("RELAY_ENABLED") == "true"
 	if relayEnabled {
-		cloudURL := os.Getenv("RELAY_CLOUD_URL")
-		if cloudURL == "" {
-			cloudURL = "https://cloud.pockode.com"
-		}
-
 		relayCfg := relay.Config{
 			CloudURL: cloudURL,
 			DataDir:  dataDir,
@@ -257,7 +257,13 @@ func main() {
 	}()
 
 	fmt.Printf("Pockode %s\n", version)
-	fmt.Printf("Server running at http://localhost:%s\n", port)
+
+	// Fetch and display announcement from cloud
+	if msg := relay.NewClient(cloudURL).GetAnnouncement(context.Background()); msg != "" {
+		fmt.Printf("\n%s\n", msg)
+	}
+
+	fmt.Printf("\nServer running at http://localhost:%s\n", port)
 	fmt.Println("Press Ctrl+C to stop")
 	fmt.Println()
 	slog.Info("server starting", "port", port, "workDir", workDir, "dataDir", dataDir, "devMode", devMode, "idleTimeout", idleTimeout)

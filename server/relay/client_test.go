@@ -81,6 +81,60 @@ func TestClient_Register(t *testing.T) {
 	}
 }
 
+func TestClient_GetAnnouncement(t *testing.T) {
+	tests := []struct {
+		name        string
+		message     string
+		statusCode  int
+		wantMessage string
+	}{
+		{
+			name:        "successful with message",
+			message:     "Update available",
+			statusCode:  http.StatusOK,
+			wantMessage: "Update available",
+		},
+		{
+			name:        "successful with empty message",
+			message:     "",
+			statusCode:  http.StatusOK,
+			wantMessage: "",
+		},
+		{
+			name:        "server error returns empty",
+			message:     "",
+			statusCode:  http.StatusInternalServerError,
+			wantMessage: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodGet {
+					t.Errorf("Method = %v, want GET", r.Method)
+				}
+				if r.URL.Path != "/api/announcement" {
+					t.Errorf("Path = %v, want /api/announcement", r.URL.Path)
+				}
+
+				w.WriteHeader(tt.statusCode)
+				if tt.statusCode == http.StatusOK {
+					json.NewEncoder(w).Encode(map[string]string{"message": tt.message})
+				}
+			}))
+			defer server.Close()
+
+			client := NewClient(server.URL)
+			msg := client.GetAnnouncement(context.Background())
+
+			if msg != tt.wantMessage {
+				t.Errorf("Message = %v, want %v", msg, tt.wantMessage)
+			}
+		})
+	}
+}
+
 func TestClient_RegisterContextCancelled(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Slow response to test context cancellation
