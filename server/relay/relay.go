@@ -127,7 +127,7 @@ func (m *Manager) runWithReconnect(ctx context.Context, cfg *StoredConfig) {
 		case <-ctx.Done():
 			return
 		}
-		backoff = min(backoff*2, 30*time.Second)
+		backoff = min(backoff*2, 10*time.Second)
 	}
 }
 
