@@ -5,3 +5,8 @@ export function isMobile(): boolean {
 	if (typeof window === "undefined") return false;
 	return window.matchMedia(`(max-width: ${SM_BREAKPOINT - 1}px)`).matches;
 }
+
+export function hasCoarsePointer(): boolean {
+	if (typeof window === "undefined") return true;
+	return window.matchMedia("(pointer: coarse)").matches;
+}

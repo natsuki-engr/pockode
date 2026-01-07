@@ -2,7 +2,7 @@ import { type KeyboardEvent, useCallback, useEffect, useRef } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 import { useInputHistory } from "../../hooks/useInputHistory";
 import { inputActions, useInputStore } from "../../lib/inputStore";
-import { isMobile } from "../../utils/breakpoints";
+import { hasCoarsePointer, isMobile } from "../../utils/breakpoints";
 
 interface Props {
 	sessionId: string;
@@ -76,7 +76,7 @@ function InputBar({
 			if (e.nativeEvent.isComposing) return;
 
 			if (e.key === "Enter" && !e.shiftKey) {
-				if (isMobile()) return;
+				if (hasCoarsePointer()) return;
 				e.preventDefault();
 				handleSend();
 				return;
@@ -122,7 +122,7 @@ function InputBar({
 					onChange={(e) => inputActions.set(sessionId, e.target.value)}
 					onKeyDown={handleKeyDown}
 					placeholder={
-						isMobile()
+						hasCoarsePointer()
 							? "Type a message..."
 							: "Type a message... (Shift+Enter for newline)"
 					}

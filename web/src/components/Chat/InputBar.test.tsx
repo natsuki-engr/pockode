@@ -6,6 +6,7 @@ import InputBar from "./InputBar";
 
 vi.mock("../../utils/breakpoints", () => ({
 	isMobile: vi.fn(() => false),
+	hasCoarsePointer: vi.fn(() => false),
 }));
 
 const HISTORY_KEY = "input_history";
@@ -92,20 +93,20 @@ describe("InputBar", () => {
 		expect(onSend).not.toHaveBeenCalled();
 	});
 
-	it("does not send on Enter on mobile (newline instead)", async () => {
-		const { isMobile } = await import("../../utils/breakpoints");
-		vi.mocked(isMobile).mockReturnValue(true);
+	it("does not send on Enter with coarse pointer (touch device)", async () => {
+		const { hasCoarsePointer } = await import("../../utils/breakpoints");
+		vi.mocked(hasCoarsePointer).mockReturnValue(true);
 
 		const onSend = vi.fn();
 		render(<InputBar sessionId={TEST_SESSION_ID} onSend={onSend} />);
 
 		const textarea = screen.getByRole("textbox");
-		fireEvent.change(textarea, { target: { value: "Mobile Enter test" } });
+		fireEvent.change(textarea, { target: { value: "Touch device test" } });
 		fireEvent.keyDown(textarea, { key: "Enter" });
 
 		expect(onSend).not.toHaveBeenCalled();
 
-		vi.mocked(isMobile).mockReturnValue(false);
+		vi.mocked(hasCoarsePointer).mockReturnValue(false);
 	});
 
 	it("does not send empty messages", async () => {
