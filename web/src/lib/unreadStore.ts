@@ -45,3 +45,11 @@ export function useHasUnread(sessionId: string): boolean {
 export function useHasAnyUnread(): boolean {
 	return useUnreadStore((state) => state.unreadSessionIds.size > 0);
 }
+
+// Reset function for testing
+export function resetUnreadStore() {
+	useUnreadStore.setState({
+		unreadSessionIds: new Set(),
+		viewingSessionId: null,
+	});
+}

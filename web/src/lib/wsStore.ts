@@ -62,6 +62,15 @@ let reconnectAttempts = 0;
 let reconnectTimeout: number | undefined;
 const notificationListeners = new Set<NotificationListener>();
 
+// Callback to check if a session exists (set by useSession hook)
+let sessionExistsChecker: ((sessionId: string) => boolean) | null = null;
+
+export function setSessionExistsChecker(
+	checker: ((sessionId: string) => boolean) | null,
+) {
+	sessionExistsChecker = checker;
+}
+
 const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_INTERVAL = 3000;
 
@@ -96,7 +105,8 @@ function handleNotification(method: string, params: unknown): void {
 	if (
 		sessionId &&
 		!unreadActions.isViewing(sessionId) &&
-		!SILENT_EVENTS.has(eventType as ServerMethod)
+		!SILENT_EVENTS.has(eventType as ServerMethod) &&
+		sessionExistsChecker?.(sessionId)
 	) {
 		unreadActions.markUnread(sessionId);
 	}
@@ -254,5 +264,6 @@ export function resetWSStore() {
 	}
 	reconnectAttempts = 0;
 	notificationListeners.clear();
+	sessionExistsChecker = null;
 	useWSStore.setState({ status: "disconnected" });
 }

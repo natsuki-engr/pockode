@@ -18,6 +18,7 @@ vi.mock("../lib/wsStore", () => ({
 		const state = { status: "connected" };
 		return selector(state);
 	}),
+	setSessionExistsChecker: vi.fn(),
 }));
 
 import * as sessionApi from "../lib/sessionApi";

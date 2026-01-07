@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import {
 	createSession,
 	deleteSession,
 	listSessions,
 	updateSessionTitle,
 } from "../lib/sessionApi";
-import { useWSStore } from "../lib/wsStore";
+import { setSessionExistsChecker, useWSStore } from "../lib/wsStore";
 import type { SessionMeta } from "../types/message";
 
 interface UseSessionOptions {
@@ -35,6 +35,14 @@ export function useSession({
 		enabled: enabled && isConnected,
 		staleTime: Number.POSITIVE_INFINITY,
 	});
+
+	// Register session existence checker for wsStore
+	useEffect(() => {
+		setSessionExistsChecker((sessionId) =>
+			sessions.some((s) => s.id === sessionId),
+		);
+		return () => setSessionExistsChecker(null);
+	}, [sessions]);
 
 	const refresh = useCallback(() => {
 		queryClient.invalidateQueries({ queryKey: ["sessions"] });

@@ -103,7 +103,9 @@ beforeEach(() => {
 
 afterEach(async () => {
 	const { resetWSStore } = await import("./wsStore");
+	const { resetUnreadStore } = await import("./unreadStore");
 	resetWSStore();
+	resetUnreadStore();
 
 	vi.useRealTimers();
 	globalThis.WebSocket = OriginalWebSocket;
@@ -345,6 +347,51 @@ describe("wsStore", () => {
 			getMockWs()?.onmessage?.({ data: "not json" });
 
 			expect(listener).not.toHaveBeenCalled();
+		});
+
+		it("does not mark unread for non-existent session", async () => {
+			const { setSessionExistsChecker } = await import("./wsStore");
+			const { useUnreadStore } = await import("./unreadStore");
+
+			setSessionExistsChecker((id) => id === "existing-session");
+
+			await connectAndAuth();
+			getMockWs()?.simulateNotification("chat.result", {
+				session_id: "deleted-session",
+			});
+
+			expect(
+				useUnreadStore.getState().unreadSessionIds.has("deleted-session"),
+			).toBe(false);
+		});
+
+		it("marks unread for existing session", async () => {
+			const { setSessionExistsChecker } = await import("./wsStore");
+			const { useUnreadStore } = await import("./unreadStore");
+
+			setSessionExistsChecker((id) => id === "existing-session");
+
+			await connectAndAuth();
+			getMockWs()?.simulateNotification("chat.result", {
+				session_id: "existing-session",
+			});
+
+			expect(
+				useUnreadStore.getState().unreadSessionIds.has("existing-session"),
+			).toBe(true);
+		});
+
+		it("does not mark unread when session checker is not registered", async () => {
+			const { useUnreadStore } = await import("./unreadStore");
+
+			await connectAndAuth();
+			getMockWs()?.simulateNotification("chat.result", {
+				session_id: "any-session",
+			});
+
+			expect(
+				useUnreadStore.getState().unreadSessionIds.has("any-session"),
+			).toBe(false);
 		});
 	});
 
