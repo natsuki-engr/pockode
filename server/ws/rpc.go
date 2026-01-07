@@ -10,6 +10,7 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/google/uuid"
+	"github.com/pockode/server/logger"
 	"github.com/pockode/server/process"
 	"github.com/pockode/server/rpc"
 	"github.com/pockode/server/session"
@@ -54,6 +55,12 @@ func (h *RPCHandler) handleConnection(ctx context.Context, wsConn *websocket.Con
 }
 
 func (h *RPCHandler) HandleStream(ctx context.Context, stream jsonrpc2.ObjectStream, connID string) {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.LogPanic(r, "websocket connection crashed", "connId", connID)
+		}
+	}()
+
 	log := slog.With("connId", connID)
 	log.Info("new connection")
 

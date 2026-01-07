@@ -1,10 +1,12 @@
 package logger
 
 import (
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 
 	"github.com/google/uuid"
@@ -69,4 +71,12 @@ func parseLevel(s string) slog.Level {
 // NewRequestLogger creates a logger with a unique requestId for API handlers.
 func NewRequestLogger() *slog.Logger {
 	return slog.With("requestId", uuid.Must(uuid.NewV7()).String())
+}
+
+// LogPanic logs a recovered panic with stack trace to both slog and stderr.
+// Use this in defer/recover blocks to ensure panics are visible to users.
+func LogPanic(r any, msg string, attrs ...any) {
+	stack := string(debug.Stack())
+	slog.Error(msg, append(attrs, "error", r, "stack", stack)...)
+	fmt.Fprintf(os.Stderr, "fatal: %s: %v\n%s", msg, r, stack)
 }

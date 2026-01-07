@@ -10,6 +10,7 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
+	"github.com/pockode/server/logger"
 )
 
 type Config struct {
@@ -92,6 +93,11 @@ func (m *Manager) Start(ctx context.Context) (string, error) {
 	m.wg.Add(1)
 	go func() {
 		defer m.wg.Done()
+		defer func() {
+			if r := recover(); r != nil {
+				logger.LogPanic(r, "relay connection crashed")
+			}
+		}()
 		m.runWithReconnect(relayCtx, storedCfg)
 	}()
 

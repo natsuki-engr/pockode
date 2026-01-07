@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/coder/websocket"
+	"github.com/pockode/server/logger"
 	"github.com/sourcegraph/jsonrpc2"
 )
 
@@ -104,6 +105,12 @@ func (m *Multiplexer) getOrCreateStream(connectionID string) (*VirtualStream, bo
 }
 
 func (m *Multiplexer) handleHTTPRequest(ctx context.Context, connectionID string, req *HTTPRequest) {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.LogPanic(r, "http proxy request failed", "connectionId", connectionID)
+		}
+	}()
+
 	if req == nil {
 		m.log.Warn("nil http request", "connectionId", connectionID)
 		return

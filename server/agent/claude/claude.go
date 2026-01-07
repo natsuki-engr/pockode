@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/pockode/server/agent"
+	"github.com/pockode/server/logger"
 )
 
 const (
@@ -101,6 +102,11 @@ func (a *Agent) Start(ctx context.Context, workDir string, sessionID string, res
 	// Note: When procCtx is cancelled (via sess.Close), CommandContext sends SIGKILL,
 	// which terminates the process and closes stdout, causing streamOutput to exit.
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logger.LogPanic(r, "claude process crashed", "sessionId", sessionID)
+			}
+		}()
 		defer close(events)
 		defer cancel()
 		defer stdout.Close()
@@ -292,12 +298,20 @@ func readStderr(stderr io.Reader) <-chan string {
 	ch := make(chan string, 1)
 	go func() {
 		var content strings.Builder
+		defer func() {
+			if r := recover(); r != nil {
+				logger.LogPanic(r, "failed to read claude stderr")
+			}
+			ch <- content.String()
+		}()
 		scanner := bufio.NewScanner(stderr)
 		for scanner.Scan() {
 			content.WriteString(scanner.Text())
 			content.WriteString("\n")
 		}
-		ch <- content.String()
+		if err := scanner.Err(); err != nil {
+			slog.Error("stderr scanner error", "error", err)
+		}
 	}()
 	return ch
 }

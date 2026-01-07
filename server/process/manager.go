@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pockode/server/agent"
+	"github.com/pockode/server/logger"
 	"github.com/pockode/server/rpc"
 	"github.com/pockode/server/session"
 	"github.com/sourcegraph/jsonrpc2"
@@ -86,9 +87,14 @@ func (m *Manager) GetOrCreateProcess(ctx context.Context, sessionID string, resu
 	m.processes[sessionID] = proc
 
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logger.LogPanic(r, "session crashed", "sessionId", sessionID)
+			}
+			m.remove(sessionID)
+			slog.Info("process ended", "sessionId", sessionID)
+		}()
 		proc.streamEvents(m.ctx)
-		m.remove(sessionID)
-		slog.Info("process ended", "sessionId", sessionID)
 	}()
 
 	slog.Info("process created", "sessionId", sessionID, "resume", resume)
@@ -220,6 +226,12 @@ func (m *Manager) Shutdown() {
 }
 
 func (m *Manager) runIdleReaper() {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.LogPanic(r, "idle reaper crashed")
+		}
+	}()
+
 	ticker := time.NewTicker(m.idleTimeout / 4)
 	defer ticker.Stop()
 
