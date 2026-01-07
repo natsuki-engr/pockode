@@ -640,6 +640,25 @@ func TestHandler_SessionDelete(t *testing.T) {
 	}
 }
 
+func TestHandler_SessionDelete_ClosesProcess(t *testing.T) {
+	env := newTestEnv(t, &mockAgent{})
+	sess, _ := env.store.Create(bgCtx, "to-delete-with-process")
+	env.sendMessage(sess.ID, "hello")
+
+	if !env.manager.HasProcess(sess.ID) {
+		t.Fatal("expected process to be running after message")
+	}
+
+	resp := env.call("session.delete", rpc.SessionDeleteParams{SessionID: sess.ID})
+
+	if resp.Error != nil {
+		t.Errorf("unexpected error: %s", resp.Error.Message)
+	}
+	if env.manager.HasProcess(sess.ID) {
+		t.Error("expected process to be closed after session delete")
+	}
+}
+
 func TestHandler_SessionUpdateTitle(t *testing.T) {
 	env := newTestEnv(t, &mockAgent{})
 	sess, _ := env.store.Create(bgCtx, "to-update")

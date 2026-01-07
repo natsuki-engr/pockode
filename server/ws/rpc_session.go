@@ -50,6 +50,7 @@ func (h *rpcMethodHandler) handleSessionDelete(ctx context.Context, conn *jsonrp
 		return
 	}
 
+	h.manager.Close(params.SessionID)
 	if err := h.sessionStore.Delete(ctx, params.SessionID); err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, "failed to delete session")
 		return
