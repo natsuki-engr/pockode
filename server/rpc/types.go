@@ -119,6 +119,12 @@ type ToolResultParams struct {
 	ToolResult string `json:"tool_result"`
 }
 
+type WarningParams struct {
+	SessionID string `json:"session_id"`
+	Message   string `json:"message"`
+	Code      string `json:"code"`
+}
+
 type ErrorParams struct {
 	SessionID string `json:"session_id"`
 	Error     string `json:"error"`
@@ -159,6 +165,8 @@ func NewNotifyParams(sessionID string, event agent.AgentEvent) interface{} {
 		return ToolCallParams{SessionID: sessionID, ToolName: e.ToolName, ToolInput: e.ToolInput, ToolUseID: e.ToolUseID}
 	case agent.ToolResultEvent:
 		return ToolResultParams{SessionID: sessionID, ToolUseID: e.ToolUseID, ToolResult: e.ToolResult}
+	case agent.WarningEvent:
+		return WarningParams{SessionID: sessionID, Message: e.Message, Code: e.Code}
 	case agent.ErrorEvent:
 		return ErrorParams{SessionID: sessionID, Error: e.Error}
 	case agent.DoneEvent:

@@ -12,6 +12,8 @@ type HistoryRecord struct {
 	ToolUseID             string             `json:"tool_use_id,omitempty"`
 	ToolResult            string             `json:"tool_result,omitempty"`
 	Error                 string             `json:"error,omitempty"`
+	Message               string             `json:"message,omitempty"`
+	Code                  string             `json:"code,omitempty"`
 	RequestID             string             `json:"request_id,omitempty"`
 	PermissionSuggestions []PermissionUpdate `json:"permission_suggestions,omitempty"`
 	Questions             []AskUserQuestion  `json:"questions,omitempty"`
@@ -33,6 +35,9 @@ func NewHistoryRecord(event AgentEvent) HistoryRecord {
 	case ToolResultEvent:
 		r.ToolUseID = e.ToolUseID
 		r.ToolResult = e.ToolResult
+	case WarningEvent:
+		r.Message = e.Message
+		r.Code = e.Code
 	case ErrorEvent:
 		r.Error = e.Error
 	case PermissionRequestEvent:

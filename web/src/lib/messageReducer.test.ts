@@ -66,6 +66,19 @@ describe("messageReducer", () => {
 			});
 		});
 
+		it("normalizes warning event", () => {
+			const event = normalizeEvent({
+				type: "warning",
+				message: "Image not supported",
+				code: "image_not_supported",
+			});
+			expect(event).toEqual({
+				type: "warning",
+				message: "Image not supported",
+				code: "image_not_supported",
+			});
+		});
+
 		it("returns empty text for unknown event type", () => {
 			const event = normalizeEvent({ type: "unknown_type" });
 			expect(event).toEqual({ type: "text", content: "" });
@@ -240,6 +253,22 @@ describe("messageReducer", () => {
 						questions: sampleQuestions,
 					},
 					status: "pending",
+				},
+			]);
+		});
+
+		it("adds warning as new part", () => {
+			const parts = applyEventToParts([{ type: "text", content: "Text" }], {
+				type: "warning",
+				message: "Image not supported",
+				code: "image_not_supported",
+			});
+			expect(parts).toEqual([
+				{ type: "text", content: "Text" },
+				{
+					type: "warning",
+					message: "Image not supported",
+					code: "image_not_supported",
 				},
 			]);
 		});

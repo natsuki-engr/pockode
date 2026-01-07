@@ -132,6 +132,23 @@ function SystemItem({ content }: SystemItemProps) {
 	);
 }
 
+interface WarningItemProps {
+	message: string;
+	code: string;
+}
+
+function WarningItem({ message, code }: WarningItemProps) {
+	return (
+		<div className="flex items-start gap-2 rounded bg-th-warning/10 p-2 text-sm text-th-warning">
+			<span className="shrink-0">⚠</span>
+			<div>
+				<span>{message}</span>
+				<span className="ml-2 text-xs opacity-70">({code})</span>
+			</div>
+		</div>
+	);
+}
+
 type PermissionChoice = "deny" | "allow" | "always_allow";
 
 interface PermissionRequestItemProps {
@@ -357,6 +374,9 @@ function ContentPartItem({
 				onRespond={onQuestionRespond}
 			/>
 		);
+	}
+	if (part.type === "warning") {
+		return <WarningItem message={part.message} code={part.code} />;
 	}
 	return <ToolCallItem tool={part.tool} />;
 }

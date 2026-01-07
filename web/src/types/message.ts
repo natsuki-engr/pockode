@@ -34,6 +34,7 @@ export type ContentPart =
 	| { type: "text"; content: string }
 	| { type: "tool_call"; tool: ToolCall }
 	| { type: "system"; content: string }
+	| { type: "warning"; message: string; code: string }
 	| {
 			type: "permission_request";
 			request: PermissionRequest;
@@ -265,6 +266,7 @@ export type ServerMethod =
 	| "text"
 	| "tool_call"
 	| "tool_result"
+	| "warning"
 	| "error"
 	| "done"
 	| "interrupted"
@@ -289,6 +291,12 @@ export type ServerNotification =
 			session_id: string;
 			tool_use_id: string;
 			tool_result: string;
+	  }
+	| {
+			type: "warning";
+			session_id: string;
+			message: string;
+			code: string;
 	  }
 	| { type: "error"; session_id: string; error: string }
 	| { type: "done"; session_id: string }

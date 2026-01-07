@@ -112,11 +112,19 @@ func TestParseLine(t *testing.T) {
 			}},
 		},
 		{
-			name:  "user tool_result with array content",
+			name:  "user tool_result with image content returns warning",
 			input: `{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"toolu_img","content":[{"type":"image","source":{"type":"base64","data":"..."}},{"type":"text","text":"description"}]}]}}`,
+			expected: []agent.AgentEvent{agent.WarningEvent{
+				Message: "Image content is not supported yet",
+				Code:    "image_not_supported",
+			}},
+		},
+		{
+			name:  "user tool_result with non-image array content",
+			input: `{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"toolu_arr","content":[{"type":"text","text":"line 1"},{"type":"text","text":"line 2"}]}]}}`,
 			expected: []agent.AgentEvent{agent.ToolResultEvent{
-				ToolUseID:  "toolu_img",
-				ToolResult: `[{"type":"image","source":{"type":"base64","data":"..."}},{"type":"text","text":"description"}]`,
+				ToolUseID:  "toolu_arr",
+				ToolResult: `[{"type":"text","text":"line 1"},{"type":"text","text":"line 2"}]`,
 			}},
 		},
 		{
@@ -244,6 +252,9 @@ func agentEventEqual(a, b agent.AgentEvent) bool {
 	case agent.ToolResultEvent:
 		bv, ok := b.(agent.ToolResultEvent)
 		return ok && av.ToolUseID == bv.ToolUseID && av.ToolResult == bv.ToolResult
+	case agent.WarningEvent:
+		bv, ok := b.(agent.WarningEvent)
+		return ok && av.Message == bv.Message && av.Code == bv.Code
 	case agent.ErrorEvent:
 		bv, ok := b.(agent.ErrorEvent)
 		return ok && av.Error == bv.Error

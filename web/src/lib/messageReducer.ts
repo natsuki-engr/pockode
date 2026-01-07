@@ -20,6 +20,7 @@ export type NormalizedEvent =
 			toolInput: unknown;
 	  }
 	| { type: "tool_result"; toolUseId: string; toolResult: string }
+	| { type: "warning"; message: string; code: string }
 	| { type: "error"; error: string }
 	| { type: "done" }
 	| { type: "interrupted" }
@@ -77,6 +78,12 @@ export function normalizeEvent(
 				type: "tool_result",
 				toolUseId: record.tool_use_id as string,
 				toolResult: (record.tool_result as string) ?? "",
+			};
+		case "warning":
+			return {
+				type: "warning",
+				message: (record.message as string) ?? "",
+				code: (record.code as string) ?? "",
 			};
 		case "error":
 			return { type: "error", error: (record.error as string) ?? "" };
@@ -188,6 +195,11 @@ export function applyEventToParts(
 			];
 		case "system":
 			return [...parts, { type: "system", content: event.content }];
+		case "warning":
+			return [
+				...parts,
+				{ type: "warning", message: event.message, code: event.code },
+			];
 		default:
 			return parts;
 	}

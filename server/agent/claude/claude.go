@@ -637,6 +637,17 @@ func parseUserEvent(log *slog.Logger, event cliEvent) []agent.AgentEvent {
 	var events []agent.AgentEvent
 	for _, block := range msg.Content {
 		if block.Type == "tool_result" {
+			// Check if content contains image (array with type:"image" elements).
+			// TODO: Support image display. Also note current HTTP relay has 10MB limit,
+			// which may need adjustment for large images.
+			if hasImageContent(block.Content) {
+				events = append(events, agent.WarningEvent{
+					Message: "Image content is not supported yet",
+					Code:    "image_not_supported",
+				})
+				continue
+			}
+
 			// Content is JSON: either a string ("...") or array/object.
 			// Unmarshal extracts the string value; for non-strings, use raw JSON.
 			var content string
@@ -651,6 +662,28 @@ func parseUserEvent(log *slog.Logger, event cliEvent) []agent.AgentEvent {
 	}
 
 	return events
+}
+
+// hasImageContent checks if JSON content contains image type elements.
+// Returns true if content is an array containing any element with type:"image".
+func hasImageContent(content json.RawMessage) bool {
+	if len(content) == 0 || content[0] != '[' {
+		return false
+	}
+
+	var items []struct {
+		Type string `json:"type"`
+	}
+	if err := json.Unmarshal(content, &items); err != nil {
+		return false
+	}
+
+	for _, item := range items {
+		if item.Type == "image" {
+			return true
+		}
+	}
+	return false
 }
 
 type resultEvent struct {

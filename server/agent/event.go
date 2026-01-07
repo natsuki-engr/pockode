@@ -9,6 +9,7 @@ const (
 	EventTypeText               EventType = "text"
 	EventTypeToolCall           EventType = "tool_call"
 	EventTypeToolResult         EventType = "tool_result"
+	EventTypeWarning            EventType = "warning"
 	EventTypeError              EventType = "error"
 	EventTypeDone               EventType = "done"
 	EventTypeInterrupted        EventType = "interrupted"
@@ -126,6 +127,16 @@ type ToolResultEvent struct {
 
 func (ToolResultEvent) EventType() EventType { return EventTypeToolResult }
 func (ToolResultEvent) isAgentEvent()        {}
+
+// WarningEvent represents a non-fatal warning (e.g., unsupported content type).
+// Unlike ErrorEvent which represents a fatal error, this is displayed inline and the conversation continues.
+type WarningEvent struct {
+	Message string
+	Code    string
+}
+
+func (WarningEvent) EventType() EventType { return EventTypeWarning }
+func (WarningEvent) isAgentEvent()        {}
 
 // ErrorEvent represents an error event.
 type ErrorEvent struct {
