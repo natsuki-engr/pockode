@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -337,6 +338,19 @@ func streamOutput(ctx context.Context, log *slog.Logger, stdout io.Reader, event
 
 	if err := scanner.Err(); err != nil {
 		log.Error("stdout scanner error", "error", err)
+		msg := "Some output could not be read"
+		code := "scanner_error"
+		if errors.Is(err, bufio.ErrTooLong) {
+			msg = "Some output was too large to display"
+			code = "scanner_buffer_overflow"
+		}
+		select {
+		case events <- agent.WarningEvent{
+			Message: msg,
+			Code:    code,
+		}:
+		case <-ctx.Done():
+		}
 	}
 }
 
