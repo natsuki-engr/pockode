@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -247,6 +248,11 @@ func newWebSocketStream(conn *websocket.Conn) *webSocketStream {
 func (s *webSocketStream) ReadObject(v interface{}) error {
 	_, data, err := s.conn.Read(context.Background())
 	if err != nil {
+		// Treat normal close frames as EOF so jsonrpc2 shuts down gracefully
+		switch websocket.CloseStatus(err) {
+		case websocket.StatusNormalClosure, websocket.StatusGoingAway:
+			return io.EOF
+		}
 		return err
 	}
 	return json.Unmarshal(data, v)
