@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+    <mask id="bubble-mask">
+      <rect width="100" height="100" fill="white"/>
+      <path d="M51 10 L71 10 Q78 10 78 17 L78 28 Q78 35 71 35 L60 35 L54 43 L56 35 L51 35 Q44 35 44 28 L44 17 Q44 10 51 10 Z" fill="black"/>
+    </mask>
+  </defs>
+
+  <!-- Phone frame -->
+  <rect x="16" y="12" width="44" height="76" rx="7" fill="none" stroke="url(#g)" stroke-width="3" mask="url(#bubble-mask)"/>
+
+  <!-- Chat bubble -->
+  <path d="M51 10 L71 10 Q78 10 78 17 L78 28 Q78 35 71 35 L60 35 L54 43 L56 35 L51 35 Q44 35 44 28 L44 17 Q44 10 51 10 Z" fill="none" stroke="url(#g)" stroke-width="3"/>
+  <circle cx="54" cy="22" r="2" fill="url(#g)"/>
+  <circle cx="61" cy="22" r="2" fill="url(#g)"/>
+  <circle cx="68" cy="22" r="2" fill="url(#g)"/>
+
+  <!-- Code brackets </> -->
+  <path d="M30 58 L22 50 L30 42" fill="none" stroke="url(#g)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M46 58 L54 50 L46 42" fill="none" stroke="url(#g)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="42" y1="42" x2="34" y2="58" stroke="url(#g)" stroke-width="3" stroke-linecap="round"/>
+</svg>

@@ -6,6 +6,18 @@
   <title>{{ with .Title }}{{ . }} — {{ end }}{{ .Site.Title }}</title>
   <meta name="description" content="{{ .Site.Params.subheadline }}">
   <meta name="theme-color" content="#0a0a0a">
+
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ "icons/favicon-32x32.png" | relURL }}">
+  <link rel="apple-touch-icon" href="{{ "icons/apple-touch-icon.png" | relURL }}">
+
+  <meta property="og:site_name" content="{{ .Site.Title }}">
+  <meta property="og:title" content="{{ with .Title }}{{ . }}{{ else }}{{ .Site.Title }}{{ end }}">
+  <meta property="og:description" content="{{ .Site.Params.subheadline }}">
+  <meta property="og:image" content="{{ "icons/og-image.jpg" | absURL }}">
+  <meta property="og:url" content="{{ .Permalink }}">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
