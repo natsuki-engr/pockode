@@ -19,13 +19,13 @@ function CommandPalette({ commands, selectedIndex, onSelect, filter }: Props) {
 
 	return (
 		<div
-			className="absolute bottom-full left-0 right-0 z-10 mx-3 mb-2 max-h-[40vh] overflow-y-auto rounded-xl border border-th-border bg-th-bg-secondary shadow-lg sm:mx-4"
+			className="absolute bottom-full left-0 right-0 z-10 mx-3 mb-2 flex max-h-[40vh] flex-col rounded-xl border border-th-border bg-th-bg-secondary shadow-lg sm:mx-4"
 			role="listbox"
 		>
 			{commands.length === 0 ? (
 				<div className="px-4 py-3 text-th-text-muted">No matching commands</div>
 			) : (
-				<>
+				<div className="overflow-y-auto">
 					{commands.map((cmd, index) => (
 						<button
 							key={cmd.name}
@@ -48,32 +48,26 @@ function CommandPalette({ commands, selectedIndex, onSelect, filter }: Props) {
 							)}
 						</button>
 					))}
-					{!hasCoarsePointer() && (
-						<div className="flex gap-3 border-t border-th-border px-4 py-2 text-xs text-th-text-muted">
-							<span>
-								<kbd className="rounded bg-th-bg-tertiary px-1.5 py-0.5">
-									Tab
-								</kbd>
-								<kbd className="ml-1 rounded bg-th-bg-tertiary px-1.5 py-0.5">
-									⇧Tab
-								</kbd>{" "}
-								navigate
-							</span>
-							<span>
-								<kbd className="rounded bg-th-bg-tertiary px-1.5 py-0.5">
-									Enter
-								</kbd>{" "}
-								select
-							</span>
-							<span>
-								<kbd className="rounded bg-th-bg-tertiary px-1.5 py-0.5">
-									Esc
-								</kbd>{" "}
-								close
-							</span>
-						</div>
-					)}
-				</>
+				</div>
+			)}
+			{commands.length > 0 && !hasCoarsePointer() && (
+				<div className="flex shrink-0 gap-3 border-t border-th-border px-4 py-2 text-xs text-th-text-muted">
+					<span>
+						<kbd className="rounded bg-th-bg-tertiary px-1.5 py-0.5">Tab</kbd>
+						<kbd className="ml-1 rounded bg-th-bg-tertiary px-1.5 py-0.5">
+							⇧Tab
+						</kbd>{" "}
+						navigate
+					</span>
+					<span>
+						<kbd className="rounded bg-th-bg-tertiary px-1.5 py-0.5">Enter</kbd>{" "}
+						select
+					</span>
+					<span>
+						<kbd className="rounded bg-th-bg-tertiary px-1.5 py-0.5">Esc</kbd>{" "}
+						close
+					</span>
+				</div>
 			)}
 		</div>
 	);
