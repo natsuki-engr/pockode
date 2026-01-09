@@ -200,6 +200,20 @@ type GitStatus struct {
 	Unstaged []FileStatus `json:"unstaged"`
 }
 
+// HasFile returns true if the file exists in staged or unstaged list.
+func (s *GitStatus) HasFile(path string, staged bool) bool {
+	files := s.Unstaged
+	if staged {
+		files = s.Staged
+	}
+	for _, f := range files {
+		if f.Path == path {
+			return true
+		}
+	}
+	return false
+}
+
 // Status returns the current git status (staged and unstaged files).
 // It recursively includes changes from submodules with prefixed paths.
 func Status(dir string) (*GitStatus, error) {
@@ -300,8 +314,17 @@ func getSubmodulePaths(dir string) []string {
 // Diff returns the unified diff for a specific file.
 // If staged is true, returns diff of staged changes (index vs HEAD).
 // If staged is false, returns diff of unstaged changes (worktree vs index).
+// Returns empty string if file is not in git status (no changes).
 // For submodule paths (e.g., "submodule/path/to/file"), it runs diff inside the submodule.
 func Diff(dir, path string, staged bool) (string, error) {
+	status, err := Status(dir)
+	if err != nil {
+		return "", err
+	}
+	if !status.HasFile(path, staged) {
+		return "", nil
+	}
+
 	// Resolve submodule path if needed
 	actualDir, relativePath := resolveSubmodulePath(dir, path)
 
@@ -316,19 +339,10 @@ func Diff(dir, path string, staged bool) (string, error) {
 	cmd.Dir = actualDir
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		fullPath := filepath.Join(actualDir, relativePath)
-		if _, statErr := os.Stat(fullPath); os.IsNotExist(statErr) {
-			return "", fmt.Errorf("file not found: %s", path)
-		}
-		if !staged {
-			untrackedDiff, untrackedErr := showUntrackedFile(actualDir, relativePath)
-			if untrackedErr == nil {
-				return untrackedDiff, nil
-			}
-		}
 		return "", fmt.Errorf("git diff failed: %w (output: %s)", err, string(output))
 	}
 
+	// Untracked files have empty git diff output
 	if len(output) == 0 && !staged {
 		return showUntrackedFile(actualDir, relativePath)
 	}
@@ -408,6 +422,9 @@ func DiffWithContent(dir, path string, staged bool) (*DiffResult, error) {
 	diff, err := Diff(dir, path, staged)
 	if err != nil {
 		return nil, err
+	}
+	if diff == "" {
+		return &DiffResult{}, nil
 	}
 
 	// Resolve submodule path for content retrieval

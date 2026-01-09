@@ -218,6 +218,67 @@ func TestStatus_WithSubmodule(t *testing.T) {
 	}
 }
 
+func setupTestRepo(t *testing.T) (string, func()) {
+	t.Helper()
+	tempDir, err := os.MkdirTemp("", "git-test-*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	cleanup := func() { os.RemoveAll(tempDir) }
+
+	cmds := [][]string{
+		{"git", "init"},
+		{"git", "config", "user.email", "test@test.com"},
+		{"git", "config", "user.name", "Test"},
+	}
+	for _, args := range cmds {
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Dir = tempDir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			cleanup()
+			t.Fatalf("failed to run %v: %v\n%s", args, err, out)
+		}
+	}
+	return tempDir, cleanup
+}
+
+func TestDiff_FileNotInStatus(t *testing.T) {
+	dir, cleanup := setupTestRepo(t)
+	defer cleanup()
+
+	// Create and commit a file
+	testFile := filepath.Join(dir, "test.txt")
+	if err := os.WriteFile(testFile, []byte("original"), 0644); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
+	runGit(t, dir, "add", "test.txt")
+	runGit(t, dir, "commit", "-m", "initial")
+
+	// Modify and stage (no unstaged changes)
+	if err := os.WriteFile(testFile, []byte("modified"), 0644); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
+	runGit(t, dir, "add", "test.txt")
+
+	// Request unstaged diff - file is staged only, not in unstaged status
+	diff, err := Diff(dir, "test.txt", false)
+	if err != nil {
+		t.Fatalf("Diff() error: %v", err)
+	}
+	if diff != "" {
+		t.Errorf("expected empty diff for file not in unstaged status, got: %q", diff)
+	}
+}
+
+func runGit(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git %v failed: %v\n%s", args, err, out)
+	}
+}
+
 func TestDiff_WithSubmodule(t *testing.T) {
 	parentRepo, cleanup := setupTestRepoWithSubmodule(t)
 	defer cleanup()

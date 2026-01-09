@@ -39,11 +39,7 @@ const DiffContent = memo(function DiffContent({
 	}
 
 	if (!diff.trim()) {
-		return (
-			<div className="p-4 text-center text-th-text-muted">
-				No diff content to display
-			</div>
-		);
+		return <div className="p-4 text-center text-th-text-muted">No changes</div>;
 	}
 
 	if (!highlighter) {
