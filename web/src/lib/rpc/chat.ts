@@ -1,4 +1,4 @@
-import type { JSONRPCClient } from "json-rpc-2.0";
+import type { JSONRPCRequester } from "json-rpc-2.0";
 import type {
 	AttachParams,
 	AttachResult,
@@ -17,9 +17,9 @@ export interface ChatActions {
 }
 
 export function createChatActions(
-	getClient: () => JSONRPCClient | null,
+	getClient: () => JSONRPCRequester<void> | null,
 ): ChatActions {
-	const requireClient = (): JSONRPCClient => {
+	const requireClient = (): JSONRPCRequester<void> => {
 		const client = getClient();
 		if (!client) {
 			throw new Error("Not connected");

@@ -1,4 +1,4 @@
-import type { JSONRPCClient } from "json-rpc-2.0";
+import type { JSONRPCRequester } from "json-rpc-2.0";
 import type {
 	SessionDeleteParams,
 	SessionGetHistoryParams,
@@ -17,9 +17,9 @@ export interface SessionActions {
 }
 
 export function createSessionActions(
-	getClient: () => JSONRPCClient | null,
+	getClient: () => JSONRPCRequester<void> | null,
 ): SessionActions {
-	const requireClient = (): JSONRPCClient => {
+	const requireClient = (): JSONRPCRequester<void> => {
 		const client = getClient();
 		if (!client) {
 			throw new Error("Not connected");

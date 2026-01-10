@@ -1,4 +1,4 @@
-import type { JSONRPCClient } from "json-rpc-2.0";
+import type { JSONRPCRequester } from "json-rpc-2.0";
 
 export interface Command {
 	name: string;
@@ -15,11 +15,11 @@ export interface CommandActions {
 }
 
 export function createCommandActions(
-	getClient: () => JSONRPCClient | null,
+	getClient: () => JSONRPCRequester<void> | null,
 ): CommandActions {
 	let cachedCommands: Command[] | null = null;
 
-	const requireClient = (): JSONRPCClient => {
+	const requireClient = (): JSONRPCRequester<void> => {
 		const client = getClient();
 		if (!client) {
 			throw new Error("Not connected");

@@ -1,4 +1,4 @@
-import type { JSONRPCClient } from "json-rpc-2.0";
+import type { JSONRPCRequester } from "json-rpc-2.0";
 import type { Entry, FileContent } from "../../types/contents";
 
 interface FileGetParams {
@@ -16,9 +16,9 @@ export interface FileActions {
 }
 
 export function createFileActions(
-	getClient: () => JSONRPCClient | null,
+	getClient: () => JSONRPCRequester<void> | null,
 ): FileActions {
-	const requireClient = (): JSONRPCClient => {
+	const requireClient = (): JSONRPCRequester<void> => {
 		const client = getClient();
 		if (!client) {
 			throw new Error("Not connected");

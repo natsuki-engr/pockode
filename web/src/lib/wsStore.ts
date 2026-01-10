@@ -1,4 +1,4 @@
-import { JSONRPCClient } from "json-rpc-2.0";
+import { JSONRPCClient, type JSONRPCRequester } from "json-rpc-2.0";
 import { create } from "zustand";
 import type {
 	AuthParams,
@@ -59,7 +59,8 @@ interface WSState {
 
 // Module-level state for mutable objects (not reactive)
 let ws: WebSocket | null = null;
-let rpcClient: JSONRPCClient | null = null;
+let rpcReceiver: JSONRPCClient | null = null;
+let rpcRequester: JSONRPCRequester<void> | null = null;
 let currentToken: string | null = null;
 let reconnectAttempts = 0;
 let reconnectTimeout: number | undefined;
@@ -77,18 +78,25 @@ export function setSessionExistsChecker(
 const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_INTERVAL = 3000;
 
-function getClient(): JSONRPCClient | null {
-	return rpcClient;
+function getClient(): JSONRPCRequester<void> | null {
+	return rpcRequester;
 }
 
-function createRPCClient(socket: WebSocket): JSONRPCClient {
-	return new JSONRPCClient((request) => {
-		if (socket.readyState === WebSocket.OPEN) {
-			socket.send(JSON.stringify(request));
-		} else {
+const RPC_TIMEOUT_MS = 30000;
+
+interface RPCClients {
+	base: JSONRPCClient;
+	withTimeout: JSONRPCRequester<void>;
+}
+
+function createRPCClient(socket: WebSocket): RPCClients {
+	const base = new JSONRPCClient((request) => {
+		if (socket.readyState !== WebSocket.OPEN) {
 			return Promise.reject(new Error("WebSocket is not connected"));
 		}
+		socket.send(JSON.stringify(request));
 	});
+	return { base, withTimeout: base.timeout(RPC_TIMEOUT_MS) };
 }
 
 function stripNamespace(method: string): string {
@@ -153,11 +161,12 @@ export const useWSStore = create<WSState>((set, get) => ({
 			const socket = new WebSocket(url);
 
 			socket.onopen = async () => {
-				const client = createRPCClient(socket);
-				rpcClient = client;
+				const clients = createRPCClient(socket);
+				rpcReceiver = clients.base;
+				rpcRequester = clients.withTimeout;
 
 				try {
-					await client.request("auth", { token } as AuthParams);
+					await rpcRequester.request("auth", { token } as AuthParams);
 					set({ status: "connected" });
 					reconnectAttempts = 0;
 				} catch (error) {
@@ -173,7 +182,7 @@ export const useWSStore = create<WSState>((set, get) => ({
 
 					// JSON-RPC 2.0 response (has id)
 					if ("id" in data && data.id !== null) {
-						rpcClient?.receive(data);
+						rpcReceiver?.receive(data);
 						return;
 					}
 
@@ -192,7 +201,8 @@ export const useWSStore = create<WSState>((set, get) => ({
 
 			socket.onclose = () => {
 				ws = null;
-				rpcClient = null;
+				rpcReceiver = null;
+				rpcRequester = null;
 
 				const currentStatus = get().status;
 				// Don't reconnect on auth failure or intentional disconnect
@@ -232,7 +242,8 @@ export const useWSStore = create<WSState>((set, get) => ({
 			if (ws) {
 				ws.close();
 				ws = null;
-				rpcClient = null;
+				rpcReceiver = null;
+				rpcRequester = null;
 			}
 		},
 
@@ -261,7 +272,8 @@ export function resetWSStore() {
 		ws.close();
 		ws = null;
 	}
-	rpcClient = null;
+	rpcReceiver = null;
+	rpcRequester = null;
 	currentToken = null;
 	if (reconnectTimeout) {
 		clearTimeout(reconnectTimeout);

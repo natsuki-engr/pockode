@@ -1,4 +1,4 @@
-import type { JSONRPCClient } from "json-rpc-2.0";
+import type { JSONRPCRequester } from "json-rpc-2.0";
 import type { GitDiffResponse, GitStatus } from "../../types/git";
 
 interface GitDiffParams {
@@ -12,9 +12,9 @@ export interface GitActions {
 }
 
 export function createGitActions(
-	getClient: () => JSONRPCClient | null,
+	getClient: () => JSONRPCRequester<void> | null,
 ): GitActions {
-	const requireClient = (): JSONRPCClient => {
+	const requireClient = (): JSONRPCRequester<void> => {
 		const client = getClient();
 		if (!client) {
 			throw new Error("Not connected");
