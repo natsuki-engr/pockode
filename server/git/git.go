@@ -196,12 +196,24 @@ type FileStatus struct {
 
 // GitStatus represents the overall git status.
 type GitStatus struct {
-	Staged   []FileStatus `json:"staged"`
-	Unstaged []FileStatus `json:"unstaged"`
+	Staged     []FileStatus           `json:"staged"`
+	Unstaged   []FileStatus           `json:"unstaged"`
+	Submodules map[string]*GitStatus  `json:"submodules,omitempty"`
 }
 
 // HasFile returns true if the file exists in staged or unstaged list.
+// Supports submodule paths (e.g., "submodule/path/to/file").
 func (s *GitStatus) HasFile(path string, staged bool) bool {
+	// Check submodules first
+	for subPath, subStatus := range s.Submodules {
+		prefix := subPath + "/"
+		if strings.HasPrefix(path, prefix) {
+			relativePath := strings.TrimPrefix(path, prefix)
+			return subStatus.HasFile(relativePath, staged)
+		}
+	}
+
+	// Check root level
 	files := s.Unstaged
 	if staged {
 		files = s.Staged
@@ -215,12 +227,9 @@ func (s *GitStatus) HasFile(path string, staged bool) bool {
 }
 
 // Status returns the current git status (staged and unstaged files).
-// It recursively includes changes from submodules with prefixed paths.
+// Submodules are returned as nested GitStatus with their relative paths as keys.
+// Note: Pockode does not support nested submodules.
 func Status(dir string) (*GitStatus, error) {
-	return statusRecursive(dir, "")
-}
-
-func statusRecursive(dir, prefix string) (*GitStatus, error) {
 	cmd := exec.Command("git", "status", "--porcelain=v1", "-uall", "--ignore-submodules=none")
 	cmd.Dir = dir
 	output, err := cmd.Output()
@@ -234,6 +243,20 @@ func statusRecursive(dir, prefix string) (*GitStatus, error) {
 	}
 
 	submodules := getSubmodulePaths(dir)
+
+	// Initialize all submodules (even if empty) so clients know they exist
+	if len(submodules) > 0 {
+		result.Submodules = make(map[string]*GitStatus, len(submodules))
+		for _, sub := range submodules {
+			subStatus, err := Status(filepath.Join(dir, sub))
+			if err != nil {
+				slog.Warn("failed to get submodule status", "submodule", sub, "error", err)
+				result.Submodules[sub] = &GitStatus{Staged: []FileStatus{}, Unstaged: []FileStatus{}}
+				continue
+			}
+			result.Submodules[sub] = subStatus
+		}
+	}
 
 	for _, line := range strings.Split(string(output), "\n") {
 		if len(line) < 3 {
@@ -250,36 +273,20 @@ func statusRecursive(dir, prefix string) (*GitStatus, error) {
 			path = path[idx+4:]
 		}
 
-		fullPath := joinPath(prefix, path)
-
-		// Recurse into submodules
+		// Skip submodule entries (already handled recursively)
 		if contains(submodules, path) {
-			subStatus, err := statusRecursive(filepath.Join(dir, path), fullPath)
-			if err != nil {
-				slog.Warn("failed to get submodule status", "submodule", path, "error", err)
-				continue
-			}
-			result.Staged = append(result.Staged, subStatus.Staged...)
-			result.Unstaged = append(result.Unstaged, subStatus.Unstaged...)
 			continue
 		}
 
 		if stagedStatus != ' ' && stagedStatus != '?' {
-			result.Staged = append(result.Staged, FileStatus{Path: fullPath, Status: string(stagedStatus)})
+			result.Staged = append(result.Staged, FileStatus{Path: path, Status: string(stagedStatus)})
 		}
 		if unstagedStatus != ' ' {
-			result.Unstaged = append(result.Unstaged, FileStatus{Path: fullPath, Status: string(unstagedStatus)})
+			result.Unstaged = append(result.Unstaged, FileStatus{Path: path, Status: string(unstagedStatus)})
 		}
 	}
 
 	return result, nil
-}
-
-func joinPath(prefix, path string) string {
-	if prefix == "" {
-		return path
-	}
-	return prefix + "/" + path
 }
 
 func contains(slice []string, item string) bool {

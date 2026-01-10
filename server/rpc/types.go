@@ -79,10 +79,7 @@ type FileGetResult struct {
 
 // Git namespace
 
-type GitStatusResult struct {
-	Staged   []git.FileStatus `json:"staged"`
-	Unstaged []git.FileStatus `json:"unstaged"`
-}
+type GitStatusResult = git.GitStatus
 
 type GitDiffParams struct {
 	Path   string `json:"path"`

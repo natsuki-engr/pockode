@@ -4,8 +4,9 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { useFSWatch } from "../../hooks/useFSWatch";
 import { gitDiffQueryKey, useGitDiff } from "../../hooks/useGitDiff";
-import { useGitStatus } from "../../hooks/useGitStatus";
+import { resolveGitIndexPath, useGitStatus } from "../../hooks/useGitStatus";
 import type { OverlaySearchParams } from "../../router";
+import { flattenGitStatus } from "../../types/git";
 import { ContentView } from "../ui";
 import DiffContent from "./DiffContent";
 
@@ -34,14 +35,20 @@ function DiffView({ path, staged, onBack }: Props) {
 		queryClient.invalidateQueries({ queryKey: gitDiffQueryKey(path, staged) });
 	}, [queryClient, path, staged]);
 
+	const gitIndexPath = useMemo(
+		() => resolveGitIndexPath(gitStatus, path),
+		[gitStatus, path],
+	);
+
 	useFSWatch(path, invalidateDiff);
-	useFSWatch(".git/index", invalidateDiff);
+	useFSWatch(gitIndexPath, invalidateDiff);
 
 	const allFiles = useMemo(() => {
 		if (!gitStatus) return [];
+		const flat = flattenGitStatus(gitStatus);
 		return [
-			...gitStatus.staged.map((f) => ({ ...f, staged: true })),
-			...gitStatus.unstaged.map((f) => ({ ...f, staged: false })),
+			...flat.staged.map((f) => ({ ...f, staged: true })),
+			...flat.unstaged.map((f) => ({ ...f, staged: false })),
 		];
 	}, [gitStatus]);
 

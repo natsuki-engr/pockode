@@ -18,12 +18,7 @@ func (h *rpcMethodHandler) handleGitStatus(ctx context.Context, conn *jsonrpc2.C
 		return
 	}
 
-	response := rpc.GitStatusResult{
-		Staged:   status.Staged,
-		Unstaged: status.Unstaged,
-	}
-
-	if err := conn.Reply(ctx, req.ID, response); err != nil {
+	if err := conn.Reply(ctx, req.ID, status); err != nil {
 		h.log.Error("failed to send git status response", "error", err)
 	}
 }
