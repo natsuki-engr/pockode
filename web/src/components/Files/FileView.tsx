@@ -1,5 +1,7 @@
-import { useMemo } from "react";
-import { useContents } from "../../hooks/useContents";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useMemo } from "react";
+import { contentsQueryKey, useContents } from "../../hooks/useContents";
+import { useFSWatch } from "../../hooks/useFSWatch";
 import { isFileContent } from "../../types/contents";
 import { ContentView, FileContentDisplay } from "../ui";
 
@@ -9,7 +11,15 @@ interface Props {
 }
 
 function FileView({ path, onBack }: Props) {
+	const queryClient = useQueryClient();
 	const { data, isLoading, error } = useContents(path);
+
+	useFSWatch(
+		path,
+		useCallback(() => {
+			queryClient.invalidateQueries({ queryKey: contentsQueryKey(path) });
+		}, [queryClient, path]),
+	);
 
 	const content = useMemo(() => {
 		if (!data || !isFileContent(data)) return null;

@@ -4,11 +4,13 @@ import type { Entry, FileContent } from "../types/contents";
 
 type ContentsResponse = Entry[] | FileContent;
 
+export const contentsQueryKey = (path: string) => ["contents", path] as const;
+
 export function useContents(path = "", enabled = true) {
 	const getFile = useWSStore((state) => state.actions.getFile);
 
 	return useQuery<ContentsResponse>({
-		queryKey: ["contents", path],
+		queryKey: contentsQueryKey(path),
 		queryFn: async () => {
 			const result = await getFile(path);
 			if (result.type === "directory") {

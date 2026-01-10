@@ -28,6 +28,7 @@ const SILENT_EVENTS = new Set<ServerMethod>([
 	"tool_call",
 	"tool_result",
 	"system",
+	"watch_changed", // Watch notifications don't trigger unread
 ]);
 
 export type ConnectionStatus =
@@ -45,12 +46,18 @@ interface ConnectionActions {
 	subscribeNotification: (listener: NotificationListener) => () => void;
 }
 
+export interface WatchActions {
+	watchSubscribe: (path: string, callback: () => void) => Promise<string>;
+	watchUnsubscribe: (id: string) => Promise<void>;
+}
+
 type RPCActions = ConnectionActions &
 	ChatActions &
 	CommandActions &
 	SessionActions &
 	FileActions &
-	GitActions;
+	GitActions &
+	WatchActions;
 
 interface WSState {
 	status: ConnectionStatus;
@@ -65,6 +72,7 @@ let currentToken: string | null = null;
 let reconnectAttempts = 0;
 let reconnectTimeout: number | undefined;
 const notificationListeners = new Set<NotificationListener>();
+const watchCallbacks = new Map<string, () => void>();
 
 // Callback to check if a session exists (set by useSession hook)
 let sessionExistsChecker: ((sessionId: string) => boolean) | null = null;
@@ -105,6 +113,14 @@ function stripNamespace(method: string): string {
 }
 
 function handleNotification(method: string, params: unknown): void {
+	// Handle watch.changed notifications specially via callback
+	if (method === "watch.changed") {
+		const { id } = params as { id: string; data: unknown };
+		const callback = watchCallbacks.get(id);
+		callback?.();
+		return;
+	}
+
 	const eventType = stripNamespace(method);
 	const notification = {
 		type: eventType,
@@ -254,6 +270,31 @@ export const useWSStore = create<WSState>((set, get) => ({
 			};
 		},
 
+		watchSubscribe: async (
+			path: string,
+			callback: () => void,
+		): Promise<string> => {
+			const client = getClient();
+			if (!client) {
+				throw new Error("Not connected");
+			}
+			const result = (await client.request("watch.subscribe", { path })) as {
+				id: string;
+			};
+			watchCallbacks.set(result.id, callback);
+			return result.id;
+		},
+
+		watchUnsubscribe: async (id: string): Promise<void> => {
+			watchCallbacks.delete(id);
+			const client = getClient();
+			if (client) {
+				await client.request("watch.unsubscribe", { id }).catch(() => {
+					// Ignore errors (connection might be closed)
+				});
+			}
+		},
+
 		// Spread namespace-specific actions
 		...chatActions,
 		...commandActions,
@@ -281,6 +322,7 @@ export function resetWSStore() {
 	}
 	reconnectAttempts = 0;
 	notificationListeners.clear();
+	watchCallbacks.clear();
 	sessionExistsChecker = null;
 	useWSStore.setState({ status: "disconnected" });
 }

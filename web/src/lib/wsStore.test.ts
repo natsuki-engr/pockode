@@ -429,6 +429,114 @@ describe("wsStore", () => {
 		});
 	});
 
+	describe("watch callbacks", () => {
+		it("calls callback when watch.changed notification is received", async () => {
+			const wsActions = await getWsActions();
+			const callback = vi.fn();
+
+			await connectAndAuth();
+			const ws = getMockWs();
+			expect(ws).not.toBeNull();
+
+			// Mock watchSubscribe to return a known ID
+			ws.send = vi.fn((data: string) => {
+				const parsed = JSON.parse(data);
+				if (parsed.method === "watch.subscribe") {
+					queueMicrotask(() => {
+						ws?.simulateMessage({
+							jsonrpc: "2.0",
+							id: parsed.id,
+							result: { id: "w_test123" },
+						});
+					});
+				}
+			});
+
+			const watchId = await wsActions.watchSubscribe("/test/path", callback);
+			expect(watchId).toBe("w_test123");
+
+			ws?.simulateNotification("watch.changed", {
+				id: "w_test123",
+				data: {},
+			});
+
+			expect(callback).toHaveBeenCalledTimes(1);
+		});
+
+		it("ignores watch.changed for unknown ID", async () => {
+			const wsActions = await getWsActions();
+			const callback = vi.fn();
+
+			await connectAndAuth();
+			const ws = getMockWs();
+			expect(ws).not.toBeNull();
+
+			// Mock watchSubscribe
+			ws.send = vi.fn((data: string) => {
+				const parsed = JSON.parse(data);
+				if (parsed.method === "watch.subscribe") {
+					queueMicrotask(() => {
+						ws?.simulateMessage({
+							jsonrpc: "2.0",
+							id: parsed.id,
+							result: { id: "w_known" },
+						});
+					});
+				}
+			});
+
+			await wsActions.watchSubscribe("/test/path", callback);
+
+			// Send notification with unknown ID
+			ws?.simulateNotification("watch.changed", {
+				id: "w_unknown",
+				data: {},
+			});
+
+			expect(callback).not.toHaveBeenCalled();
+		});
+
+		it("ignores watch.changed after unsubscribe", async () => {
+			const wsActions = await getWsActions();
+			const callback = vi.fn();
+
+			await connectAndAuth();
+			const ws = getMockWs();
+			expect(ws).not.toBeNull();
+
+			ws.send = vi.fn((data: string) => {
+				const parsed = JSON.parse(data);
+				if (parsed.method === "watch.subscribe") {
+					queueMicrotask(() => {
+						ws?.simulateMessage({
+							jsonrpc: "2.0",
+							id: parsed.id,
+							result: { id: "w_test123" },
+						});
+					});
+				} else if (parsed.method === "watch.unsubscribe") {
+					queueMicrotask(() => {
+						ws?.simulateMessage({
+							jsonrpc: "2.0",
+							id: parsed.id,
+							result: {},
+						});
+					});
+				}
+			});
+
+			const watchId = await wsActions.watchSubscribe("/test/path", callback);
+			await wsActions.watchUnsubscribe(watchId);
+
+			ws?.simulateNotification("watch.changed", {
+				id: "w_test123",
+				data: {},
+			});
+
+			expect(callback).not.toHaveBeenCalled();
+		});
+	});
+
 	describe("auto-reconnect", () => {
 		it("reconnects up to 5 times on close, then sets error", async () => {
 			const useWSStore = await getUseWSStore();

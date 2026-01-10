@@ -8,6 +8,7 @@ require (
 )
 
 require (
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/mdp/qrterminal/v3 v3.2.1
 	github.com/sourcegraph/jsonrpc2 v0.2.1
 )

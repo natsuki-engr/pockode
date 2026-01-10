@@ -26,6 +26,7 @@ import (
 	"github.com/pockode/server/process"
 	"github.com/pockode/server/relay"
 	"github.com/pockode/server/session"
+	"github.com/pockode/server/watch"
 	"github.com/pockode/server/ws"
 )
 
@@ -242,7 +243,14 @@ func main() {
 	claudeAgent := claude.New()
 	manager := process.NewManager(claudeAgent, workDir, sessionStore, idleTimeout)
 
-	wsHandler := ws.NewRPCHandler(token, manager, devMode, sessionStore, commandStore, workDir)
+	// Initialize filesystem watcher
+	fsWatcher := watch.NewFSWatcher(workDir)
+	if err := fsWatcher.Start(); err != nil {
+		slog.Error("failed to start filesystem watcher", "error", err)
+		os.Exit(1)
+	}
+
+	wsHandler := ws.NewRPCHandler(token, manager, devMode, sessionStore, commandStore, workDir, fsWatcher)
 	handler := newHandler(token, manager, devMode, sessionStore, workDir, wsHandler)
 
 	srv := &http.Server{
@@ -313,6 +321,7 @@ func main() {
 			cancelRelayStreams()
 			relayManager.Stop()
 		}
+		fsWatcher.Stop()
 		manager.Shutdown()
 		close(shutdownDone)
 	}()

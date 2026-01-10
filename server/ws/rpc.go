@@ -16,6 +16,7 @@ import (
 	"github.com/pockode/server/process"
 	"github.com/pockode/server/rpc"
 	"github.com/pockode/server/session"
+	"github.com/pockode/server/watch"
 	"github.com/sourcegraph/jsonrpc2"
 )
 
@@ -27,9 +28,10 @@ type RPCHandler struct {
 	sessionStore session.Store
 	commandStore *command.Store
 	workDir      string
+	watcher      *watch.FSWatcher
 }
 
-func NewRPCHandler(token string, manager *process.Manager, devMode bool, sessionStore session.Store, commandStore *command.Store, workDir string) *RPCHandler {
+func NewRPCHandler(token string, manager *process.Manager, devMode bool, sessionStore session.Store, commandStore *command.Store, workDir string, watcher *watch.FSWatcher) *RPCHandler {
 	return &RPCHandler{
 		token:        token,
 		manager:      manager,
@@ -37,6 +39,7 @@ func NewRPCHandler(token string, manager *process.Manager, devMode bool, session
 		sessionStore: sessionStore,
 		commandStore: commandStore,
 		workDir:      workDir,
+		watcher:      watcher,
 	}
 }
 
@@ -69,8 +72,10 @@ func (h *RPCHandler) HandleStream(ctx context.Context, stream jsonrpc2.ObjectStr
 	log.Info("new connection")
 
 	state := &rpcConnState{
+		connID:     connID,
 		subscribed: make(map[string]struct{}),
 		manager:    h.manager,
+		watcher:    h.watcher,
 		log:        log,
 	}
 
@@ -93,10 +98,16 @@ func (h *RPCHandler) HandleStream(ctx context.Context, stream jsonrpc2.ObjectStr
 // rpcConnState tracks per-connection state.
 type rpcConnState struct {
 	mu         sync.Mutex
+	connID     string
 	subscribed map[string]struct{}
 	manager    *process.Manager
+	watcher    *watch.FSWatcher
 	conn       *jsonrpc2.Conn
 	log        *slog.Logger
+}
+
+func (s *rpcConnState) getConnID() string {
+	return s.connID
 }
 
 func (s *rpcConnState) setConn(conn *jsonrpc2.Conn) {
@@ -122,6 +133,9 @@ func (s *rpcConnState) cleanup() {
 		s.manager.UnsubscribeRPC(sessionID, conn)
 		s.log.Debug("unsubscribed from session", "sessionId", sessionID)
 	}
+
+	// Clean up watch subscriptions
+	s.watcher.CleanupConnection(s.connID)
 }
 
 type rpcMethodHandler struct {
@@ -181,6 +195,11 @@ func (h *rpcMethodHandler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req 
 	// command namespace
 	case "command.list":
 		h.handleCommandList(ctx, conn, req)
+	// watch namespace
+	case "watch.subscribe":
+		h.handleWatchSubscribe(ctx, conn, req)
+	case "watch.unsubscribe":
+		h.handleWatchUnsubscribe(ctx, conn, req)
 	default:
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeMethodNotFound, "method not found: "+req.Method)
 	}

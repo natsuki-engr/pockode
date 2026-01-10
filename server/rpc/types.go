@@ -101,6 +101,20 @@ type CommandListResult struct {
 	Commands []command.Command `json:"commands"`
 }
 
+// Watch namespace
+
+type WatchSubscribeParams struct {
+	Path string `json:"path"`
+}
+
+type WatchSubscribeResult struct {
+	ID string `json:"id"`
+}
+
+type WatchUnsubscribeParams struct {
+	ID string `json:"id"`
+}
+
 // Server → Client
 
 // SessionParams is the params for done, interrupted, and process_ended notifications.

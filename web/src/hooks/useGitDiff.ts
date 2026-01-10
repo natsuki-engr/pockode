@@ -7,6 +7,9 @@ interface UseGitDiffOptions {
 	enabled?: boolean;
 }
 
+export const gitDiffQueryKey = (path: string, staged: boolean) =>
+	["git-diff", path, staged] as const;
+
 export function useGitDiff({
 	path,
 	staged,
@@ -15,7 +18,7 @@ export function useGitDiff({
 	const getDiff = useWSStore((state) => state.actions.getDiff);
 
 	return useQuery({
-		queryKey: ["git-diff", path, staged],
+		queryKey: gitDiffQueryKey(path, staged),
 		queryFn: () => getDiff(path, staged),
 		enabled: enabled && !!path,
 		staleTime: 0,
