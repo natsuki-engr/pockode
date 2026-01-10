@@ -75,10 +75,12 @@ function ToolCallItem({ tool }: ToolCallItemProps) {
 				onClick={() => hasResult && setExpanded(!expanded)}
 				className={`flex w-full items-center gap-1.5 rounded p-2 text-left ${hasResult ? "hover:bg-th-overlay-hover" : ""}`}
 			>
-				{hasResult && (
+				{hasResult ? (
 					<ChevronRight
 						className={`size-3 shrink-0 text-th-text-muted transition-transform ${expanded ? "rotate-90" : ""}`}
 					/>
+				) : (
+					<span className="size-3 shrink-0" />
 				)}
 				<span className="shrink-0 text-th-accent">{tool.name}</span>
 				{summary && (
@@ -304,10 +306,12 @@ function PermissionRequestItem({
 				onClick={() => hasExpandableContent && setExpanded(!expanded)}
 				className={`flex w-full items-center gap-1.5 rounded p-2 text-left ${hasExpandableContent ? "hover:bg-th-overlay-hover" : ""}`}
 			>
-				{hasExpandableContent && (
+				{hasExpandableContent ? (
 					<ChevronRight
 						className={`size-3 shrink-0 text-th-text-muted transition-transform ${expanded ? "rotate-90" : ""}`}
 					/>
+				) : (
+					<span className="size-3 shrink-0" />
 				)}
 				<Icon className={`size-3 shrink-0 ${color}`} />
 				<span className="shrink-0 text-th-accent">{request.toolName}</span>
