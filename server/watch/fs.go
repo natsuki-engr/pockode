@@ -96,7 +96,7 @@ func (w *FSWatcher) Subscribe(path string, conn *jsonrpc2.Conn, connID string) (
 	w.pathRefCount[path]++
 	w.pathMu.Unlock()
 
-	slog.Debug("subscription added", "watchId", id, "path", path, "connId", connID)
+	slog.Debug("fs subscription added", "watchId", id, "path", path, "connId", connID)
 	return id, nil
 }
 
@@ -145,7 +145,7 @@ func (w *FSWatcher) removePathMapping(id, path string) {
 		slog.Debug("stopped watching path", "path", path)
 	}
 
-	slog.Debug("subscription removed", "watchId", id, "path", path)
+	slog.Debug("fs subscription removed", "watchId", id, "path", path)
 }
 
 func (w *FSWatcher) eventLoop() {

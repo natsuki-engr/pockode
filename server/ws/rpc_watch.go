@@ -21,8 +21,6 @@ func (h *rpcMethodHandler) handleWatchSubscribe(ctx context.Context, conn *jsonr
 		return
 	}
 
-	h.log.Debug("watch subscribed", "watchId", id, "path", params.Path)
-
 	if err := conn.Reply(ctx, req.ID, rpc.WatchSubscribeResult{ID: id}); err != nil {
 		h.log.Error("failed to send watch subscribe response", "error", err)
 	}
@@ -41,8 +39,6 @@ func (h *rpcMethodHandler) handleWatchUnsubscribe(ctx context.Context, conn *jso
 	}
 
 	h.watcher.Unsubscribe(params.ID)
-
-	h.log.Debug("watch unsubscribed", "watchId", params.ID)
 
 	if err := conn.Reply(ctx, req.ID, struct{}{}); err != nil {
 		h.log.Error("failed to send watch unsubscribe response", "error", err)
