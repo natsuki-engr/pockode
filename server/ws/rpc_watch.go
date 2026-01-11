@@ -14,11 +14,6 @@ func (h *rpcMethodHandler) handleWatchSubscribe(ctx context.Context, conn *jsonr
 		return
 	}
 
-	if params.Path == "" {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "path is required")
-		return
-	}
-
 	connID := h.state.getConnID()
 	id, err := h.watcher.Subscribe(params.Path, conn, connID)
 	if err != nil {

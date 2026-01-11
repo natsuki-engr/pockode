@@ -18,7 +18,7 @@ export function useFSWatch(path: string | null, onChanged: () => void): void {
 	onChangedRef.current = onChanged;
 
 	useEffect(() => {
-		if (!path || status !== "connected") return;
+		if (path === null || status !== "connected") return;
 
 		let watchId: string | null = null;
 		let cancelled = false;
