@@ -21,13 +21,11 @@ func IsValidName(name string) bool {
 	return namePattern.MatchString(name)
 }
 
-// BuiltinCommands is the list of built-in Claude Code slash commands.
+// BuiltinCommands lists Claude Code slash commands available in Pockode.
 var BuiltinCommands = []string{
-	"add-dir", "agents", "bug", "clear", "compact",
-	"config", "cost", "doctor", "help", "init",
-	"login", "logout", "mcp", "memory", "model",
-	"permissions", "pr_comments", "review", "rewind",
-	"status", "terminal-setup", "usage", "vim",
+	"compact",
+	"cost",
+	"init",
 }
 
 // RecentCommand represents a recently used slash command.
