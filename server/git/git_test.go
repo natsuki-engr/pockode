@@ -109,7 +109,7 @@ func setupTestRepoWithSubmodule(t *testing.T) (string, func()) {
 
 	cmds = [][]string{
 		{"git", "add", "parent.txt"},
-		{"git", "commit", "-m", "initial"},
+		{"git", "commit", "--no-gpg-sign", "-m", "initial"},
 	}
 	for _, args := range cmds {
 		cmd := exec.Command(args[0], args[1:]...)
@@ -161,7 +161,7 @@ func setupTestRepoWithSubmodule(t *testing.T) (string, func()) {
 
 	cmds = [][]string{
 		{"git", "add", "sub.txt"},
-		{"git", "commit", "-m", "initial"},
+		{"git", "commit", "--no-gpg-sign", "-m", "initial"},
 	}
 	for _, args := range cmds {
 		cmd := exec.Command(args[0], args[1:]...)
@@ -176,7 +176,7 @@ func setupTestRepoWithSubmodule(t *testing.T) (string, func()) {
 	cmds = [][]string{
 		{"git", "add", ".gitmodules"},
 		{"git", "add", "mysub"},
-		{"git", "commit", "-m", "add submodule"},
+		{"git", "commit", "--no-gpg-sign", "-m", "add submodule"},
 	}
 	for _, args := range cmds {
 		cmd := exec.Command(args[0], args[1:]...)
@@ -205,16 +205,26 @@ func TestStatus_WithSubmodule(t *testing.T) {
 		t.Fatalf("Status() error: %v", err)
 	}
 
-	// Should have mysub/sub.txt in unstaged
+	// Submodule changes should be in Submodules["mysub"].Unstaged
+	subStatus, ok := status.Submodules["mysub"]
+	if !ok {
+		t.Fatalf("expected submodule 'mysub' in status.Submodules, got %v", status.Submodules)
+	}
+
 	found := false
-	for _, f := range status.Unstaged {
-		if f.Path == "mysub/sub.txt" {
+	for _, f := range subStatus.Unstaged {
+		if f.Path == "sub.txt" {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Errorf("expected 'mysub/sub.txt' in unstaged, got %v", status.Unstaged)
+		t.Errorf("expected 'sub.txt' in submodule unstaged, got %v", subStatus.Unstaged)
+	}
+
+	// Also verify HasFile works with full path
+	if !status.HasFile("mysub/sub.txt", false) {
+		t.Error("HasFile('mysub/sub.txt', false) should return true")
 	}
 }
 
@@ -252,7 +262,7 @@ func TestDiff_FileNotInStatus(t *testing.T) {
 		t.Fatalf("failed to write file: %v", err)
 	}
 	runGit(t, dir, "add", "test.txt")
-	runGit(t, dir, "commit", "-m", "initial")
+	runGit(t, dir, "commit", "--no-gpg-sign", "-m", "initial")
 
 	// Modify and stage (no unstaged changes)
 	if err := os.WriteFile(testFile, []byte("modified"), 0644); err != nil {
