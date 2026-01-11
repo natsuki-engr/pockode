@@ -276,8 +276,9 @@ func main() {
 	relayEnabled := *relayFlag || os.Getenv("RELAY_ENABLED") == "true"
 	if relayEnabled {
 		relayCfg := relay.Config{
-			CloudURL: cloudURL,
-			DataDir:  dataDir,
+			CloudURL:      cloudURL,
+			DataDir:       dataDir,
+			ClientVersion: version,
 		}
 
 		backendPort, _ := strconv.Atoi(port)

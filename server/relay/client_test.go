@@ -3,17 +3,21 @@ package relay
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
+
+// errAny is a sentinel error used in tests to indicate any non-nil error is acceptable.
+var errAny = errors.New("any error")
 
 func TestClient_Register(t *testing.T) {
 	tests := []struct {
 		name       string
 		response   *StoredConfig
 		statusCode int
-		wantErr    bool
+		wantErr    error
 	}{
 		{
 			name: "successful registration",
@@ -23,19 +27,25 @@ func TestClient_Register(t *testing.T) {
 				RelayServer: "cloud.pockode.com",
 			},
 			statusCode: http.StatusCreated,
-			wantErr:    false,
+			wantErr:    nil,
+		},
+		{
+			name:       "forbidden returns upgrade required",
+			response:   nil,
+			statusCode: http.StatusForbidden,
+			wantErr:    ErrUpgradeRequired,
 		},
 		{
 			name:       "server error",
 			response:   nil,
 			statusCode: http.StatusInternalServerError,
-			wantErr:    true,
+			wantErr:    errAny,
 		},
 		{
 			name:       "not found",
 			response:   nil,
 			statusCode: http.StatusNotFound,
-			wantErr:    true,
+			wantErr:    errAny,
 		},
 	}
 
@@ -59,12 +69,24 @@ func TestClient_Register(t *testing.T) {
 			client := NewClient(server.URL)
 			cfg, err := client.Register(context.Background())
 
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Register() error = %v, wantErr %v", err, tt.wantErr)
-				return
+			if tt.wantErr == nil {
+				if err != nil {
+					t.Errorf("Register() error = %v, want nil", err)
+					return
+				}
+			} else if tt.wantErr == errAny {
+				if err == nil {
+					t.Errorf("Register() error = nil, want non-nil")
+					return
+				}
+			} else {
+				if !errors.Is(err, tt.wantErr) {
+					t.Errorf("Register() error = %v, want %v", err, tt.wantErr)
+					return
+				}
 			}
 
-			if tt.wantErr {
+			if tt.wantErr != nil {
 				return
 			}
 
@@ -149,5 +171,90 @@ func TestClient_RegisterContextCancelled(t *testing.T) {
 	_, err := client.Register(ctx)
 	if err == nil {
 		t.Error("Register() with cancelled context should return error")
+	}
+}
+
+func TestClient_Refresh(t *testing.T) {
+	tests := []struct {
+		name       string
+		response   *StoredConfig
+		statusCode int
+		wantErr    error
+	}{
+		{
+			name: "successful refresh",
+			response: &StoredConfig{
+				Subdomain:   "abc123def456ghi789jkl0123",
+				RelayToken:  "test_token_abc123",
+				RelayServer: "cloud.pockode.com",
+			},
+			statusCode: http.StatusOK,
+			wantErr:    nil,
+		},
+		{
+			name:       "forbidden returns upgrade required",
+			response:   nil,
+			statusCode: http.StatusForbidden,
+			wantErr:    ErrUpgradeRequired,
+		},
+		{
+			name:       "unauthorized returns invalid token",
+			response:   nil,
+			statusCode: http.StatusUnauthorized,
+			wantErr:    ErrInvalidToken,
+		},
+		{
+			name:       "server error",
+			response:   nil,
+			statusCode: http.StatusInternalServerError,
+			wantErr:    errAny,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPost {
+					t.Errorf("Method = %v, want POST", r.Method)
+				}
+				if r.URL.Path != "/api/relay/refresh" {
+					t.Errorf("Path = %v, want /api/relay/refresh", r.URL.Path)
+				}
+
+				w.WriteHeader(tt.statusCode)
+				if tt.response != nil {
+					json.NewEncoder(w).Encode(tt.response)
+				}
+			}))
+			defer server.Close()
+
+			client := NewClient(server.URL)
+			cfg, err := client.Refresh(context.Background(), "test_token")
+
+			if tt.wantErr == nil {
+				if err != nil {
+					t.Errorf("Refresh() error = %v, want nil", err)
+					return
+				}
+			} else if tt.wantErr == errAny {
+				if err == nil {
+					t.Errorf("Refresh() error = nil, want non-nil")
+					return
+				}
+			} else {
+				if !errors.Is(err, tt.wantErr) {
+					t.Errorf("Refresh() error = %v, want %v", err, tt.wantErr)
+					return
+				}
+			}
+
+			if tt.wantErr != nil {
+				return
+			}
+
+			if cfg.Subdomain != tt.response.Subdomain {
+				t.Errorf("Subdomain = %v, want %v", cfg.Subdomain, tt.response.Subdomain)
+			}
+		})
 	}
 }

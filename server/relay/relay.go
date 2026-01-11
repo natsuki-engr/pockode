@@ -14,8 +14,9 @@ import (
 )
 
 type Config struct {
-	CloudURL string
-	DataDir  string
+	CloudURL      string
+	DataDir       string
+	ClientVersion string
 }
 
 type Manager struct {
@@ -37,7 +38,7 @@ func NewManager(cfg Config, backendPort, frontendPort int, log *slog.Logger) *Ma
 		backendPort:  backendPort,
 		frontendPort: frontendPort,
 		store:        NewStore(cfg.DataDir),
-		client:       NewClient(cfg.CloudURL),
+		client:       NewClientWithVersion(cfg.CloudURL, cfg.ClientVersion),
 		log:          log.With("module", "relay"),
 		newStreamCh:  make(chan *VirtualStream),
 	}
@@ -53,6 +54,9 @@ func (m *Manager) Start(ctx context.Context) (string, error) {
 		m.log.Info("registering with cloud", "url", m.config.CloudURL)
 
 		storedCfg, err = m.client.Register(ctx)
+		if errors.Is(err, ErrUpgradeRequired) {
+			return "", fmt.Errorf("register: client version too old, please upgrade Pockode")
+		}
 		if err != nil {
 			return "", fmt.Errorf("register: %w", err)
 		}
@@ -66,6 +70,9 @@ func (m *Manager) Start(ctx context.Context) (string, error) {
 		m.log.Info("refreshing config from cloud", "subdomain", storedCfg.Subdomain)
 
 		refreshedCfg, err := m.client.Refresh(ctx, storedCfg.RelayToken)
+		if errors.Is(err, ErrUpgradeRequired) {
+			return "", fmt.Errorf("refresh: client version too old, please upgrade Pockode")
+		}
 		if errors.Is(err, ErrInvalidToken) {
 			m.log.Warn("stored token is invalid, re-registering")
 			if err := m.store.Delete(); err != nil {
