@@ -556,20 +556,13 @@ samp {
 
 /* =============================================================================
  * DIFF VIEW STYLES (@git-diff-view/react)
+ *
+ * Font size is controlled via diffViewFontSize prop (12px mobile, 13px desktop)
  * ============================================================================= */
 
 .diff-view-wrapper {
 	font-family: var(--font-mono);
-	font-size: 0.75rem; /* 12px - minimum readable size for code */
 	line-height: 1.5;
-}
-
-/* PC: Larger font for comfortable code reading */
-/* biome-ignore lint/correctness/noUnknownFunction: Tailwind CSS v4 theme() function */
-@media (width >= theme(--breakpoint-sm)) {
-	.diff-view-wrapper {
-		font-size: 0.8125rem; /* 13px - IDE-like experience */
-	}
 }
 
 /* Override diff-view colors to match our theme - Common styles */
@@ -673,29 +666,13 @@ samp {
 	overflow-y: visible !important;
 }
 
-/* Prevent shiki background from being cut off when content overflows */
-.shiki {
-	min-width: fit-content;
-}
-
 /* =============================================================================
- * MARKDOWN CODE BLOCKS (Prose context)
+ * SHIKI CODE BLOCKS
  *
- * Optimized font sizes for code readability:
- * - Mobile: 12px (0.75rem) - minimum readable size for code
- * - PC: 13px (0.8125rem) - comfortable IDE-like reading experience
+ * Font size is controlled via style prop in CodeHighlighter (12px mobile, 13px desktop)
  * ============================================================================= */
 
-.prose pre,
-.prose code {
-	font-size: 0.75rem;
+.shiki {
+	min-width: fit-content;
 	line-height: 1.5;
-}
-
-/* biome-ignore lint/correctness/noUnknownFunction: Tailwind CSS v4 theme() function */
-@media (width >= theme(--breakpoint-sm)) {
-	.prose pre,
-	.prose code {
-		font-size: 0.8125rem;
-	}
 }

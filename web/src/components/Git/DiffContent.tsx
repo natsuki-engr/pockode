@@ -1,12 +1,5 @@
-import { DiffModeEnum, DiffView } from "@git-diff-view/react";
-import type { getDiffViewHighlighter } from "@git-diff-view/shiki";
-import "@git-diff-view/react/styles/diff-view-pure.css";
-import { memo, useEffect, useState, useSyncExternalStore } from "react";
-import {
-	getDiffHighlighter,
-	getIsDarkMode,
-	subscribeToDarkMode,
-} from "../../lib/shikiUtils";
+import { memo } from "react";
+import { DiffViewer } from "../ui";
 
 interface Props {
 	diff: string;
@@ -21,15 +14,6 @@ const DiffContent = memo(function DiffContent({
 	oldContent,
 	newContent,
 }: Props) {
-	const isDark = useSyncExternalStore(subscribeToDarkMode, getIsDarkMode);
-	const [highlighter, setHighlighter] = useState<Awaited<
-		ReturnType<typeof getDiffViewHighlighter>
-	> | null>(null);
-
-	useEffect(() => {
-		getDiffHighlighter().then(setHighlighter);
-	}, []);
-
 	if (/^Binary files .+ and .+ differ$/m.test(diff)) {
 		return (
 			<div className="p-4 text-center text-th-text-muted">
@@ -42,24 +26,13 @@ const DiffContent = memo(function DiffContent({
 		return <div className="p-4 text-center text-th-text-muted">No changes</div>;
 	}
 
-	if (!highlighter) {
-		return <div className="p-4 text-center text-th-text-muted">Loading...</div>;
-	}
-
 	return (
-		<div className="diff-view-wrapper diff-tailwindcss-wrapper">
-			<DiffView
-				data={{
-					oldFile: { fileName, content: oldContent },
-					newFile: { fileName, content: newContent },
-					hunks: [diff],
-				}}
-				registerHighlighter={highlighter}
-				diffViewMode={DiffModeEnum.Unified}
-				diffViewTheme={isDark ? "dark" : "light"}
-				diffViewHighlight
-			/>
-		</div>
+		<DiffViewer
+			fileName={fileName}
+			hunks={[diff]}
+			oldContent={oldContent}
+			newContent={newContent}
+		/>
 	);
 });
 

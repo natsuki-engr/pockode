@@ -2,6 +2,10 @@ import { getDiffViewHighlighter } from "@git-diff-view/shiki";
 import { useSyncExternalStore } from "react";
 import ShikiHighlighter from "react-shiki";
 import { bundledLanguagesInfo } from "shiki";
+import { useIsDesktop } from "../hooks/useIsDesktop";
+
+export const CODE_FONT_SIZE_MOBILE = 12;
+export const CODE_FONT_SIZE_DESKTOP = 13;
 
 const EXT_MAP: Record<string, string> = {};
 for (const lang of bundledLanguagesInfo) {
@@ -65,8 +69,11 @@ export function CodeHighlighter({
 	language?: string;
 }) {
 	const theme = useSyncExternalStore(subscribeToDarkMode, getShikiTheme);
+	const isDesktop = useIsDesktop();
+	const fontSize = isDesktop ? CODE_FONT_SIZE_DESKTOP : CODE_FONT_SIZE_MOBILE;
+
 	return (
-		<ShikiHighlighter language={language} theme={theme}>
+		<ShikiHighlighter language={language} theme={theme} style={{ fontSize }}>
 			{children}
 		</ShikiHighlighter>
 	);

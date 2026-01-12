@@ -1,16 +1,9 @@
-import { DiffModeEnum, DiffView } from "@git-diff-view/react";
-import type { getDiffViewHighlighter } from "@git-diff-view/shiki";
 import { AnsiUp } from "ansi_up";
 import { createPatch } from "diff";
 import { Check, Circle, Loader2 } from "lucide-react";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import {
-	getDiffHighlighter,
-	getIsDarkMode,
-	subscribeToDarkMode,
-} from "../../lib/shikiUtils";
+import { useMemo } from "react";
 import { parseReadResult } from "../../lib/toolResultParser";
-import { FileContentDisplay } from "../ui";
+import { DiffViewer, FileContentDisplay } from "../ui";
 
 const ansiUp = new AnsiUp();
 ansiUp.use_classes = true;
@@ -64,51 +57,15 @@ function ReadResultDisplay({
 }
 
 function EditResultDisplay({ input }: { input: EditInput }) {
-	const isDark = useSyncExternalStore(subscribeToDarkMode, getIsDarkMode);
-	const [highlighter, setHighlighter] = useState<Awaited<
-		ReturnType<typeof getDiffViewHighlighter>
-	> | null>(null);
-
-	useEffect(() => {
-		getDiffHighlighter().then(setHighlighter);
-	}, []);
-
 	const unifiedDiff = useMemo(
 		() => createPatch(input.file_path, input.old_string, input.new_string),
 		[input.file_path, input.old_string, input.new_string],
 	);
 
-	if (!highlighter) {
-		return <div className="p-2 text-th-text-muted">Loading...</div>;
-	}
-
-	return (
-		<div className="diff-view-wrapper diff-tailwindcss-wrapper">
-			<DiffView
-				data={{
-					oldFile: { fileName: input.file_path },
-					newFile: { fileName: input.file_path },
-					hunks: [unifiedDiff],
-				}}
-				registerHighlighter={highlighter}
-				diffViewMode={DiffModeEnum.Unified}
-				diffViewTheme={isDark ? "dark" : "light"}
-				diffViewHighlight
-			/>
-		</div>
-	);
+	return <DiffViewer fileName={input.file_path} hunks={[unifiedDiff]} />;
 }
 
 function MultiEditResultDisplay({ input }: { input: MultiEditInput }) {
-	const isDark = useSyncExternalStore(subscribeToDarkMode, getIsDarkMode);
-	const [highlighter, setHighlighter] = useState<Awaited<
-		ReturnType<typeof getDiffViewHighlighter>
-	> | null>(null);
-
-	useEffect(() => {
-		getDiffHighlighter().then(setHighlighter);
-	}, []);
-
 	const diffs = useMemo(
 		() =>
 			input.edits.map((edit, index) => ({
@@ -118,26 +75,10 @@ function MultiEditResultDisplay({ input }: { input: MultiEditInput }) {
 		[input.file_path, input.edits],
 	);
 
-	if (!highlighter) {
-		return <div className="p-2 text-th-text-muted">Loading...</div>;
-	}
-
 	return (
 		<div className="space-y-2">
 			{diffs.map(({ index, patch }) => (
-				<div key={index} className="diff-view-wrapper diff-tailwindcss-wrapper">
-					<DiffView
-						data={{
-							oldFile: { fileName: input.file_path },
-							newFile: { fileName: input.file_path },
-							hunks: [patch],
-						}}
-						registerHighlighter={highlighter}
-						diffViewMode={DiffModeEnum.Unified}
-						diffViewTheme={isDark ? "dark" : "light"}
-						diffViewHighlight
-					/>
-				</div>
+				<DiffViewer key={index} fileName={input.file_path} hunks={[patch]} />
 			))}
 		</div>
 	);
