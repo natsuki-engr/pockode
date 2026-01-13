@@ -1,10 +1,8 @@
-import { Check, Circle } from "lucide-react";
 import type { WorktreeInfo } from "../../types/message";
 import DeleteButton from "../common/DeleteButton";
 
 interface Props {
 	worktree: WorktreeInfo;
-	isCurrent: boolean;
 	displayName: string;
 	onSelect: () => void;
 	onDelete: () => void;
@@ -12,7 +10,6 @@ interface Props {
 
 function WorktreeItem({
 	worktree,
-	isCurrent,
 	displayName,
 	onSelect,
 	onDelete,
@@ -24,31 +21,13 @@ function WorktreeItem({
 		/* biome-ignore lint/a11y/useKeyWithClickEvents lint/a11y/useFocusableInteractive: Keyboard navigation handled by listbox parent */
 		<div
 			onClick={onSelect}
-			className={`group flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${
-				isCurrent
-					? "border-l-2 border-th-accent bg-th-accent/10"
-					: "hover:bg-th-bg-tertiary"
-			}`}
+			className="group flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors hover:bg-th-bg-tertiary"
 			role="option"
-			aria-selected={isCurrent}
+			aria-selected={false}
 		>
-			<div className="flex w-4 shrink-0 justify-center">
-				{isCurrent ? (
-					<Check className="h-4 w-4 text-th-accent" />
-				) : (
-					<Circle className="h-3 w-3 text-th-text-muted opacity-50" />
-				)}
-			</div>
-
 			<div className="min-w-0 flex-1 text-left">
 				<div className="flex items-center gap-2">
-					<span
-						className={`truncate text-sm ${
-							isCurrent
-								? "font-semibold text-th-text-primary"
-								: "text-th-text-primary"
-						}`}
-					>
+					<span className="truncate text-sm text-th-text-primary">
 						{displayName}
 					</span>
 					{worktree.is_main && (

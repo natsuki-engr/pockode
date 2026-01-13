@@ -13,7 +13,7 @@ interface Props {
 	onCreateNew: () => void;
 	onClose: () => void;
 	getDisplayName: (worktree: WorktreeInfo) => string;
-	triggerRef?: React.RefObject<HTMLButtonElement>;
+	triggerRef?: React.RefObject<HTMLButtonElement | null>;
 	isDesktop: boolean;
 }
 
@@ -61,7 +61,6 @@ function WorktreeDropdown({
 						<WorktreeItem
 							key={worktree.name || "__main__"}
 							worktree={worktree}
-							isCurrent={false}
 							displayName={getDisplayName(worktree)}
 							onSelect={() => onSelect(worktree)}
 							onDelete={() => onDelete(worktree)}
@@ -70,11 +69,11 @@ function WorktreeDropdown({
 				</div>
 			)}
 
-			<div className="border-t border-th-border p-2">
+			<div className="border-t border-th-border">
 				<button
 					type="button"
 					onClick={onCreateNew}
-					className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-th-accent transition-colors hover:bg-th-accent/10"
+					className="flex w-full items-center gap-3 px-3 py-2.5 text-th-accent transition-colors hover:bg-th-accent/10"
 				>
 					<Plus className="h-4 w-4" />
 					<span className="text-sm font-medium">New worktree</span>

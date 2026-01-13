@@ -10,7 +10,7 @@ interface Props {
 	/** Title shown in mobile header */
 	title: string;
 	/** Reference to the trigger button (for click-outside detection) */
-	triggerRef?: React.RefObject<HTMLElement>;
+	triggerRef?: React.RefObject<HTMLElement | null>;
 	/** Whether in desktop mode */
 	isDesktop: boolean;
 	/** Panel content */
