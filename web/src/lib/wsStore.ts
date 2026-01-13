@@ -257,14 +257,14 @@ export const useWSStore = create<WSState>((set, get) => ({
 							currentWorktree,
 						);
 						worktreeActions.setCurrent("");
-						socket.close();
+						socket.close(1000, "auth_retry");
 						// Retry connection with main worktree
 						setTimeout(() => get().actions.connect(token), 100);
 						return;
 					}
 					console.error("WebSocket auth failed:", error);
 					set({ status: "auth_failed" });
-					socket.close();
+					socket.close(1000, "auth_failed");
 				}
 			};
 
@@ -334,7 +334,7 @@ export const useWSStore = create<WSState>((set, get) => ({
 			// Set status BEFORE closing so onclose sees correct state
 			set({ status: "disconnected" });
 			if (ws) {
-				ws.close();
+				ws.close(1000, "disconnect");
 				ws = null;
 				rpcReceiver = null;
 				rpcRequester = null;
@@ -429,7 +429,7 @@ export const wsActions = useWSStore.getState().actions;
 // Reset function for testing
 export function resetWSStore() {
 	if (ws) {
-		ws.close();
+		ws.close(1000, "disconnect");
 		ws = null;
 	}
 	rpcReceiver = null;
