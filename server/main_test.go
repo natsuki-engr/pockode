@@ -9,8 +9,7 @@ import (
 
 	"github.com/pockode/server/agent/claude"
 	"github.com/pockode/server/command"
-	"github.com/pockode/server/process"
-	"github.com/pockode/server/session"
+	"github.com/pockode/server/worktree"
 	"github.com/pockode/server/ws"
 )
 
@@ -37,14 +36,15 @@ func TestFindAvailablePort(t *testing.T) {
 }
 
 func TestHealthEndpoint(t *testing.T) {
-	tempDir := t.TempDir()
-	store, _ := session.NewFileStore(tempDir)
-	cmdStore, _ := command.NewStore(tempDir)
-	manager := process.NewManager(claude.New(), "/tmp", store, 10*time.Minute)
-	defer manager.Shutdown()
+	dataDir := t.TempDir()
+	workDir := t.TempDir()
+	cmdStore, _ := command.NewStore(dataDir)
+	registry := worktree.NewRegistry(workDir)
+	scopeManager := worktree.NewManager(registry, claude.New(), dataDir, 10*time.Minute)
+	defer scopeManager.Shutdown()
 
-	wsHandler := ws.NewRPCHandler("test-token", "test", manager, true, store, cmdStore, "/tmp", nil, nil)
-	handler := newHandler("test-token", manager, true, store, "/tmp", wsHandler)
+	wsHandler := ws.NewRPCHandler("test-token", "test", true, cmdStore, scopeManager)
+	handler := newHandler("test-token", true, wsHandler)
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rec := httptest.NewRecorder()
 
@@ -60,14 +60,15 @@ func TestHealthEndpoint(t *testing.T) {
 
 func TestPingEndpoint(t *testing.T) {
 	const token = "test-token"
-	tempDir := t.TempDir()
-	store, _ := session.NewFileStore(tempDir)
-	cmdStore, _ := command.NewStore(tempDir)
-	manager := process.NewManager(claude.New(), "/tmp", store, 10*time.Minute)
-	defer manager.Shutdown()
+	dataDir := t.TempDir()
+	workDir := t.TempDir()
+	cmdStore, _ := command.NewStore(dataDir)
+	registry := worktree.NewRegistry(workDir)
+	scopeManager := worktree.NewManager(registry, claude.New(), dataDir, 10*time.Minute)
+	defer scopeManager.Shutdown()
 
-	wsHandler := ws.NewRPCHandler(token, "test", manager, true, store, cmdStore, "/tmp", nil, nil)
-	handler := newHandler(token, manager, true, store, "/tmp", wsHandler)
+	wsHandler := ws.NewRPCHandler(token, "test", true, cmdStore, scopeManager)
+	handler := newHandler(token, true, wsHandler)
 
 	t.Run("returns pong with valid token", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/ping", nil)

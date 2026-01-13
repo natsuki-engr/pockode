@@ -29,6 +29,9 @@ type Manager struct {
 	subsMu sync.Mutex
 	subs   map[string][]*jsonrpc2.Conn
 
+	// Called when a process ends (for cleanup coordination)
+	onProcessEnd func()
+
 	ctx    context.Context
 	cancel context.CancelFunc
 }
@@ -114,6 +117,20 @@ func (m *Manager) HasProcess(sessionID string) bool {
 	return m.GetProcess(sessionID) != nil
 }
 
+// ProcessCount returns the number of running processes.
+func (m *Manager) ProcessCount() int {
+	m.processesMu.Lock()
+	defer m.processesMu.Unlock()
+	return len(m.processes)
+}
+
+// SetOnProcessEnd sets a callback to be called when any process ends.
+func (m *Manager) SetOnProcessEnd(callback func()) {
+	m.processesMu.Lock()
+	defer m.processesMu.Unlock()
+	m.onProcessEnd = callback
+}
+
 // Touch updates the process's last active time.
 func (m *Manager) Touch(sessionID string) {
 	m.processesMu.Lock()
@@ -184,11 +201,17 @@ func (m *Manager) Notify(ctx context.Context, sessionID string, method string, p
 }
 
 // remove removes a process from the manager and returns it.
+// The onProcessEnd callback is invoked asynchronously after removal.
 func (m *Manager) remove(sessionID string) *Process {
 	m.processesMu.Lock()
-	defer m.processesMu.Unlock()
 	proc := m.processes[sessionID]
 	delete(m.processes, sessionID)
+	callback := m.onProcessEnd
+	m.processesMu.Unlock()
+
+	if callback != nil {
+		go callback()
+	}
 	return proc
 }
 

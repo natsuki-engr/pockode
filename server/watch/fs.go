@@ -188,6 +188,11 @@ func (w *FSWatcher) handleEvent(event fsnotify.Event) {
 }
 
 func (w *FSWatcher) notifyPath(path string) {
+	// Skip if watcher is stopped (timer may fire after Stop)
+	if w.Context().Err() != nil {
+		return
+	}
+
 	w.pathMu.RLock()
 	ids := make([]string, len(w.pathToIDs[path]))
 	copy(ids, w.pathToIDs[path])

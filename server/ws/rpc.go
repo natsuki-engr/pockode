@@ -14,37 +14,27 @@ import (
 	"github.com/google/uuid"
 	"github.com/pockode/server/command"
 	"github.com/pockode/server/logger"
-	"github.com/pockode/server/process"
 	"github.com/pockode/server/rpc"
-	"github.com/pockode/server/session"
-	"github.com/pockode/server/watch"
+	"github.com/pockode/server/worktree"
 	"github.com/sourcegraph/jsonrpc2"
 )
 
 // RPCHandler handles JSON-RPC 2.0 over WebSocket.
 type RPCHandler struct {
-	token        string
-	version      string
-	manager      *process.Manager
-	devMode      bool
-	sessionStore session.Store
-	commandStore *command.Store
-	workDir      string
-	watcher      *watch.FSWatcher
-	gitWatcher   *watch.GitWatcher
+	token           string
+	version         string
+	devMode         bool
+	commandStore    *command.Store
+	worktreeManager *worktree.Manager
 }
 
-func NewRPCHandler(token, version string, manager *process.Manager, devMode bool, sessionStore session.Store, commandStore *command.Store, workDir string, watcher *watch.FSWatcher, gitWatcher *watch.GitWatcher) *RPCHandler {
+func NewRPCHandler(token, version string, devMode bool, commandStore *command.Store, worktreeManager *worktree.Manager) *RPCHandler {
 	return &RPCHandler{
-		token:        token,
-		version:      version,
-		manager:      manager,
-		devMode:      devMode,
-		sessionStore: sessionStore,
-		commandStore: commandStore,
-		workDir:      workDir,
-		watcher:      watcher,
-		gitWatcher:   gitWatcher,
+		token:           token,
+		version:         version,
+		devMode:         devMode,
+		commandStore:    commandStore,
+		worktreeManager: worktreeManager,
 	}
 }
 
@@ -79,10 +69,8 @@ func (h *RPCHandler) HandleStream(ctx context.Context, stream jsonrpc2.ObjectStr
 	state := &rpcConnState{
 		connID:     connID,
 		subscribed: make(map[string]struct{}),
-		manager:    h.manager,
-		watcher:    h.watcher,
-		gitWatcher: h.gitWatcher,
 		log:        log,
+		// worktree is set after auth
 	}
 
 	handler := &rpcMethodHandler{
@@ -97,7 +85,7 @@ func (h *RPCHandler) HandleStream(ctx context.Context, stream jsonrpc2.ObjectStr
 
 	<-rpcConn.DisconnectNotify()
 
-	state.cleanup()
+	state.cleanup(h.worktreeManager)
 	log.Info("connection closed", "subscriptions", len(state.subscribed))
 }
 
@@ -106,11 +94,9 @@ type rpcConnState struct {
 	mu         sync.Mutex
 	connID     string
 	subscribed map[string]struct{}
-	manager    *process.Manager
-	watcher    *watch.FSWatcher
-	gitWatcher *watch.GitWatcher
 	conn       *jsonrpc2.Conn
 	log        *slog.Logger
+	worktree   *worktree.Worktree // set after auth
 }
 
 func (s *rpcConnState) getConnID() string {
@@ -127,23 +113,28 @@ func (s *rpcConnState) subscribe(sessionID string, conn *jsonrpc2.Conn) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, exists := s.subscribed[sessionID]; !exists {
-		s.manager.SubscribeRPC(sessionID, conn)
+		s.worktree.ProcessManager.SubscribeRPC(sessionID, conn)
 		s.subscribed[sessionID] = struct{}{}
 	}
 }
 
-func (s *rpcConnState) cleanup() {
+func (s *rpcConnState) cleanup(worktreeManager *worktree.Manager) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	conn := s.conn
-	for sessionID := range s.subscribed {
-		s.manager.UnsubscribeRPC(sessionID, conn)
-		s.log.Debug("unsubscribed from session", "sessionId", sessionID)
-	}
 
-	// Clean up watch subscriptions
-	s.watcher.CleanupConnection(s.connID)
-	s.gitWatcher.CleanupConnection(s.connID)
+	if s.worktree != nil {
+		conn := s.conn
+		for sessionID := range s.subscribed {
+			s.worktree.ProcessManager.UnsubscribeRPC(sessionID, conn)
+			s.log.Debug("unsubscribed from session", "sessionId", sessionID)
+		}
+
+		s.worktree.FSWatcher.CleanupConnection(s.connID)
+		s.worktree.GitWatcher.CleanupConnection(s.connID)
+		s.worktree.Unsubscribe(conn)
+
+		worktreeManager.Release(s.worktree)
+	}
 }
 
 type rpcMethodHandler struct {
@@ -212,6 +203,13 @@ func (h *rpcMethodHandler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req 
 		h.handleWatchSubscribe(ctx, conn, req)
 	case "watch.unsubscribe":
 		h.handleWatchUnsubscribe(ctx, conn, req)
+	// worktree namespace
+	case "worktree.list":
+		h.handleWorktreeList(ctx, conn, req)
+	case "worktree.create":
+		h.handleWorktreeCreate(ctx, conn, req)
+	case "worktree.delete":
+		h.handleWorktreeDelete(ctx, conn, req)
 	default:
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeMethodNotFound, "method not found: "+req.Method)
 	}
@@ -244,11 +242,31 @@ func (h *rpcMethodHandler) handleAuth(ctx context.Context, conn *jsonrpc2.Conn, 
 		return
 	}
 
-	h.setAuthenticated()
-	h.log.Info("authenticated")
+	wt, err := h.worktreeManager.Get(params.Worktree)
+	if err != nil {
+		h.log.Warn("worktree not found", "worktree", params.Worktree, "error", err)
+		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "worktree not found")
+		conn.Close()
+		return
+	}
 
-	title := filepath.Base(h.workDir)
-	if err := conn.Reply(ctx, req.ID, rpc.AuthResult{Version: h.version, Title: title, WorkDir: h.workDir}); err != nil {
+	h.state.mu.Lock()
+	h.state.worktree = wt
+	h.state.mu.Unlock()
+
+	wt.Subscribe(conn)
+
+	h.setAuthenticated()
+	h.log.Info("authenticated", "worktree", wt.Name, "workDir", wt.WorkDir)
+
+	title := filepath.Base(wt.WorkDir)
+	result := rpc.AuthResult{
+		Version:      h.version,
+		Title:        title,
+		WorkDir:      wt.WorkDir,
+		WorktreeName: wt.Name,
+	}
+	if err := conn.Reply(ctx, req.ID, result); err != nil {
 		h.log.Error("failed to send auth response", "error", err)
 	}
 }

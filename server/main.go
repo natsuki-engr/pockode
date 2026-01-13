@@ -24,11 +24,9 @@ import (
 	"github.com/pockode/server/git"
 	"github.com/pockode/server/logger"
 	"github.com/pockode/server/middleware"
-	"github.com/pockode/server/process"
 	"github.com/pockode/server/relay"
-	"github.com/pockode/server/session"
 	"github.com/pockode/server/startup"
-	"github.com/pockode/server/watch"
+	"github.com/pockode/server/worktree"
 	"github.com/pockode/server/ws"
 )
 
@@ -37,7 +35,7 @@ var version = "dev"
 //go:embed static/*
 var staticFS embed.FS
 
-func newHandler(token string, manager *process.Manager, devMode bool, sessionStore session.Store, workDir string, wsHandler *ws.RPCHandler) http.Handler {
+func newHandler(token string, devMode bool, wsHandler *ws.RPCHandler) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
@@ -235,13 +233,6 @@ func main() {
 		}
 	}
 
-	// Initialize session store
-	sessionStore, err := session.NewFileStore(dataDir)
-	if err != nil {
-		slog.Error("failed to initialize session store", "error", err)
-		os.Exit(1)
-	}
-
 	// Initialize command store
 	commandStore, err := command.NewStore(dataDir)
 	if err != nil {
@@ -259,25 +250,13 @@ func main() {
 		}
 	}
 
+	// Initialize worktree registry and manager
 	claudeAgent := claude.New()
-	manager := process.NewManager(claudeAgent, workDir, sessionStore, idleTimeout)
+	registry := worktree.NewRegistry(workDir)
+	worktreeManager := worktree.NewManager(registry, claudeAgent, dataDir, idleTimeout)
 
-	// Initialize filesystem watcher
-	fsWatcher := watch.NewFSWatcher(workDir)
-	if err := fsWatcher.Start(); err != nil {
-		slog.Error("failed to start filesystem watcher", "error", err)
-		os.Exit(1)
-	}
-
-	// Initialize git watcher
-	gitWatcher := watch.NewGitWatcher(workDir)
-	if err := gitWatcher.Start(); err != nil {
-		slog.Error("failed to start git watcher", "error", err)
-		os.Exit(1)
-	}
-
-	wsHandler := ws.NewRPCHandler(token, version, manager, devMode, sessionStore, commandStore, workDir, fsWatcher, gitWatcher)
-	handler := newHandler(token, manager, devMode, sessionStore, workDir, wsHandler)
+	wsHandler := ws.NewRPCHandler(token, version, devMode, commandStore, worktreeManager)
+	handler := newHandler(token, devMode, wsHandler)
 
 	portStr := strconv.Itoa(port)
 	srv := &http.Server{
@@ -343,9 +322,7 @@ func main() {
 			cancelRelayStreams()
 			relayManager.Stop()
 		}
-		gitWatcher.Stop()
-		fsWatcher.Stop()
-		manager.Shutdown()
+		worktreeManager.Shutdown()
 		close(shutdownDone)
 	}()
 

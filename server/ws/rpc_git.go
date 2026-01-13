@@ -12,7 +12,7 @@ import (
 )
 
 func (h *rpcMethodHandler) handleGitStatus(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
-	status, err := git.Status(h.workDir)
+	status, err := git.Status(h.state.worktree.WorkDir)
 	if err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, err.Error())
 		return
@@ -35,7 +35,7 @@ func (h *rpcMethodHandler) handleGitDiff(ctx context.Context, conn *jsonrpc2.Con
 		return
 	}
 
-	if err := contents.ValidatePath(h.workDir, params.Path); err != nil {
+	if err := contents.ValidatePath(h.state.worktree.WorkDir, params.Path); err != nil {
 		if errors.Is(err, contents.ErrInvalidPath) {
 			h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid path")
 			return
@@ -44,7 +44,7 @@ func (h *rpcMethodHandler) handleGitDiff(ctx context.Context, conn *jsonrpc2.Con
 		return
 	}
 
-	result, err := git.DiffWithContent(h.workDir, params.Path, params.Staged)
+	result, err := git.DiffWithContent(h.state.worktree.WorkDir, params.Path, params.Staged)
 	if err != nil {
 		if strings.Contains(err.Error(), "file not found") {
 			h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, err.Error())
@@ -67,7 +67,7 @@ func (h *rpcMethodHandler) handleGitDiff(ctx context.Context, conn *jsonrpc2.Con
 
 func (h *rpcMethodHandler) handleGitSubscribe(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
 	connID := h.state.getConnID()
-	id, err := h.gitWatcher.Subscribe("", conn, connID)
+	id, err := h.state.worktree.GitWatcher.Subscribe("", conn, connID)
 	if err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, err.Error())
 		return
@@ -90,7 +90,7 @@ func (h *rpcMethodHandler) handleGitUnsubscribe(ctx context.Context, conn *jsonr
 		return
 	}
 
-	h.gitWatcher.Unsubscribe(params.ID)
+	h.state.worktree.GitWatcher.Unsubscribe(params.ID)
 
 	if err := conn.Reply(ctx, req.ID, struct{}{}); err != nil {
 		h.log.Error("failed to send git unsubscribe response", "error", err)

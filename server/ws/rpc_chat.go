@@ -21,7 +21,7 @@ func (h *rpcMethodHandler) handleAttach(ctx context.Context, conn *jsonrpc2.Conn
 	log := h.log.With("sessionId", params.SessionID)
 
 	// Verify session exists
-	_, found, err := h.sessionStore.Get(params.SessionID)
+	_, found, err := h.state.worktree.SessionStore.Get(params.SessionID)
 	if err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, "failed to get session")
 		return
@@ -35,7 +35,7 @@ func (h *rpcMethodHandler) handleAttach(ctx context.Context, conn *jsonrpc2.Conn
 	h.state.subscribe(params.SessionID, conn)
 
 	// Return whether process is running
-	processRunning := h.manager.HasProcess(params.SessionID)
+	processRunning := h.state.worktree.ProcessManager.HasProcess(params.SessionID)
 	result := rpc.AttachResult{ProcessRunning: processRunning}
 
 	if err := conn.Reply(ctx, req.ID, result); err != nil {
@@ -67,7 +67,7 @@ func (h *rpcMethodHandler) handleMessage(ctx context.Context, conn *jsonrpc2.Con
 
 	// Persist user message to history
 	event := agent.MessageEvent{Content: params.Content}
-	if err := h.sessionStore.AppendToHistory(ctx, params.SessionID, agent.NewHistoryRecord(event)); err != nil {
+	if err := h.state.worktree.SessionStore.AppendToHistory(ctx, params.SessionID, agent.NewHistoryRecord(event)); err != nil {
 		log.Error("failed to append to history", "error", err)
 	}
 
@@ -139,7 +139,7 @@ func (h *rpcMethodHandler) handlePermissionResponse(ctx context.Context, conn *j
 
 	// Persist permission response to history
 	permEvent := agent.PermissionResponseEvent{RequestID: params.RequestID, Choice: params.Choice}
-	if err := h.sessionStore.AppendToHistory(ctx, params.SessionID, agent.NewHistoryRecord(permEvent)); err != nil {
+	if err := h.state.worktree.SessionStore.AppendToHistory(ctx, params.SessionID, agent.NewHistoryRecord(permEvent)); err != nil {
 		log.Error("failed to append to history", "error", err)
 	}
 
@@ -177,7 +177,7 @@ func (h *rpcMethodHandler) handleQuestionResponse(ctx context.Context, conn *jso
 
 	// Persist question response to history
 	qEvent := agent.QuestionResponseEvent{RequestID: params.RequestID, Answers: params.Answers}
-	if err := h.sessionStore.AppendToHistory(ctx, params.SessionID, agent.NewHistoryRecord(qEvent)); err != nil {
+	if err := h.state.worktree.SessionStore.AppendToHistory(ctx, params.SessionID, agent.NewHistoryRecord(qEvent)); err != nil {
 		log.Error("failed to append to history", "error", err)
 	}
 
@@ -223,7 +223,7 @@ func isWhitespace(r rune) bool {
 }
 
 func (h *rpcMethodHandler) getOrCreateProcess(ctx context.Context, log *slog.Logger, sessionID string) (agent.Session, error) {
-	meta, found, err := h.sessionStore.Get(sessionID)
+	meta, found, err := h.state.worktree.SessionStore.Get(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get session: %w", err)
 	}
@@ -232,14 +232,14 @@ func (h *rpcMethodHandler) getOrCreateProcess(ctx context.Context, log *slog.Log
 	}
 
 	resume := meta.Activated
-	proc, created, err := h.manager.GetOrCreateProcess(ctx, sessionID, resume)
+	proc, created, err := h.state.worktree.ProcessManager.GetOrCreateProcess(ctx, sessionID, resume)
 	if err != nil {
 		return nil, err
 	}
 
 	// Mark as activated on first process creation
 	if created && !resume {
-		if err := h.sessionStore.Activate(ctx, sessionID); err != nil {
+		if err := h.state.worktree.SessionStore.Activate(ctx, sessionID); err != nil {
 			log.Error("failed to activate session", "error", err)
 		}
 	}

@@ -15,7 +15,7 @@ func (h *rpcMethodHandler) handleWatchSubscribe(ctx context.Context, conn *jsonr
 	}
 
 	connID := h.state.getConnID()
-	id, err := h.watcher.Subscribe(params.Path, conn, connID)
+	id, err := h.state.worktree.FSWatcher.Subscribe(params.Path, conn, connID)
 	if err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, err.Error())
 		return
@@ -38,7 +38,7 @@ func (h *rpcMethodHandler) handleWatchUnsubscribe(ctx context.Context, conn *jso
 		return
 	}
 
-	h.watcher.Unsubscribe(params.ID)
+	h.state.worktree.FSWatcher.Unsubscribe(params.ID)
 
 	if err := conn.Reply(ctx, req.ID, struct{}{}); err != nil {
 		h.log.Error("failed to send watch unsubscribe response", "error", err)

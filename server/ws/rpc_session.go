@@ -12,7 +12,7 @@ import (
 )
 
 func (h *rpcMethodHandler) handleSessionList(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
-	sessions, err := h.sessionStore.List()
+	sessions, err := h.state.worktree.SessionStore.List()
 	if err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, "failed to list sessions")
 		return
@@ -30,7 +30,7 @@ func (h *rpcMethodHandler) handleSessionList(ctx context.Context, conn *jsonrpc2
 func (h *rpcMethodHandler) handleSessionCreate(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
 	sessionID := uuid.Must(uuid.NewV7()).String()
 
-	sess, err := h.sessionStore.Create(ctx, sessionID)
+	sess, err := h.state.worktree.SessionStore.Create(ctx, sessionID)
 	if err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, "failed to create session")
 		return
@@ -50,8 +50,8 @@ func (h *rpcMethodHandler) handleSessionDelete(ctx context.Context, conn *jsonrp
 		return
 	}
 
-	h.manager.Close(params.SessionID)
-	if err := h.sessionStore.Delete(ctx, params.SessionID); err != nil {
+	h.state.worktree.ProcessManager.Close(params.SessionID)
+	if err := h.state.worktree.SessionStore.Delete(ctx, params.SessionID); err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, "failed to delete session")
 		return
 	}
@@ -75,7 +75,7 @@ func (h *rpcMethodHandler) handleSessionUpdateTitle(ctx context.Context, conn *j
 		return
 	}
 
-	if err := h.sessionStore.Update(ctx, params.SessionID, params.Title); err != nil {
+	if err := h.state.worktree.SessionStore.Update(ctx, params.SessionID, params.Title); err != nil {
 		if errors.Is(err, session.ErrSessionNotFound) {
 			h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "session not found")
 			return
@@ -98,7 +98,7 @@ func (h *rpcMethodHandler) handleSessionGetHistory(ctx context.Context, conn *js
 		return
 	}
 
-	history, err := h.sessionStore.GetHistory(ctx, params.SessionID)
+	history, err := h.state.worktree.SessionStore.GetHistory(ctx, params.SessionID)
 	if err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, "failed to get history")
 		return

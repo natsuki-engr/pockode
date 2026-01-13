@@ -16,7 +16,7 @@ func (h *rpcMethodHandler) handleFileGet(ctx context.Context, conn *jsonrpc2.Con
 		return
 	}
 
-	result, err := contents.GetContents(h.workDir, params.Path)
+	result, err := contents.GetContents(h.state.worktree.WorkDir, params.Path)
 	if err != nil {
 		if errors.Is(err, contents.ErrNotFound) {
 			h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, err.Error())

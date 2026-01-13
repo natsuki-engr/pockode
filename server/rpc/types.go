@@ -14,13 +14,15 @@ import (
 // Client → Server
 
 type AuthParams struct {
-	Token string `json:"token"`
+	Token    string `json:"token"`
+	Worktree string `json:"worktree,omitempty"` // empty = main worktree
 }
 
 type AuthResult struct {
-	Version string `json:"version"`
-	Title   string `json:"title"`
-	WorkDir string `json:"work_dir"`
+	Version      string `json:"version"`
+	Title        string `json:"title"`
+	WorkDir      string `json:"work_dir"`
+	WorktreeName string `json:"worktree_name"`
 }
 
 type AttachParams struct {
@@ -126,6 +128,38 @@ type GitSubscribeResult struct {
 
 type GitUnsubscribeParams struct {
 	ID string `json:"id"`
+}
+
+// Worktree namespace
+
+type WorktreeInfo struct {
+	Name   string `json:"name"`
+	Path   string `json:"path"`
+	Branch string `json:"branch"`
+	IsMain bool   `json:"is_main"`
+}
+
+type WorktreeListResult struct {
+	Worktrees []WorktreeInfo `json:"worktrees"`
+}
+
+type WorktreeCreateParams struct {
+	Name   string `json:"name"`
+	Branch string `json:"branch"`
+}
+
+type WorktreeCreateResult struct {
+	Worktree WorktreeInfo `json:"worktree"`
+}
+
+type WorktreeDeleteParams struct {
+	Name  string `json:"name"`
+	Force bool   `json:"force"`
+}
+
+// WorktreeDeletedParams is sent to clients when a worktree they are connected to is deleted.
+type WorktreeDeletedParams struct {
+	Name string `json:"name"`
 }
 
 // Server → Client
