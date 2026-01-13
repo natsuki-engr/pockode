@@ -88,9 +88,6 @@ export function useWorktree({
 
 	const createMutation = useMutation({
 		mutationFn: createWorktree,
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["worktrees"] });
-		},
 	});
 
 	const deleteMutation = useMutation({

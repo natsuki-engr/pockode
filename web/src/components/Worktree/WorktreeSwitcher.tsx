@@ -52,9 +52,10 @@ function WorktreeSwitcher({ onClose, isDesktop = true }: Props) {
 	const handleCreate = useCallback(
 		async (name: string, branch: string) => {
 			await create(name, branch);
+			select(name);
 			setIsCreateOpen(false);
 		},
-		[create],
+		[create, select],
 	);
 
 	const handleOpenCreate = useCallback(() => {
