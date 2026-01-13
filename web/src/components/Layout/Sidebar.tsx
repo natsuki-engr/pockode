@@ -1,4 +1,3 @@
-import { X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const SIDEBAR_WIDTH_KEY = "pockode:sidebar-width";
@@ -20,12 +19,11 @@ function getInitialWidth(): number {
 interface Props {
 	isOpen: boolean;
 	onClose: () => void;
-	title: string;
 	children: React.ReactNode;
 	isDesktop: boolean;
 }
 
-function Sidebar({ isOpen, onClose, title, children, isDesktop }: Props) {
+function Sidebar({ isOpen, onClose, children, isDesktop }: Props) {
 	const [width, setWidth] = useState(getInitialWidth);
 	const [isDragging, setIsDragging] = useState(false);
 	const widthRef = useRef(width);
@@ -85,11 +83,6 @@ function Sidebar({ isOpen, onClose, title, children, isDesktop }: Props) {
 				className="relative flex h-dvh shrink-0 flex-col border-r border-th-border bg-th-bg-secondary"
 				style={{ width }}
 			>
-				<div className="flex h-12 shrink-0 items-center border-b border-th-border px-4">
-					<h2 className="text-lg font-semibold text-th-text-primary">
-						{title}
-					</h2>
-				</div>
 				<div className="flex flex-1 flex-col overflow-hidden">{children}</div>
 				{/* biome-ignore lint/a11y/noStaticElementInteractions: Resize handle is mouse-only UI */}
 				<div
@@ -117,20 +110,6 @@ function Sidebar({ isOpen, onClose, title, children, isDesktop }: Props) {
 			/>
 
 			<div className="fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-th-bg-secondary">
-				<div className="flex h-11 shrink-0 items-center justify-between border-b border-th-border px-3">
-					<h2 className="text-base font-semibold text-th-text-primary">
-						{title}
-					</h2>
-					<button
-						type="button"
-						onClick={onClose}
-						className="flex h-8 w-8 items-center justify-center rounded text-th-text-muted hover:bg-th-bg-tertiary hover:text-th-text-primary"
-						aria-label="Close sidebar"
-					>
-						<X className="h-5 w-5" aria-hidden="true" />
-					</button>
-				</div>
-
 				<div className="flex flex-1 flex-col overflow-hidden">{children}</div>
 			</div>
 		</>

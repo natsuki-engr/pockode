@@ -13,11 +13,15 @@ export interface TabConfig {
 interface Props {
 	isOpen: boolean;
 	onClose: () => void;
-	title: string;
 	tabs: TabConfig[];
 	defaultTab: string;
 	isDesktop: boolean;
 	children: React.ReactNode;
+	/** Render function for header slot, receives onClose and isDesktop for mobile close button */
+	renderHeader?: (props: {
+		onClose: () => void;
+		isDesktop: boolean;
+	}) => React.ReactNode;
 }
 
 /**
@@ -32,11 +36,11 @@ interface Props {
 function TabbedSidebar({
 	isOpen,
 	onClose,
-	title,
 	tabs,
 	defaultTab,
 	isDesktop,
 	children,
+	renderHeader,
 }: Props) {
 	const [activeTab, setActiveTab] = useState(defaultTab);
 	const [refreshSignal, setRefreshSignal] = useState(0);
@@ -63,12 +67,10 @@ function TabbedSidebar({
 
 	return (
 		<SidebarContext.Provider value={contextValue}>
-			<Sidebar
-				isOpen={isOpen}
-				onClose={onClose}
-				title={title}
-				isDesktop={isDesktop}
-			>
+			<Sidebar isOpen={isOpen} onClose={onClose} isDesktop={isDesktop}>
+				{/* Header slot */}
+				{renderHeader?.({ onClose, isDesktop })}
+
 				{/* Tab bar */}
 				<div className="flex border-b border-th-border">
 					{tabs.map((tab) => {

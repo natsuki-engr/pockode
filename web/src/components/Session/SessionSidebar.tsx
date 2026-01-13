@@ -4,6 +4,7 @@ import { unreadActions, useHasAnyUnread } from "../../lib/unreadStore";
 import { FilesTab } from "../Files";
 import { DiffTab } from "../Git";
 import { TabbedSidebar, type TabConfig } from "../Layout";
+import { WorktreeSwitcher } from "../Worktree";
 import SessionsTab from "./SessionsTab";
 
 interface Props {
@@ -69,10 +70,12 @@ function SessionSidebar({
 		<TabbedSidebar
 			isOpen={isOpen}
 			onClose={onClose}
-			title="Pockode"
 			tabs={tabs}
 			defaultTab="sessions"
 			isDesktop={isDesktop}
+			renderHeader={({ onClose, isDesktop }) => (
+				<WorktreeSwitcher onClose={onClose} isDesktop={isDesktop} />
+			)}
 		>
 			<SessionsTab
 				currentSessionId={currentSessionId}

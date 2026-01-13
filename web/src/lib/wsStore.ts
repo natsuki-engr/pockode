@@ -15,12 +15,15 @@ import {
 	createFileActions,
 	createGitActions,
 	createSessionActions,
+	createWorktreeActions,
 	type FileActions,
 	type GitActions,
 	type SessionActions,
+	type WorktreeActions,
 } from "./rpc";
 import { unreadActions } from "./unreadStore";
 import { APP_VERSION } from "./version";
+import { worktreeActions } from "./worktreeStore";
 
 // Events that should NOT trigger unread notifications.
 // These are either streaming events (continuous output) or control messages.
@@ -60,7 +63,8 @@ type RPCActions = ConnectionActions &
 	SessionActions &
 	FileActions &
 	GitActions &
-	WatchActions;
+	WatchActions &
+	WorktreeActions;
 
 interface WSState {
 	status: ConnectionStatus;
@@ -133,6 +137,18 @@ function handleNotification(method: string, params: unknown): void {
 		return;
 	}
 
+	// Handle worktree.deleted notification
+	if (method === "worktree.deleted") {
+		const { name } = params as { name: string };
+		const wasCurrentWorktree = worktreeActions.getCurrent() === name;
+		// If connected to the deleted worktree, switch to main
+		if (wasCurrentWorktree) {
+			worktreeActions.setCurrent("");
+		}
+		worktreeDeletedListener?.(name, wasCurrentWorktree);
+		return;
+	}
+
 	const eventType = stripNamespace(method);
 	const notification = {
 		type: eventType,
@@ -161,6 +177,20 @@ const commandActions = createCommandActions(getClient);
 const sessionActions = createSessionActions(getClient);
 const fileActions = createFileActions(getClient);
 const gitActions = createGitActions(getClient);
+const worktreeRpcActions = createWorktreeActions(getClient);
+
+// Listener for worktree deleted notification
+type WorktreeDeletedListener = (
+	name: string,
+	wasCurrentWorktree: boolean,
+) => void;
+let worktreeDeletedListener: WorktreeDeletedListener | null = null;
+
+export function setWorktreeDeletedListener(
+	listener: WorktreeDeletedListener | null,
+) {
+	worktreeDeletedListener = listener;
+}
 
 export const useWSStore = create<WSState>((set, get) => ({
 	status: "disconnected",
@@ -196,8 +226,10 @@ export const useWSStore = create<WSState>((set, get) => ({
 				rpcRequester = clients.withTimeout;
 
 				try {
+					const currentWorktree = worktreeActions.getCurrent();
 					const result = (await rpcRequester.request("auth", {
 						token,
+						worktree: currentWorktree || undefined,
 					} as AuthParams)) as AuthResult;
 
 					if (result.version !== APP_VERSION) {
@@ -217,6 +249,19 @@ export const useWSStore = create<WSState>((set, get) => ({
 					});
 					reconnectAttempts = 0;
 				} catch (error) {
+					const currentWorktree = worktreeActions.getCurrent();
+					// If auth failed with a specific worktree, reset to main and retry
+					if (currentWorktree) {
+						console.warn(
+							"Auth failed with worktree, retrying with main:",
+							currentWorktree,
+						);
+						worktreeActions.setCurrent("");
+						socket.close();
+						// Retry connection with main worktree
+						setTimeout(() => get().actions.connect(token), 100);
+						return;
+					}
 					console.error("WebSocket auth failed:", error);
 					set({ status: "auth_failed" });
 					socket.close();
@@ -360,8 +405,23 @@ export const useWSStore = create<WSState>((set, get) => ({
 		...sessionActions,
 		...fileActions,
 		...gitActions,
+		...worktreeRpcActions,
 	},
 }));
+
+/**
+ * Reconnect WebSocket with current token.
+ * Used when switching worktrees to re-authenticate with the new worktree context.
+ */
+export function reconnectWebSocket(): void {
+	if (!currentToken) return;
+	const token = currentToken;
+	wsActions.disconnect();
+	// Small delay to ensure clean disconnect before reconnecting
+	setTimeout(() => {
+		useWSStore.getState().actions.connect(token);
+	}, 100);
+}
 
 // Expose actions for non-React contexts (e.g., authStore logout)
 export const wsActions = useWSStore.getState().actions;
@@ -384,6 +444,7 @@ export function resetWSStore() {
 	watchCallbacks.clear();
 	gitWatchCallbacks.clear();
 	sessionExistsChecker = null;
+	worktreeDeletedListener = null;
 	useWSStore.setState({
 		status: "disconnected",
 		projectTitle: "",

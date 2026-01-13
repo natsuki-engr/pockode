@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
 	createSession,
 	deleteSession,
@@ -24,6 +24,17 @@ export function useSession({
 
 	// Only fetch sessions when WebSocket is connected
 	const isConnected = wsStatus === "connected";
+	const hasConnectedOnceRef = useRef(false);
+
+	// Invalidate sessions on reconnect (worktree switch, etc.)
+	useEffect(() => {
+		if (isConnected) {
+			if (hasConnectedOnceRef.current) {
+				queryClient.invalidateQueries({ queryKey: ["sessions"] });
+			}
+			hasConnectedOnceRef.current = true;
+		}
+	}, [isConnected, queryClient]);
 
 	const {
 		data: sessions = [],

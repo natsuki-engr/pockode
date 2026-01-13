@@ -149,6 +149,33 @@ export interface AskUserQuestionRequest {
 
 export interface AuthParams {
 	token: string;
+	worktree?: string;
+}
+
+// Worktree types
+export interface WorktreeInfo {
+	name: string;
+	path: string;
+	branch: string;
+	is_main: boolean;
+}
+
+export interface WorktreeListResult {
+	worktrees: WorktreeInfo[];
+}
+
+export interface WorktreeCreateParams {
+	name: string;
+	branch: string;
+}
+
+export interface WorktreeDeleteParams {
+	name: string;
+	force?: boolean;
+}
+
+export interface WorktreeDeletedNotification {
+	name: string;
 }
 
 export interface AuthResult {
