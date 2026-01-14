@@ -259,7 +259,7 @@ func (h *rpcMethodHandler) handleAuth(ctx context.Context, conn *jsonrpc2.Conn, 
 	h.setAuthenticated()
 	h.log.Info("authenticated", "worktree", wt.Name, "workDir", wt.WorkDir)
 
-	title := filepath.Base(wt.WorkDir)
+	title := filepath.Base(h.worktreeManager.Registry().MainDir())
 	result := rpc.AuthResult{
 		Version:      h.version,
 		Title:        title,
