@@ -89,6 +89,12 @@ export function useWorktree({
 
 	const createMutation = useMutation({
 		mutationFn: createWorktree,
+		onSuccess: (_, { name, branch }) => {
+			queryClient.setQueryData<WorktreeInfo[]>(["worktrees"], (old = []) => {
+				if (old.some((w) => w.name === name)) return old;
+				return [...old, { name, branch, path: "", is_main: false }];
+			});
+		},
 	});
 
 	const deleteMutation = useMutation({
