@@ -426,6 +426,11 @@ export function reconnectWebSocket(): void {
 // Expose actions for non-React contexts (e.g., authStore logout)
 export const wsActions = useWSStore.getState().actions;
 
+// Reconnect WebSocket when worktree changes
+worktreeActions.onWorktreeChange(() => {
+	reconnectWebSocket();
+});
+
 // Reset function for testing
 export function resetWSStore() {
 	if (ws) {

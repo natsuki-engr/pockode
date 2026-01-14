@@ -1,92 +1,20 @@
-import { useMatch, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useIsDesktop } from "../hooks/useIsDesktop";
+import { useRouteState } from "../hooks/useRouteState";
 import { useSession } from "../hooks/useSession";
+import { useWorktree } from "../hooks/useWorktree";
 import {
 	authActions,
 	selectHasAuthToken,
 	useAuthStore,
 } from "../lib/authStore";
+import { buildNavigation } from "../lib/navigation";
+import { useWorktreeStore, worktreeActions } from "../lib/worktreeStore";
 import { useWSStore, wsActions } from "../lib/wsStore";
-import type { OverlaySearchParams } from "../router";
-import type { OverlayState } from "../types/overlay";
 import TokenInput from "./Auth/TokenInput";
 import { ChatPanel } from "./Chat";
 import { SessionSidebar } from "./Session";
-
-interface RouteInfo {
-	overlay: OverlayState;
-	sessionId: string | null;
-}
-
-/**
- * Derives overlay and session state from the current route.
- */
-function useRouteState(): RouteInfo {
-	const sessionMatch = useMatch({
-		from: "/s/$sessionId",
-		shouldThrow: false,
-	});
-	const stagedMatch = useMatch({
-		from: "/staged/$",
-		shouldThrow: false,
-	});
-	const unstagedMatch = useMatch({
-		from: "/unstaged/$",
-		shouldThrow: false,
-	});
-	const fileMatch = useMatch({
-		from: "/files/$",
-		shouldThrow: false,
-	});
-
-	if (sessionMatch) {
-		return {
-			overlay: null,
-			sessionId: sessionMatch.params.sessionId,
-		};
-	}
-
-	if (stagedMatch) {
-		const search = stagedMatch.search as OverlaySearchParams;
-		return {
-			overlay: {
-				type: "diff",
-				path: stagedMatch.params._splat ?? "",
-				staged: true,
-			},
-			sessionId: search.session ?? null,
-		};
-	}
-
-	if (unstagedMatch) {
-		const search = unstagedMatch.search as OverlaySearchParams;
-		return {
-			overlay: {
-				type: "diff",
-				path: unstagedMatch.params._splat ?? "",
-				staged: false,
-			},
-			sessionId: search.session ?? null,
-		};
-	}
-
-	if (fileMatch) {
-		const search = fileMatch.search as OverlaySearchParams;
-		return {
-			overlay: {
-				type: "file",
-				path: fileMatch.params._splat ?? "",
-			},
-			sessionId: search.session ?? null,
-		};
-	}
-
-	return {
-		overlay: null,
-		sessionId: null,
-	};
-}
 
 function AppShell() {
 	const hasAuthToken = useAuthStore(selectHasAuthToken);
@@ -96,12 +24,22 @@ function AppShell() {
 	const [sidebarOpen, setSidebarOpen] = useState(false);
 	const isCreatingSession = useRef(false);
 
-	const { overlay, sessionId: routeSessionId } = useRouteState();
+	const {
+		overlay,
+		sessionId: routeSessionId,
+		worktree: urlWorktree,
+	} = useRouteState();
+	const storeWorktree = useWorktreeStore((state) => state.current);
 
 	const token = useAuthStore((state) => state.token);
 
-	// Connect to WebSocket when token becomes available (initial connection only)
-	// Reconnection is handled internally by wsStore with proper delay
+	// URL → Store sync
+	useEffect(() => {
+		if (urlWorktree !== storeWorktree) {
+			worktreeActions.setCurrent(urlWorktree);
+		}
+	}, [urlWorktree, storeWorktree]);
+
 	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally exclude wsStatus to avoid bypassing retry delay
 	useEffect(() => {
 		if (token && wsStatus === "disconnected") {
@@ -109,12 +47,32 @@ function AppShell() {
 		}
 	}, [token]);
 
-	// Handle auth failure by logging out
 	useEffect(() => {
 		if (wsStatus === "auth_failed") {
 			authActions.logout();
 		}
 	}, [wsStatus]);
+
+	const {
+		worktrees,
+		isSuccess: isWorktreesLoaded,
+		isGitRepo,
+	} = useWorktree({ enabled: hasAuthToken });
+
+	useEffect(() => {
+		if (!isWorktreesLoaded) return;
+		if (!urlWorktree) return;
+		if (!isGitRepo) return;
+		if (worktrees.length === 0) return;
+
+		const exists = worktrees.some((w) => w.name === urlWorktree);
+		if (!exists) {
+			console.warn(`Worktree "${urlWorktree}" not found, redirecting to main`);
+			navigate(
+				buildNavigation({ type: "home", worktree: "" }, { replace: true }),
+			);
+		}
+	}, [isWorktreesLoaded, isGitRepo, worktrees, urlWorktree, navigate]);
 
 	const activeDiffFile =
 		overlay?.type === "diff"
@@ -136,30 +94,40 @@ function AppShell() {
 
 	useEffect(() => {
 		if (redirectSessionId) {
-			navigate({
-				to: "/s/$sessionId",
-				params: { sessionId: redirectSessionId },
-				replace: true,
-			});
+			navigate(
+				buildNavigation(
+					{
+						type: "session",
+						worktree: urlWorktree,
+						sessionId: redirectSessionId,
+					},
+					{ replace: true },
+				),
+			);
 		}
-	}, [redirectSessionId, navigate]);
+	}, [redirectSessionId, navigate, urlWorktree]);
 
 	useEffect(() => {
 		if (needsNewSession && !isCreatingSession.current) {
 			isCreatingSession.current = true;
 			createSession()
 				.then((newSession) => {
-					navigate({
-						to: "/s/$sessionId",
-						params: { sessionId: newSession.id },
-						replace: true,
-					});
+					navigate(
+						buildNavigation(
+							{
+								type: "session",
+								worktree: urlWorktree,
+								sessionId: newSession.id,
+							},
+							{ replace: true },
+						),
+					);
 				})
 				.finally(() => {
 					isCreatingSession.current = false;
 				});
 		}
-	}, [needsNewSession, createSession, navigate]);
+	}, [needsNewSession, createSession, navigate, urlWorktree]);
 
 	const handleTokenSubmit = (token: string) => {
 		authActions.login(token);
@@ -171,17 +139,29 @@ function AppShell() {
 
 	const handleSelectSession = useCallback(
 		(id: string) => {
-			navigate({ to: "/s/$sessionId", params: { sessionId: id } });
+			navigate(
+				buildNavigation({
+					type: "session",
+					worktree: urlWorktree,
+					sessionId: id,
+				}),
+			);
 			setSidebarOpen(false);
 		},
-		[navigate],
+		[navigate, urlWorktree],
 	);
 
 	const handleCreateSession = useCallback(async () => {
 		const newSession = await createSession();
 		setSidebarOpen(false);
-		navigate({ to: "/s/$sessionId", params: { sessionId: newSession.id } });
-	}, [createSession, navigate]);
+		navigate(
+			buildNavigation({
+				type: "session",
+				worktree: urlWorktree,
+				sessionId: newSession.id,
+			}),
+		);
+	}, [createSession, navigate, urlWorktree]);
 
 	const handleDeleteSession = useCallback(
 		async (id: string) => {
@@ -191,56 +171,70 @@ function AppShell() {
 			await deleteSession(id);
 
 			if (isCurrentSession && remaining.length > 0) {
-				navigate({
-					to: "/s/$sessionId",
-					params: { sessionId: remaining[0].id },
-					replace: true,
-				});
+				navigate(
+					buildNavigation(
+						{
+							type: "session",
+							worktree: urlWorktree,
+							sessionId: remaining[0].id,
+						},
+						{ replace: true },
+					),
+				);
 			}
 		},
-		[currentSessionId, sessions, deleteSession, navigate],
+		[currentSessionId, sessions, deleteSession, navigate, urlWorktree],
 	);
 
 	const handleSelectDiffFile = useCallback(
 		(path: string, staged: boolean) => {
-			const route = staged ? "/staged/$" : "/unstaged/$";
-			navigate({
-				to: route,
-				params: { _splat: path },
-				search: currentSessionId ? { session: currentSessionId } : {},
-			});
+			navigate(
+				buildNavigation({
+					type: "overlay",
+					worktree: urlWorktree,
+					overlayType: staged ? "staged" : "unstaged",
+					path,
+					sessionId: currentSessionId ?? undefined,
+				}),
+			);
 		},
-		[navigate, currentSessionId],
+		[navigate, urlWorktree, currentSessionId],
 	);
 
 	const handleSelectFile = useCallback(
 		(path: string) => {
-			navigate({
-				to: "/files/$",
-				params: { _splat: path },
-				search: currentSessionId ? { session: currentSessionId } : {},
-			});
+			navigate(
+				buildNavigation({
+					type: "overlay",
+					worktree: urlWorktree,
+					overlayType: "file",
+					path,
+					sessionId: currentSessionId ?? undefined,
+				}),
+			);
 		},
-		[navigate, currentSessionId],
+		[navigate, urlWorktree, currentSessionId],
 	);
 
 	const handleCloseOverlay = useCallback(() => {
 		if (currentSessionId) {
-			navigate({
-				to: "/s/$sessionId",
-				params: { sessionId: currentSessionId },
-			});
+			navigate(
+				buildNavigation({
+					type: "session",
+					worktree: urlWorktree,
+					sessionId: currentSessionId,
+				}),
+			);
 		} else {
-			navigate({ to: "/" });
+			navigate(buildNavigation({ type: "home", worktree: urlWorktree }));
 		}
-	}, [navigate, currentSessionId]);
+	}, [navigate, urlWorktree, currentSessionId]);
 
 	if (!hasAuthToken) {
 		return <TokenInput onSubmit={handleTokenSubmit} />;
 	}
 
 	if (!currentSessionId || !currentSession) {
-		// Connection failed - show error state with retry option
 		if (wsStatus === "error") {
 			return (
 				<div

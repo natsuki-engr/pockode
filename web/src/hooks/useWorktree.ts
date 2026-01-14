@@ -1,12 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef } from "react";
+import { buildNavigation } from "../lib/navigation";
 import {
 	getDisplayName,
 	useWorktreeStore,
 	worktreeActions,
 } from "../lib/worktreeStore";
 import {
-	reconnectWebSocket,
 	setWorktreeDeletedListener,
 	useWSStore,
 	wsActions,
@@ -40,6 +41,7 @@ export function useWorktree({
 	enabled = true,
 	onDeleted,
 }: UseWorktreeOptions = {}) {
+	const navigate = useNavigate();
 	const queryClient = useQueryClient();
 	const wsStatus = useWSStore((state) => state.status);
 	const current = useWorktreeStore((state) => state.current);
@@ -48,7 +50,6 @@ export function useWorktree({
 	const isConnected = wsStatus === "connected";
 	const hasConnectedOnceRef = useRef(false);
 
-	// Invalidate worktrees on reconnect
 	useEffect(() => {
 		if (isConnected) {
 			if (hasConnectedOnceRef.current) {
@@ -71,19 +72,18 @@ export function useWorktree({
 		refetchInterval: 5000,
 	});
 
-	// Handle worktree deleted notification
 	useEffect(() => {
 		setWorktreeDeletedListener((name, wasCurrentWorktree) => {
 			queryClient.invalidateQueries({ queryKey: ["worktrees"] });
 			if (wasCurrentWorktree) {
-				worktreeActions.setCurrent("");
-				reconnectWebSocket();
+				navigate(
+					buildNavigation({ type: "home", worktree: "" }, { replace: true }),
+				);
 			}
 			onDeleted?.(name);
 		});
-
 		return () => setWorktreeDeletedListener(null);
-	}, [onDeleted, queryClient]);
+	}, [onDeleted, queryClient, navigate]);
 
 	const refresh = useCallback(() => {
 		queryClient.invalidateQueries({ queryKey: ["worktrees"] });
@@ -105,10 +105,10 @@ export function useWorktree({
 			queryClient.setQueryData<WorktreeInfo[]>(["worktrees"], (old = []) =>
 				old.filter((w) => w.name !== name),
 			);
-			// If we deleted the current worktree, switch to main
 			if (worktreeActions.getCurrent() === name) {
-				worktreeActions.setCurrent("");
-				reconnectWebSocket();
+				navigate(
+					buildNavigation({ type: "home", worktree: "" }, { replace: true }),
+				);
 			}
 		},
 	});
@@ -116,14 +116,12 @@ export function useWorktree({
 	const selectWorktree = useCallback(
 		(name: string) => {
 			if (name === current) return;
-
-			worktreeActions.setCurrent(name);
-			reconnectWebSocket();
+			// URL is source of truth; store sync and WebSocket reconnect happen via listeners
+			navigate(buildNavigation({ type: "home", worktree: name }));
 		},
-		[current],
+		[current, navigate],
 	);
 
-	// Find current worktree info
 	const currentWorktree = worktrees.find((w) =>
 		current ? w.name === current : w.is_main,
 	);

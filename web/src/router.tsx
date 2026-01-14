@@ -5,6 +5,7 @@ import {
 } from "@tanstack/react-router";
 import { z } from "zod";
 import AppShell from "./components/AppShell";
+import { ROUTES, WT_CHILD_ROUTES, WT_ROUTES } from "./lib/routes";
 
 const overlaySearchSchema = z.object({
 	session: z.string().optional(),
@@ -16,32 +17,67 @@ const rootRoute = createRootRoute({
 	component: AppShell,
 });
 
+// Main routes
+const indexRoute = createRoute({
+	getParentRoute: () => rootRoute,
+	path: ROUTES.index,
+});
+
 const sessionRoute = createRoute({
 	getParentRoute: () => rootRoute,
-	path: "/s/$sessionId",
+	path: ROUTES.session,
 });
 
 const stagedDiffRoute = createRoute({
 	getParentRoute: () => rootRoute,
-	path: "/staged/$",
+	path: ROUTES.staged,
 	validateSearch: (search) => overlaySearchSchema.parse(search),
 });
 
 const unstagedDiffRoute = createRoute({
 	getParentRoute: () => rootRoute,
-	path: "/unstaged/$",
+	path: ROUTES.unstaged,
 	validateSearch: (search) => overlaySearchSchema.parse(search),
 });
 
 const fileViewRoute = createRoute({
 	getParentRoute: () => rootRoute,
-	path: "/files/$",
+	path: ROUTES.files,
 	validateSearch: (search) => overlaySearchSchema.parse(search),
 });
 
-const indexRoute = createRoute({
+// Worktree-prefixed routes
+const worktreeLayoutRoute = createRoute({
 	getParentRoute: () => rootRoute,
-	path: "/",
+	path: WT_ROUTES.layout,
+});
+
+const wtIndexRoute = createRoute({
+	getParentRoute: () => worktreeLayoutRoute,
+	path: WT_CHILD_ROUTES.index,
+});
+
+const wtSessionRoute = createRoute({
+	getParentRoute: () => worktreeLayoutRoute,
+	path: WT_CHILD_ROUTES.session,
+});
+
+const wtStagedDiffRoute = createRoute({
+	getParentRoute: () => worktreeLayoutRoute,
+	path: WT_CHILD_ROUTES.staged,
+	validateSearch: (search) => overlaySearchSchema.parse(search),
+});
+
+const wtUnstagedDiffRoute = createRoute({
+	getParentRoute: () => worktreeLayoutRoute,
+	path: WT_CHILD_ROUTES.unstaged,
+	validateSearch: (search) => overlaySearchSchema.parse(search),
+});
+
+const wtFileViewRoute = createRoute({
+	getParentRoute: () => worktreeLayoutRoute,
+	path: WT_CHILD_ROUTES.files,
+	validateSearch: (search) => overlaySearchSchema.parse(search),
 });
 
 const routeTree = rootRoute.addChildren([
@@ -50,6 +86,13 @@ const routeTree = rootRoute.addChildren([
 	stagedDiffRoute,
 	unstagedDiffRoute,
 	fileViewRoute,
+	worktreeLayoutRoute.addChildren([
+		wtIndexRoute,
+		wtSessionRoute,
+		wtStagedDiffRoute,
+		wtUnstagedDiffRoute,
+		wtFileViewRoute,
+	]),
 ]);
 
 export const router = createRouter({

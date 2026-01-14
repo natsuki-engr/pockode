@@ -1,17 +1,15 @@
 import { create } from "zustand";
 import type { WorktreeInfo } from "../types/message";
 
-const WORKTREE_KEY = "current_worktree";
-
 interface WorktreeState {
-	/** Current worktree name (empty string = main) */
+	/** Current worktree name (empty string = main). URL is source of truth. */
 	current: string;
 	/** Whether current project is a git repository */
 	isGitRepo: boolean;
 }
 
 export const useWorktreeStore = create<WorktreeState>(() => ({
-	current: localStorage.getItem(WORKTREE_KEY) ?? "",
+	current: "",
 	isGitRepo: true,
 }));
 
@@ -23,11 +21,6 @@ export const worktreeActions = {
 		const prev = useWorktreeStore.getState().current;
 		if (prev === name) return;
 
-		if (name) {
-			localStorage.setItem(WORKTREE_KEY, name);
-		} else {
-			localStorage.removeItem(WORKTREE_KEY);
-		}
 		useWorktreeStore.setState({ current: name });
 
 		for (const listener of changeListeners) {
@@ -40,6 +33,7 @@ export const worktreeActions = {
 		return () => changeListeners.delete(listener);
 	},
 
+	// TODO: .git deletion is not handled - user stays on worktree URL even after .git is removed
 	setIsGitRepo: (isGitRepo: boolean) => {
 		useWorktreeStore.setState({ isGitRepo });
 	},
@@ -47,14 +41,9 @@ export const worktreeActions = {
 	getCurrent: () => useWorktreeStore.getState().current,
 
 	reset: () => {
-		localStorage.removeItem(WORKTREE_KEY);
 		useWorktreeStore.setState({ current: "", isGitRepo: true });
 	},
 };
-
-export function useCurrentWorktree(): string {
-	return useWorktreeStore((state) => state.current);
-}
 
 export function useIsGitRepo(): boolean {
 	return useWorktreeStore((state) => state.isGitRepo);

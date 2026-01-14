@@ -5,6 +5,8 @@ import { useCallback, useMemo } from "react";
 import { gitDiffQueryKey, useGitDiff } from "../../hooks/useGitDiff";
 import { useGitStatus } from "../../hooks/useGitStatus";
 import { useGitWatch } from "../../hooks/useGitWatch";
+import { useCurrentWorktree } from "../../hooks/useRouteState";
+import { buildNavigation } from "../../lib/navigation";
 import type { OverlaySearchParams } from "../../router";
 import { flattenGitStatus } from "../../types/git";
 import { ContentView } from "../ui";
@@ -26,6 +28,7 @@ const navButtonClass = (enabled: boolean) =>
 function DiffView({ path, staged, onBack }: Props) {
 	const queryClient = useQueryClient();
 	const navigate = useNavigate();
+	const worktree = useCurrentWorktree();
 	const search = useSearch({ strict: false }) as OverlaySearchParams;
 	const sessionId = search.session;
 	const { data: diff, isLoading, error } = useGitDiff({ path, staged });
@@ -56,11 +59,15 @@ function DiffView({ path, staged, onBack }: Props) {
 			: null;
 
 	const navigateTo = (file: { path: string; staged: boolean }) => {
-		navigate({
-			to: file.staged ? "/staged/$" : "/unstaged/$",
-			params: { _splat: file.path },
-			search: sessionId ? { session: sessionId } : {},
-		});
+		navigate(
+			buildNavigation({
+				type: "overlay",
+				worktree,
+				overlayType: file.staged ? "staged" : "unstaged",
+				path: file.path,
+				sessionId: sessionId ?? undefined,
+			}),
+		);
 	};
 
 	const headerActions = (
@@ -87,11 +94,15 @@ function DiffView({ path, staged, onBack }: Props) {
 	);
 
 	const handlePathClick = () => {
-		navigate({
-			to: "/files/$",
-			params: { _splat: path },
-			search: sessionId ? { session: sessionId } : {},
-		});
+		navigate(
+			buildNavigation({
+				type: "overlay",
+				worktree,
+				overlayType: "file",
+				path,
+				sessionId: sessionId ?? undefined,
+			}),
+		);
 	};
 
 	return (
