@@ -291,6 +291,7 @@ func main() {
 		remoteURL, err = relayManager.Start(context.Background())
 		if err != nil {
 			slog.Error("failed to start relay", "error", err)
+			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 

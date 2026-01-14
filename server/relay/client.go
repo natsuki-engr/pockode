@@ -11,7 +11,7 @@ import (
 )
 
 var ErrInvalidToken = errors.New("invalid relay token")
-var ErrUpgradeRequired = errors.New("client version too old, upgrade required")
+var ErrUpgradeRequired = errors.New("client version too old, please upgrade Pockode")
 
 type Client struct {
 	baseURL       string

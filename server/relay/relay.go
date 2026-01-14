@@ -55,7 +55,7 @@ func (m *Manager) Start(ctx context.Context) (string, error) {
 
 		storedCfg, err = m.client.Register(ctx)
 		if errors.Is(err, ErrUpgradeRequired) {
-			return "", fmt.Errorf("register: client version too old, please upgrade Pockode")
+			return "", ErrUpgradeRequired
 		}
 		if err != nil {
 			return "", fmt.Errorf("register: %w", err)
@@ -71,7 +71,7 @@ func (m *Manager) Start(ctx context.Context) (string, error) {
 
 		refreshedCfg, err := m.client.Refresh(ctx, storedCfg.RelayToken)
 		if errors.Is(err, ErrUpgradeRequired) {
-			return "", fmt.Errorf("refresh: client version too old, please upgrade Pockode")
+			return "", ErrUpgradeRequired
 		}
 		if errors.Is(err, ErrInvalidToken) {
 			m.log.Warn("stored token is invalid, re-registering")
