@@ -21,6 +21,7 @@ Pockode 是一个移动端编程平台，核心理念是「AI 编辑为主，手
 pockode/
 ├── web/            # React 前端（见 web/AGENTS.md）
 ├── server/         # Go 后端（见 server/AGENTS.md）
+├── site/           # pockode.com 官网（Hugo）
 └── docs/           # 补充文档
 ```
 
