@@ -150,7 +150,7 @@ function ResponsivePanel({
 			<>
 				{/* Backdrop - above sidebar (z-50) */}
 				<div
-					className="fixed inset-0 z-[55] bg-black/50"
+					className="fixed inset-0 z-[55] bg-th-bg-overlay"
 					onClick={onClose}
 					aria-hidden="true"
 				/>
