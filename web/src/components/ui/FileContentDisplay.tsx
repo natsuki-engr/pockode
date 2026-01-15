@@ -8,10 +8,11 @@ import { MarkdownContent } from "../Chat/MarkdownContent";
 interface Props {
 	content: string;
 	filePath?: string;
+	showRaw?: boolean;
 }
 
-export function FileContentDisplay({ content, filePath }: Props) {
-	if (filePath && isMarkdownFile(filePath)) {
+export function FileContentDisplay({ content, filePath, showRaw }: Props) {
+	if (filePath && isMarkdownFile(filePath) && !showRaw) {
 		return <MarkdownContent content={content} />;
 	}
 
