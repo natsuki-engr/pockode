@@ -552,4 +552,7 @@ func TestSession_SendQuestionResponse_Cancel(t *testing.T) {
 	if response.Response.Response.UpdatedInput != nil {
 		t.Error("expected updatedInput to be nil for cancel")
 	}
+	if !response.Response.Response.Interrupt {
+		t.Error("expected interrupt to be true for cancel")
+	}
 }

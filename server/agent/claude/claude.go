@@ -197,6 +197,7 @@ func (s *session) SendQuestionResponse(data agent.QuestionRequestData, answers m
 		content = controlResponseContent{
 			Behavior:  "deny",
 			Message:   "User cancelled the question",
+			Interrupt: true,
 			ToolUseID: data.ToolUseID,
 		}
 	} else {
