@@ -28,14 +28,15 @@ main.go                 # 入口 + 路由 + graceful shutdown
 agent/agent.go          # Agent/Session 接口（小接口原则）
 agent/event.go          # 事件类型
 agent/claude/           # Claude CLI 实现
-api/session.go          # Session REST API
 session/store.go        # Session 内存存储
 session/types.go        # Session 类型定义
-ws/handler.go           # WebSocket 连接处理
-ws/message.go           # 消息类型
+ws/rpc.go               # WebSocket RPC 处理
+ws/rpc_*.go             # 各领域 RPC 方法（chat, file, git, session 等）
+rpc/types.go            # RPC 消息类型定义
 middleware/auth.go      # Token 认证中间件
 logger/logger.go        # 结构化日志 (slog)
 git/git.go              # Git 仓库初始化
+worktree/               # Worktree 管理
 ```
 
 ## 风格

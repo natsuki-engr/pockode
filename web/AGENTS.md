@@ -20,13 +20,13 @@ npx tsc -b               # 类型检查
 
 ```
 src/
-  components/            # React 组件（Auth, Chat, Layout, Session, ui）
-  hooks/                 # 自定义 Hooks（useWebSocket, useSession, useTheme）
+  components/            # React 组件（Auth, Chat, common, Files, Git, Layout, Session, Worktree, ui）
+  hooks/                 # 自定义 Hooks（useSession, useTheme, useChatMessages 等）
   lib/                   # 状态管理 + API（*Store.ts, *Api.ts）
   types/                 # 类型定义
   utils/                 # 工具函数
   test/                  # 测试配置（setup.ts）
-  App.tsx                # 根组件
+  router.tsx             # 路由配置
   main.tsx               # 入口
 ```
 
@@ -37,7 +37,7 @@ src/
 | 类型 | 规范 | 示例 |
 |------|------|------|
 | 组件 | PascalCase | `ChatPanel.tsx` |
-| Hook | use 前缀 | `useWebSocket.ts` |
+| Hook | use 前缀 | `useSession.ts` |
 | Store | Store 后缀 | `wsStore.ts` |
 | 类型 | PascalCase | `Message` |
 | 常量 | UPPER_SNAKE | `API_BASE_URL` |
@@ -65,7 +65,7 @@ export default Dialog;
 
 - Mobile-first：默认移动端，`sm:`/`md:`/`lg:` 适配大屏
 - 全屏用 `h-dvh`（动态视口高度）
-- **主题**：必须用 `th-` 前缀颜色，禁止硬编码（详见 `docs/theming.md`）
+- **主题**：必须用 `th-` 前缀颜色，禁止硬编码（详见 `index.css` 中的主题定义）
 
 ### Zustand
 
