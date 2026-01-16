@@ -24,6 +24,7 @@ func IsValidName(name string) bool {
 // BuiltinCommands lists Claude Code slash commands available in Pockode.
 var BuiltinCommands = []string{
 	"compact",
+	"context",
 	"cost",
 	"init",
 }
