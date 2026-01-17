@@ -160,7 +160,7 @@ func (r *Registry) Create(name, branch string) (Info, error) {
 	return info, nil
 }
 
-func (r *Registry) Delete(name string, force bool) error {
+func (r *Registry) Delete(name string) error {
 	if name == "" {
 		return ErrMainWorktree
 	}
@@ -179,11 +179,7 @@ func (r *Registry) Delete(name string, force bool) error {
 		return ErrWorktreeNotFound
 	}
 
-	args := []string{"-C", r.mainDir, "worktree", "remove"}
-	if force {
-		args = append(args, "--force")
-	}
-	args = append(args, info.Path)
+	args := []string{"-C", r.mainDir, "worktree", "remove", "--force", info.Path}
 
 	cmd := exec.Command("git", args...)
 	if output, err := cmd.CombinedOutput(); err != nil {

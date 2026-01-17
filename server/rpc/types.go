@@ -163,8 +163,7 @@ type WorktreeCreateResult struct {
 }
 
 type WorktreeDeleteParams struct {
-	Name  string `json:"name"`
-	Force bool   `json:"force"`
+	Name string `json:"name"`
 }
 
 // WorktreeDeletedParams is sent to clients when a worktree they are connected to is deleted.

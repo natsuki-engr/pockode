@@ -246,7 +246,7 @@ func TestDelete_Success(t *testing.T) {
 		t.Fatalf("Create() failed: %v", err)
 	}
 
-	err = r.Delete("to-delete", false)
+	err = r.Delete("to-delete")
 	if err != nil {
 		t.Fatalf("Delete() failed: %v", err)
 	}
@@ -263,11 +263,48 @@ func TestDelete_Success(t *testing.T) {
 	}
 }
 
+func TestDelete_WithModifiedTrackedFile(t *testing.T) {
+	dir := initGitRepo(t)
+	r := NewRegistry(dir)
+
+	info, err := r.Create("dirty-worktree", "dirty-branch")
+	if err != nil {
+		t.Fatalf("Create() failed: %v", err)
+	}
+
+	testFile := filepath.Join(info.Path, "tracked.txt")
+	if err := os.WriteFile(testFile, []byte("original content"), 0644); err != nil {
+		t.Fatalf("WriteFile() failed: %v", err)
+	}
+	cmd := exec.Command("git", "-C", info.Path, "add", "tracked.txt")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git add failed: %s", out)
+	}
+	cmd = exec.Command("git", "-C", info.Path, "commit", "-m", "add tracked file")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git commit failed: %s", out)
+	}
+
+	// Modified tracked files require --force to delete worktree
+	if err := os.WriteFile(testFile, []byte("modified content"), 0644); err != nil {
+		t.Fatalf("WriteFile() failed: %v", err)
+	}
+
+	err = r.Delete("dirty-worktree")
+	if err != nil {
+		t.Fatalf("Delete() with modified tracked file failed: %v", err)
+	}
+
+	if _, err := os.Stat(info.Path); !os.IsNotExist(err) {
+		t.Error("worktree directory still exists after Delete")
+	}
+}
+
 func TestDelete_MainWorktree(t *testing.T) {
 	dir := initGitRepo(t)
 	r := NewRegistry(dir)
 
-	err := r.Delete("", false)
+	err := r.Delete("")
 	if err != ErrMainWorktree {
 		t.Errorf("Delete(\"\") error = %v, want ErrMainWorktree", err)
 	}
@@ -277,7 +314,7 @@ func TestDelete_NotFound(t *testing.T) {
 	dir := initGitRepo(t)
 	r := NewRegistry(dir)
 
-	err := r.Delete("nonexistent", false)
+	err := r.Delete("nonexistent")
 	if err != ErrWorktreeNotFound {
 		t.Errorf("Delete() error = %v, want ErrWorktreeNotFound", err)
 	}
@@ -308,7 +345,7 @@ func TestDelete_ExternalWorktreeNotVisible(t *testing.T) {
 	}
 
 	// Delete returns not found since external worktrees are ignored
-	err := r.Delete("external-worktree", false)
+	err := r.Delete("external-worktree")
 	if err != ErrWorktreeNotFound {
 		t.Errorf("Delete() error = %v, want ErrWorktreeNotFound", err)
 	}
@@ -318,7 +355,7 @@ func TestDelete_NonGitRepo(t *testing.T) {
 	dir := t.TempDir()
 	r := NewRegistry(dir)
 
-	err := r.Delete("feature", false)
+	err := r.Delete("feature")
 	if err != ErrNotGitRepo {
 		t.Errorf("Delete() error = %v, want ErrNotGitRepo", err)
 	}

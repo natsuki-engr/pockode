@@ -25,11 +25,8 @@ async function createWorktree(params: {
 	return wsActions.createWorktree(params.name, params.branch);
 }
 
-async function deleteWorktree(params: {
-	name: string;
-	force?: boolean;
-}): Promise<void> {
-	return wsActions.deleteWorktree(params.name, params.force);
+async function deleteWorktree(params: { name: string }): Promise<void> {
+	return wsActions.deleteWorktree(params.name);
 }
 
 export interface UseWorktreeOptions {
@@ -173,8 +170,7 @@ export function useWorktree({
 		select: selectWorktree,
 		create: (name: string, branch: string) =>
 			createMutation.mutateAsync({ name, branch }),
-		delete: (name: string, force?: boolean) =>
-			deleteMutation.mutateAsync({ name, force }),
+		delete: (name: string) => deleteMutation.mutateAsync({ name }),
 		isCreating: createMutation.isPending,
 		isDeleting: deleteMutation.isPending,
 		getDisplayName,

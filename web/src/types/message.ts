@@ -172,7 +172,6 @@ export interface WorktreeCreateParams {
 
 export interface WorktreeDeleteParams {
 	name: string;
-	force?: boolean;
 }
 
 export interface WorktreeDeletedNotification {

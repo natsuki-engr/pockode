@@ -88,7 +88,7 @@ func (h *rpcMethodHandler) handleWorktreeDelete(ctx context.Context, conn *jsonr
 	}
 
 	registry := h.worktreeManager.Registry()
-	if err := registry.Delete(params.Name, params.Force); err != nil {
+	if err := registry.Delete(params.Name); err != nil {
 		switch {
 		case errors.Is(err, worktree.ErrNotGitRepo):
 			h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidRequest, "not a git repository")

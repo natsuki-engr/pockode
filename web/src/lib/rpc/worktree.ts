@@ -9,7 +9,7 @@ import type {
 export interface WorktreeActions {
 	listWorktrees: () => Promise<WorktreeInfo[]>;
 	createWorktree: (name: string, branch: string) => Promise<void>;
-	deleteWorktree: (name: string, force?: boolean) => Promise<void>;
+	deleteWorktree: (name: string) => Promise<void>;
 }
 
 export function createWorktreeActions(
@@ -37,8 +37,8 @@ export function createWorktreeActions(
 			await requireClient().request("worktree.create", params);
 		},
 
-		deleteWorktree: async (name: string, force?: boolean): Promise<void> => {
-			const params: WorktreeDeleteParams = { name, force };
+		deleteWorktree: async (name: string): Promise<void> => {
+			const params: WorktreeDeleteParams = { name };
 			await requireClient().request("worktree.delete", params);
 		},
 	};
