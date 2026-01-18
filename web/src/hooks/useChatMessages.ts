@@ -12,7 +12,6 @@ import type {
 	AssistantMessage,
 	Message,
 	PermissionResponseParams,
-	PermissionStatus,
 	QuestionResponseParams,
 	QuestionStatus,
 	ServerNotification,
@@ -36,7 +35,10 @@ interface UseChatMessagesReturn {
 	interrupt: () => Promise<void>;
 	permissionResponse: (params: PermissionResponseParams) => Promise<void>;
 	questionResponse: (params: QuestionResponseParams) => Promise<void>;
-	updatePermissionStatus: (requestId: string, status: PermissionStatus) => void;
+	updatePermissionStatus: (
+		requestId: string,
+		status: "allowed" | "denied",
+	) => void;
 	updateQuestionStatus: (
 		requestId: string,
 		status: QuestionStatus,
