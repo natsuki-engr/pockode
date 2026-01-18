@@ -103,6 +103,12 @@ func (s *rpcConnState) getConnID() string {
 	return s.connID
 }
 
+func (s *rpcConnState) getWorktree() *worktree.Worktree {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.worktree
+}
+
 func (s *rpcConnState) setConn(conn *jsonrpc2.Conn) {
 	s.mu.Lock()
 	s.conn = conn
@@ -159,6 +165,37 @@ func (h *rpcMethodHandler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req 
 		return
 	}
 
+	// Methods that don't require worktree (manager-level operations)
+	switch req.Method {
+	case "worktree.list":
+		h.handleWorktreeList(ctx, conn, req)
+		return
+	case "worktree.create":
+		h.handleWorktreeCreate(ctx, conn, req)
+		return
+	case "worktree.delete":
+		h.handleWorktreeDelete(ctx, conn, req)
+		return
+	case "worktree.switch":
+		h.handleWorktreeSwitch(ctx, conn, req)
+		return
+	case "worktree.subscribe":
+		h.handleWorktreeSubscribe(ctx, conn, req)
+		return
+	case "worktree.unsubscribe":
+		h.handleWorktreeUnsubscribe(ctx, conn, req)
+		return
+	case "command.list":
+		h.handleCommandList(ctx, conn, req)
+		return
+	}
+
+	// All other methods require a valid worktree
+	if h.state.getWorktree() == nil {
+		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidRequest, "no worktree bound")
+		return
+	}
+
 	// Dispatch to method handlers
 	switch req.Method {
 	// chat namespace
@@ -195,27 +232,11 @@ func (h *rpcMethodHandler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req 
 		h.handleGitSubscribe(ctx, conn, req)
 	case "git.unsubscribe":
 		h.handleGitUnsubscribe(ctx, conn, req)
-	// command namespace
-	case "command.list":
-		h.handleCommandList(ctx, conn, req)
 	// watch namespace
 	case "watch.subscribe":
 		h.handleWatchSubscribe(ctx, conn, req)
 	case "watch.unsubscribe":
 		h.handleWatchUnsubscribe(ctx, conn, req)
-	// worktree namespace
-	case "worktree.list":
-		h.handleWorktreeList(ctx, conn, req)
-	case "worktree.create":
-		h.handleWorktreeCreate(ctx, conn, req)
-	case "worktree.delete":
-		h.handleWorktreeDelete(ctx, conn, req)
-	case "worktree.switch":
-		h.handleWorktreeSwitch(ctx, conn, req)
-	case "worktree.subscribe":
-		h.handleWorktreeSubscribe(ctx, conn, req)
-	case "worktree.unsubscribe":
-		h.handleWorktreeUnsubscribe(ctx, conn, req)
 	default:
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeMethodNotFound, "method not found: "+req.Method)
 	}
