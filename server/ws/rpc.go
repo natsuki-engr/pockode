@@ -152,6 +152,12 @@ type rpcMethodHandler struct {
 }
 
 func (h *rpcMethodHandler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+	defer func() {
+		if r := recover(); r != nil {
+			logger.LogPanic(r, "rpc handler panic", "method", req.Method, "connId", h.state.connID)
+		}
+	}()
+
 	h.log.Debug("received request", "method", req.Method, "id", req.ID)
 
 	// Auth must be the first request
