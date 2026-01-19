@@ -7,6 +7,13 @@ import InputBar from "./InputBar";
 vi.mock("../../utils/breakpoints", () => ({
 	isMobile: vi.fn(() => false),
 	hasCoarsePointer: vi.fn(() => false),
+	isMac: false,
+}));
+
+// Mock textarea-caret for Y coordinate detection in history navigation
+const mockGetCaretCoordinates = vi.fn(() => ({ top: 0, left: 0, height: 20 }));
+vi.mock("textarea-caret", () => ({
+	default: (...args: unknown[]) => mockGetCaretCoordinates(...args),
 }));
 
 const mockListCommands = vi.fn();
@@ -48,6 +55,7 @@ describe("InputBar", () => {
 		useInputStore.setState({ inputs: {} });
 		localStorage.clear();
 		vi.clearAllMocks();
+		mockGetCaretCoordinates.mockReturnValue({ top: 0, left: 0, height: 20 });
 	});
 
 	it("disables send button when canSend is false", () => {
@@ -230,29 +238,65 @@ describe("InputBar", () => {
 		expect(stored).toContain("test message");
 	});
 
-	it("navigates to previous history on ArrowUp", () => {
+	it("navigates to previous history on ArrowUp when at visual boundary", async () => {
 		localStorage.setItem(HISTORY_KEY, JSON.stringify(["previous message"]));
 		render(<InputBar sessionId={TEST_SESSION_ID} onSend={() => {}} />);
 
 		const textarea = screen.getByRole("textbox");
-		fireEvent.keyDown(textarea, { key: "ArrowUp" });
 
-		expect(textarea).toHaveValue("previous message");
+		// Y coordinate stays the same (simulating cursor at visual top boundary)
+		mockGetCaretCoordinates.mockReturnValue({ top: 0, left: 0, height: 20 });
+
+		fireEvent.keyDown(textarea, { key: "ArrowUp" });
+		fireEvent.keyUp(textarea, { key: "ArrowUp" });
+
+		await waitFor(() => {
+			expect(textarea).toHaveValue("previous message");
+		});
 	});
 
-	it("navigates back to draft on ArrowDown", () => {
+	it("does not navigate history when cursor moves visually", async () => {
+		localStorage.setItem(HISTORY_KEY, JSON.stringify(["previous message"]));
+		render(<InputBar sessionId={TEST_SESSION_ID} onSend={() => {}} />);
+
+		const textarea = screen.getByRole("textbox");
+		fireEvent.change(textarea, { target: { value: "multi\nline\ntext" } });
+
+		// Y coordinate changes (simulating cursor moving from line 3 to line 2)
+		mockGetCaretCoordinates
+			.mockReturnValueOnce({ top: 40, left: 0, height: 20 }) // keydown: line 3
+			.mockReturnValueOnce({ top: 20, left: 0, height: 20 }); // keyup: line 2
+
+		fireEvent.keyDown(textarea, { key: "ArrowUp" });
+		fireEvent.keyUp(textarea, { key: "ArrowUp" });
+
+		// Should NOT navigate to history because Y changed
+		expect(textarea).toHaveValue("multi\nline\ntext");
+	});
+
+	it("navigates back to draft on ArrowDown when at visual boundary", async () => {
 		localStorage.setItem(HISTORY_KEY, JSON.stringify(["history"]));
 		render(<InputBar sessionId={TEST_SESSION_ID} onSend={() => {}} />);
 
 		const textarea = screen.getByRole("textbox");
 		fireEvent.change(textarea, { target: { value: "my draft" } });
+
+		// Navigate up to history (Y stays same = at boundary)
+		mockGetCaretCoordinates.mockReturnValue({ top: 0, left: 0, height: 20 });
 		fireEvent.keyDown(textarea, { key: "ArrowUp" });
+		fireEvent.keyUp(textarea, { key: "ArrowUp" });
 
-		expect(textarea).toHaveValue("history");
+		await waitFor(() => {
+			expect(textarea).toHaveValue("history");
+		});
 
+		// Navigate down back to draft (Y stays same = at boundary)
 		fireEvent.keyDown(textarea, { key: "ArrowDown" });
+		fireEvent.keyUp(textarea, { key: "ArrowDown" });
 
-		expect(textarea).toHaveValue("my draft");
+		await waitFor(() => {
+			expect(textarea).toHaveValue("my draft");
+		});
 	});
 
 	describe("command palette", () => {

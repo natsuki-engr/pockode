@@ -6,6 +6,7 @@ import {
 	useState,
 } from "react";
 import TextareaAutosize from "react-textarea-autosize";
+import getCaretCoordinates from "textarea-caret";
 import { useInputHistory } from "../../hooks/useInputHistory";
 import { inputActions, useInputStore } from "../../lib/inputStore";
 import type { Command } from "../../lib/rpc";
@@ -156,21 +157,14 @@ function InputBar({
 		invalidateCommandCache,
 	]);
 
-	const isAtFirstLine = useCallback(() => {
-		const textarea = textareaRef.current;
-		if (!textarea) return true;
-		const cursorPos = textarea.selectionStart;
-		const textBeforeCursor = textarea.value.substring(0, cursorPos);
-		return !textBeforeCursor.includes("\n");
-	}, []);
-
-	const isAtLastLine = useCallback(() => {
-		const textarea = textareaRef.current;
-		if (!textarea) return true;
-		const cursorPos = textarea.selectionStart;
-		const textAfterCursor = textarea.value.substring(cursorPos);
-		return !textAfterCursor.includes("\n");
-	}, []);
+	// Track pending history navigation to check cursor Y position on keyup
+	const pendingHistoryNav = useRef<{
+		direction: "up" | "down";
+		key: string;
+		caretYBefore: number;
+	} | null>(null);
+	const inputRef = useRef(input);
+	inputRef.current = input;
 
 	const moveCursorToEnd = useCallback(() => {
 		const textarea = textareaRef.current;
@@ -179,6 +173,43 @@ function InputBar({
 			textarea.setSelectionRange(len, len);
 		}
 	}, []);
+
+	// Handle keyup to check if cursor Y position didn't change after arrow key
+	const handleKeyUp = useCallback(
+		(e: KeyboardEvent<HTMLTextAreaElement>) => {
+			const pending = pendingHistoryNav.current;
+			if (!pending) return;
+
+			// Only process if the released key matches the key that started navigation
+			if (e.key !== pending.key) return;
+
+			pendingHistoryNav.current = null;
+
+			const textarea = e.currentTarget;
+			const caretYAfter = getCaretCoordinates(
+				textarea,
+				textarea.selectionStart,
+			).top;
+
+			// Navigate history only if caret Y didn't change (already at visual boundary)
+			if (caretYAfter !== pending.caretYBefore) return;
+
+			if (pending.direction === "up") {
+				const previous = getPrevious(inputRef.current);
+				if (previous !== null) {
+					setInput(previous);
+					requestAnimationFrame(moveCursorToEnd);
+				}
+			} else {
+				const next = getNext();
+				if (next !== null) {
+					setInput(next);
+					requestAnimationFrame(moveCursorToEnd);
+				}
+			}
+		},
+		[getPrevious, getNext, setInput, moveCursorToEnd],
+	);
 
 	const handleKeyDown = useCallback(
 		(e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -230,28 +261,22 @@ function InputBar({
 				return;
 			}
 
-			// History navigation (ArrowUp/Down or Ctrl+P/N on macOS)
+			// History navigation: record caret Y position, check on keyup if it changed
 			const ctrlNav = e.ctrlKey && isMac;
 			const isUp = e.key === "ArrowUp" || (ctrlNav && e.key === "p");
 			const isDown = e.key === "ArrowDown" || (ctrlNav && e.key === "n");
 
-			if (isUp && isAtFirstLine()) {
-				const previous = getPrevious(input);
-				if (previous !== null) {
-					e.preventDefault();
-					setInput(previous);
-					requestAnimationFrame(moveCursorToEnd);
-				}
-				return;
-			}
-
-			if (isDown && isAtLastLine()) {
-				const next = getNext();
-				if (next !== null) {
-					e.preventDefault();
-					setInput(next);
-					requestAnimationFrame(moveCursorToEnd);
-				}
+			if (isUp || isDown) {
+				const textarea = e.currentTarget;
+				const caretY = getCaretCoordinates(
+					textarea,
+					textarea.selectionStart,
+				).top;
+				pendingHistoryNav.current = {
+					direction: isUp ? "up" : "down",
+					key: e.key,
+					caretYBefore: caretY,
+				};
 			}
 		},
 		[
@@ -261,13 +286,6 @@ function InputBar({
 			closePalette,
 			handleCommandSelect,
 			handleSend,
-			isAtFirstLine,
-			isAtLastLine,
-			getPrevious,
-			getNext,
-			input,
-			setInput,
-			moveCursorToEnd,
 		],
 	);
 
@@ -291,6 +309,7 @@ function InputBar({
 					value={input}
 					onChange={(e) => setInput(e.target.value)}
 					onKeyDown={handleKeyDown}
+					onKeyUp={handleKeyUp}
 					placeholder={
 						hasCoarsePointer()
 							? "Type a message..."
