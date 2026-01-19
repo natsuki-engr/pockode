@@ -10,7 +10,7 @@ import { useInputHistory } from "../../hooks/useInputHistory";
 import { inputActions, useInputStore } from "../../lib/inputStore";
 import type { Command } from "../../lib/rpc";
 import { useWSStore } from "../../lib/wsStore";
-import { hasCoarsePointer, isMobile } from "../../utils/breakpoints";
+import { hasCoarsePointer, isMac, isMobile } from "../../utils/breakpoints";
 import CommandPalette, { useFilteredCommands } from "./CommandPalette";
 import CommandTrigger from "./CommandTrigger";
 
@@ -192,8 +192,12 @@ function InputBar({
 					return;
 				}
 
-				// Arrow keys navigate the palette
-				if (e.key === "ArrowUp" && filteredCommands.length > 0) {
+				// Arrow keys (or Ctrl+P/N on macOS) navigate the palette
+				const ctrlNav = e.ctrlKey && isMac;
+				const isUp = e.key === "ArrowUp" || (ctrlNav && e.key === "p");
+				const isDown = e.key === "ArrowDown" || (ctrlNav && e.key === "n");
+
+				if (isUp && filteredCommands.length > 0) {
 					e.preventDefault();
 					setSelectedIndex(
 						(i) => (i - 1 + filteredCommands.length) % filteredCommands.length,
@@ -201,7 +205,7 @@ function InputBar({
 					return;
 				}
 
-				if (e.key === "ArrowDown" && filteredCommands.length > 0) {
+				if (isDown && filteredCommands.length > 0) {
 					e.preventDefault();
 					setSelectedIndex((i) => (i + 1) % filteredCommands.length);
 					return;
@@ -226,7 +230,12 @@ function InputBar({
 				return;
 			}
 
-			if (e.key === "ArrowUp" && isAtFirstLine()) {
+			// History navigation (ArrowUp/Down or Ctrl+P/N on macOS)
+			const ctrlNav = e.ctrlKey && isMac;
+			const isUp = e.key === "ArrowUp" || (ctrlNav && e.key === "p");
+			const isDown = e.key === "ArrowDown" || (ctrlNav && e.key === "n");
+
+			if (isUp && isAtFirstLine()) {
 				const previous = getPrevious(input);
 				if (previous !== null) {
 					e.preventDefault();
@@ -236,7 +245,7 @@ function InputBar({
 				return;
 			}
 
-			if (e.key === "ArrowDown" && isAtLastLine()) {
+			if (isDown && isAtLastLine()) {
 				const next = getNext();
 				if (next !== null) {
 					e.preventDefault();
