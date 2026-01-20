@@ -109,7 +109,7 @@ func (w *GitWatcher) pollGitState() string {
 
 	var parts []string
 
-	if out := w.runGitCmd(ctx, "status", "--porcelain=v1", "--ignore-submodules=none"); out != "" {
+	if out := w.runGitCmd(ctx, "status", "--porcelain=v1", "-uall", "--ignore-submodules=none"); out != "" {
 		parts = append(parts, "S:"+sortLines(out))
 	}
 	if out := w.runGitCmd(ctx, "diff", "--stat", "--submodule=short"); out != "" {
