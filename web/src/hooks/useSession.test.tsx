@@ -2,11 +2,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useSessionStore } from "../lib/sessionStore";
 import type {
 	SessionListChangedNotification,
 	SessionMeta,
 } from "../types/message";
-import { useSession, useSessionStore } from "./useSession";
+import { useSession } from "./useSession";
 
 const mockSession = (id: string, title = "Test Session"): SessionMeta => ({
 	id,
@@ -15,39 +16,31 @@ const mockSession = (id: string, title = "Test Session"): SessionMeta => ({
 	updated_at: "2024-01-01T00:00:00Z",
 });
 
-let sessionListCallback:
-	| ((params: SessionListChangedNotification) => void)
-	| null = null;
+let notificationCallback: ((p: SessionListChangedNotification) => void) | null =
+	null;
 let mockSessions: SessionMeta[] = [];
 let mockStatus = "connected";
 
-const mockSessionListSubscribe = vi.fn(
-	async (callback: (params: SessionListChangedNotification) => void) => {
-		sessionListCallback = callback;
+const mockSubscribe = vi.fn(
+	async (callback: (p: SessionListChangedNotification) => void) => {
+		notificationCallback = callback;
 		return { id: "watch-1", sessions: mockSessions };
 	},
 );
-const mockSessionListUnsubscribe = vi.fn();
+const mockUnsubscribe = vi.fn();
 
 vi.mock("../lib/wsStore", () => ({
 	useWSStore: vi.fn((selector) => {
 		const state = {
 			status: mockStatus,
-			projectTitle: "test",
-			workDir: "/test",
 			actions: {
-				sessionListSubscribe: mockSessionListSubscribe,
-				sessionListUnsubscribe: mockSessionListUnsubscribe,
+				sessionListSubscribe: mockSubscribe,
+				sessionListUnsubscribe: mockUnsubscribe,
 			},
 		};
 		return selector(state);
 	}),
 	setSessionExistsChecker: vi.fn(),
-	wsActions: {
-		createSession: vi.fn(),
-		deleteSession: vi.fn(),
-		updateSessionTitle: vi.fn(),
-	},
 }));
 
 vi.mock("../lib/sessionApi", () => ({
@@ -55,15 +48,6 @@ vi.mock("../lib/sessionApi", () => ({
 	deleteSession: vi.fn(),
 	updateSessionTitle: vi.fn(),
 }));
-
-function createTestQueryClient() {
-	return new QueryClient({
-		defaultOptions: {
-			queries: { retry: false },
-			mutations: { retry: false },
-		},
-	});
-}
 
 function createWrapper(queryClient: QueryClient) {
 	return function Wrapper({ children }: { children: ReactNode }) {
@@ -77,355 +61,187 @@ describe("useSession", () => {
 	let queryClient: QueryClient;
 
 	beforeEach(() => {
-		queryClient = createTestQueryClient();
+		queryClient = new QueryClient({
+			defaultOptions: {
+				queries: { retry: false },
+				mutations: { retry: false },
+			},
+		});
 		vi.clearAllMocks();
-		sessionListCallback = null;
+		notificationCallback = null;
 		mockSessions = [];
 		mockStatus = "connected";
-		useSessionStore.setState({ sessions: [], isLoading: true, isSuccess: false });
+		useSessionStore.setState({
+			sessions: [],
+			isLoading: true,
+			isSuccess: false,
+		});
 	});
 
 	afterEach(() => {
 		queryClient.clear();
 	});
 
-	describe("initial load", () => {
-		it("loads sessions via subscribe", async () => {
-			mockSessions = [mockSession("1"), mockSession("2")];
+	describe("derived state", () => {
+		describe("currentSession", () => {
+			it("returns session matching routeSessionId", async () => {
+				mockSessions = [mockSession("1"), mockSession("2", "Second")];
 
-			const { result } = renderHook(() => useSession(), {
-				wrapper: createWrapper(queryClient),
-			});
+				const { result } = renderHook(
+					() => useSession({ routeSessionId: "2" }),
+					{ wrapper: createWrapper(queryClient) },
+				);
 
-			await waitFor(() => {
-				expect(result.current.sessions).toEqual(mockSessions);
-			});
-		});
-
-		it("does not load when disabled", async () => {
-			mockSessions = [mockSession("1")];
-
-			const { result } = renderHook(() => useSession({ enabled: false }), {
-				wrapper: createWrapper(queryClient),
-			});
-
-			await new Promise((r) => setTimeout(r, 50));
-
-			expect(mockSessionListSubscribe).not.toHaveBeenCalled();
-			expect(result.current.sessions).toEqual([]);
-		});
-
-		it("does not load when WebSocket is disconnected", async () => {
-			mockStatus = "disconnected";
-			mockSessions = [mockSession("1")];
-
-			const { result } = renderHook(() => useSession(), {
-				wrapper: createWrapper(queryClient),
-			});
-
-			await new Promise((r) => setTimeout(r, 50));
-
-			expect(mockSessionListSubscribe).not.toHaveBeenCalled();
-			expect(result.current.sessions).toEqual([]);
-		});
-
-		it("sets isLoading to false after successful load", async () => {
-			mockSessions = [mockSession("1")];
-
-			const { result } = renderHook(() => useSession(), {
-				wrapper: createWrapper(queryClient),
-			});
-
-			await waitFor(() => {
-				expect(result.current.isLoading).toBe(false);
-				expect(result.current.isSuccess).toBe(true);
-			});
-		});
-	});
-
-	describe("redirectSessionId", () => {
-		it("redirects when no routeSessionId provided", async () => {
-			mockSessions = [mockSession("1"), mockSession("2")];
-
-			const { result } = renderHook(() => useSession(), {
-				wrapper: createWrapper(queryClient),
-			});
-
-			await waitFor(() => {
-				expect(result.current.isSuccess).toBe(true);
-			});
-
-			expect(result.current.redirectSessionId).toBe("1");
-		});
-
-		it("does not redirect when routeSessionId is valid", async () => {
-			mockSessions = [mockSession("1"), mockSession("2")];
-
-			const { result } = renderHook(() => useSession({ routeSessionId: "2" }), {
-				wrapper: createWrapper(queryClient),
-			});
-
-			await waitFor(() => {
-				expect(result.current.isSuccess).toBe(true);
-			});
-
-			expect(result.current.redirectSessionId).toBeNull();
-		});
-
-		it("redirects to first session when routeSessionId is invalid", async () => {
-			mockSessions = [mockSession("1"), mockSession("2")];
-
-			const { result } = renderHook(
-				() => useSession({ routeSessionId: "invalid" }),
-				{ wrapper: createWrapper(queryClient) },
-			);
-
-			await waitFor(() => {
-				expect(result.current.isSuccess).toBe(true);
-			});
-
-			expect(result.current.redirectSessionId).toBe("1");
-		});
-	});
-
-	describe("needsNewSession", () => {
-		it("is true when session list is empty", async () => {
-			mockSessions = [];
-
-			const { result } = renderHook(() => useSession(), {
-				wrapper: createWrapper(queryClient),
-			});
-
-			await waitFor(() => {
-				expect(result.current.isSuccess).toBe(true);
-			});
-
-			expect(result.current.needsNewSession).toBe(true);
-		});
-
-		it("is false when sessions exist", async () => {
-			mockSessions = [mockSession("1")];
-
-			const { result } = renderHook(() => useSession(), {
-				wrapper: createWrapper(queryClient),
-			});
-
-			await waitFor(() => {
-				expect(result.current.isSuccess).toBe(true);
-			});
-
-			expect(result.current.needsNewSession).toBe(false);
-		});
-	});
-
-	describe("notification handling", () => {
-		it("handles create notification", async () => {
-			mockSessions = [mockSession("1")];
-
-			const { result } = renderHook(() => useSession({ routeSessionId: "1" }), {
-				wrapper: createWrapper(queryClient),
-			});
-
-			await waitFor(() => {
-				expect(result.current.sessions.length).toBe(1);
-			});
-
-			// Simulate server notification
-			act(() => {
-				sessionListCallback?.({
-					id: "watch-1",
-					operation: "create",
-					session: mockSession("new-id"),
+				await waitFor(() => {
+					expect(result.current.currentSession?.title).toBe("Second");
 				});
 			});
 
-			await waitFor(() => {
-				expect(result.current.sessions.length).toBe(2);
-			});
-			expect(result.current.sessions[0].id).toBe("new-id");
-		});
+			it("is undefined when routeSessionId is invalid", async () => {
+				mockSessions = [mockSession("1")];
 
-		it("handles delete notification", async () => {
-			mockSessions = [mockSession("1"), mockSession("2")];
+				const { result } = renderHook(
+					() => useSession({ routeSessionId: "invalid" }),
+					{ wrapper: createWrapper(queryClient) },
+				);
 
-			const { result } = renderHook(() => useSession({ routeSessionId: "1" }), {
-				wrapper: createWrapper(queryClient),
-			});
-
-			await waitFor(() => {
-				expect(result.current.sessions.length).toBe(2);
-			});
-
-			// Simulate server notification
-			act(() => {
-				sessionListCallback?.({
-					id: "watch-1",
-					operation: "delete",
-					sessionId: "2",
+				await waitFor(() => {
+					expect(result.current.isSuccess).toBe(true);
 				});
-			});
 
-			await waitFor(() => {
-				expect(result.current.sessions.length).toBe(1);
-			});
-			expect(result.current.sessions[0].id).toBe("1");
-		});
-
-		it("handles update notification", async () => {
-			mockSessions = [mockSession("1", "Old Title")];
-
-			const { result } = renderHook(() => useSession({ routeSessionId: "1" }), {
-				wrapper: createWrapper(queryClient),
-			});
-
-			await waitFor(() => {
-				expect(result.current.sessions[0].title).toBe("Old Title");
-			});
-
-			// Simulate server notification
-			act(() => {
-				sessionListCallback?.({
-					id: "watch-1",
-					operation: "update",
-					session: mockSession("1", "New Title"),
-				});
-			});
-
-			await waitFor(() => {
-				expect(result.current.sessions[0].title).toBe("New Title");
-			});
-		});
-	});
-
-	describe("currentSession", () => {
-		it("matches routeSessionId", async () => {
-			mockSessions = [mockSession("1", "First"), mockSession("2", "Second")];
-
-			const { result } = renderHook(() => useSession({ routeSessionId: "2" }), {
-				wrapper: createWrapper(queryClient),
-			});
-
-			await waitFor(() => {
-				expect(result.current.currentSession?.title).toBe("Second");
-			});
-		});
-
-		it("is undefined when routeSessionId is invalid", async () => {
-			mockSessions = [mockSession("1", "First")];
-
-			const { result } = renderHook(
-				() => useSession({ routeSessionId: "invalid" }),
-				{ wrapper: createWrapper(queryClient) },
-			);
-
-			await waitFor(() => {
-				expect(result.current.isSuccess).toBe(true);
-			});
-
-			expect(result.current.currentSession).toBeUndefined();
-		});
-	});
-
-	describe("cleanup", () => {
-		it("unsubscribes on unmount", async () => {
-			mockSessions = [mockSession("1")];
-
-			const { unmount } = renderHook(() => useSession(), {
-				wrapper: createWrapper(queryClient),
-			});
-
-			await waitFor(() => {
-				expect(mockSessionListSubscribe).toHaveBeenCalled();
-			});
-
-			unmount();
-
-			expect(mockSessionListUnsubscribe).toHaveBeenCalledWith("watch-1");
-		});
-	});
-
-	describe("idempotency", () => {
-		it("does not duplicate session on repeated create notification", async () => {
-			mockSessions = [mockSession("1")];
-
-			const { result } = renderHook(() => useSession(), {
-				wrapper: createWrapper(queryClient),
-			});
-
-			await waitFor(() => {
-				expect(result.current.sessions.length).toBe(1);
-			});
-
-			act(() => {
-				sessionListCallback?.({
-					id: "watch-1",
-					operation: "create",
-					session: mockSession("1", "Updated"),
-				});
-			});
-
-			await waitFor(() => {
-				expect(result.current.sessions.length).toBe(1);
-				expect(result.current.sessions[0].title).toBe("Updated");
-			});
-		});
-	});
-
-	describe("current session deleted", () => {
-		it("sets redirectSessionId when current session is deleted", async () => {
-			mockSessions = [mockSession("1"), mockSession("2")];
-
-			const { result } = renderHook(
-				() => useSession({ routeSessionId: "1" }),
-				{ wrapper: createWrapper(queryClient) },
-			);
-
-			await waitFor(() => {
-				expect(result.current.currentSession?.id).toBe("1");
-			});
-
-			// Delete current session
-			act(() => {
-				sessionListCallback?.({
-					id: "watch-1",
-					operation: "delete",
-					sessionId: "1",
-				});
-			});
-
-			await waitFor(() => {
 				expect(result.current.currentSession).toBeUndefined();
-				expect(result.current.redirectSessionId).toBe("2");
+			});
+		});
+
+		describe("redirectSessionId", () => {
+			it("returns first session when no routeSessionId", async () => {
+				mockSessions = [mockSession("1"), mockSession("2")];
+
+				const { result } = renderHook(() => useSession(), {
+					wrapper: createWrapper(queryClient),
+				});
+
+				await waitFor(() => {
+					expect(result.current.isSuccess).toBe(true);
+				});
+
+				expect(result.current.redirectSessionId).toBe("1");
+			});
+
+			it("returns null when routeSessionId is valid", async () => {
+				mockSessions = [mockSession("1"), mockSession("2")];
+
+				const { result } = renderHook(
+					() => useSession({ routeSessionId: "2" }),
+					{ wrapper: createWrapper(queryClient) },
+				);
+
+				await waitFor(() => {
+					expect(result.current.isSuccess).toBe(true);
+				});
+
+				expect(result.current.redirectSessionId).toBeNull();
+			});
+
+			it("returns first session when routeSessionId is invalid", async () => {
+				mockSessions = [mockSession("1")];
+
+				const { result } = renderHook(
+					() => useSession({ routeSessionId: "invalid" }),
+					{ wrapper: createWrapper(queryClient) },
+				);
+
+				await waitFor(() => {
+					expect(result.current.isSuccess).toBe(true);
+				});
+
+				expect(result.current.redirectSessionId).toBe("1");
+			});
+
+			it("updates when current session is deleted", async () => {
+				mockSessions = [mockSession("1"), mockSession("2")];
+
+				const { result } = renderHook(
+					() => useSession({ routeSessionId: "1" }),
+					{ wrapper: createWrapper(queryClient) },
+				);
+
+				await waitFor(() => {
+					expect(result.current.currentSession?.id).toBe("1");
+				});
+
+				act(() => {
+					notificationCallback?.({
+						id: "watch-1",
+						operation: "delete",
+						sessionId: "1",
+					});
+				});
+
+				await waitFor(() => {
+					expect(result.current.redirectSessionId).toBe("2");
+				});
+			});
+		});
+
+		describe("needsNewSession", () => {
+			it("is true when session list is empty", async () => {
+				mockSessions = [];
+
+				const { result } = renderHook(() => useSession(), {
+					wrapper: createWrapper(queryClient),
+				});
+
+				await waitFor(() => {
+					expect(result.current.isSuccess).toBe(true);
+				});
+
+				expect(result.current.needsNewSession).toBe(true);
+			});
+
+			it("is false when sessions exist", async () => {
+				mockSessions = [mockSession("1")];
+
+				const { result } = renderHook(() => useSession(), {
+					wrapper: createWrapper(queryClient),
+				});
+
+				await waitFor(() => {
+					expect(result.current.isSuccess).toBe(true);
+				});
+
+				expect(result.current.needsNewSession).toBe(false);
 			});
 		});
 	});
 
-	describe("optimistic update", () => {
-		it("adds session immediately on createSession success", async () => {
-			const { createSession: mockCreateSession } = await import(
-				"../lib/sessionApi"
-			);
-			const newSession = mockSession("new-id", "New Session");
-			vi.mocked(mockCreateSession).mockResolvedValue(newSession);
+	describe("mutations", () => {
+		describe("createSession", () => {
+			it("optimistically adds session", async () => {
+				const { createSession: mockCreate } = await import(
+					"../lib/sessionApi"
+				);
+				const newSession = mockSession("new-id", "New");
+				vi.mocked(mockCreate).mockResolvedValue(newSession);
 
-			mockSessions = [mockSession("1")];
+				mockSessions = [mockSession("1")];
 
-			const { result } = renderHook(() => useSession({ routeSessionId: "1" }), {
-				wrapper: createWrapper(queryClient),
+				const { result } = renderHook(
+					() => useSession({ routeSessionId: "1" }),
+					{ wrapper: createWrapper(queryClient) },
+				);
+
+				await waitFor(() => {
+					expect(result.current.sessions.length).toBe(1);
+				});
+
+				await act(async () => {
+					await result.current.createSession();
+				});
+
+				expect(result.current.sessions.length).toBe(2);
+				expect(result.current.sessions[0].id).toBe("new-id");
 			});
-
-			await waitFor(() => {
-				expect(result.current.sessions.length).toBe(1);
-			});
-
-			// Call createSession - should optimistically add before notification
-			await act(async () => {
-				await result.current.createSession();
-			});
-
-			// Session should be added immediately (optimistic update)
-			expect(result.current.sessions.length).toBe(2);
-			expect(result.current.sessions[0].id).toBe("new-id");
 		});
 	});
 });

@@ -1,39 +1,13 @@
 import { useMutation } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
-import { create } from "zustand";
+import { useEffect } from "react";
 import {
 	createSession,
 	deleteSession,
 	updateSessionTitle,
 } from "../lib/sessionApi";
-import { setSessionExistsChecker, useWSStore } from "../lib/wsStore";
-import type {
-	SessionListChangedNotification,
-	SessionMeta,
-} from "../types/message";
-
-interface SessionState {
-	sessions: SessionMeta[];
-	isLoading: boolean;
-	isSuccess: boolean;
-}
-
-interface SessionStore extends SessionState {
-	setSessions: (sessions: SessionMeta[]) => void;
-	updateSessions: (updater: (old: SessionMeta[]) => SessionMeta[]) => void;
-	reset: () => void;
-}
-
-export const useSessionStore = create<SessionStore>((set) => ({
-	sessions: [],
-	isLoading: true,
-	isSuccess: false,
-	setSessions: (sessions) =>
-		set({ sessions, isLoading: false, isSuccess: true }),
-	updateSessions: (updater) =>
-		set((state) => ({ sessions: updater(state.sessions) })),
-	reset: () => set({ sessions: [], isLoading: false, isSuccess: false }),
-}));
+import { prependSession, useSessionStore } from "../lib/sessionStore";
+import { setSessionExistsChecker } from "../lib/wsStore";
+import { useSessionSubscription } from "./useSessionSubscription";
 
 interface UseSessionOptions {
 	enabled?: boolean;
@@ -45,91 +19,11 @@ export function useSession({
 	enabled = true,
 	routeSessionId,
 }: UseSessionOptions = {}) {
-	const wsStatus = useWSStore((s) => s.status);
-	const sessionListSubscribe = useWSStore(
-		(s) => s.actions.sessionListSubscribe,
-	);
-	const sessionListUnsubscribe = useWSStore(
-		(s) => s.actions.sessionListUnsubscribe,
-	);
-
-	const { sessions, isLoading, isSuccess, setSessions, updateSessions, reset } =
-		useSessionStore();
-
-	const isConnected = wsStatus === "connected";
-	const watchIdRef = useRef<string | null>(null);
-
-	// Manage subscription lifecycle
-	useEffect(() => {
-		if (!enabled || !isConnected) {
-			reset();
-			return;
-		}
-
-		let cancelled = false;
-
-		async function setupSubscription() {
-			if (watchIdRef.current) {
-				await sessionListUnsubscribe(watchIdRef.current);
-				watchIdRef.current = null;
-			}
-
-			if (cancelled) return;
-
-			try {
-				const result = await sessionListSubscribe(
-					(params: SessionListChangedNotification) => {
-						updateSessions((old) => {
-							switch (params.operation) {
-								case "create":
-									return [
-										params.session,
-										...old.filter((s) => s.id !== params.session.id),
-									];
-								case "update":
-									return old.map((s) =>
-										s.id === params.session.id ? params.session : s,
-									);
-								case "delete":
-									return old.filter((s) => s.id !== params.sessionId);
-							}
-						});
-					},
-				);
-
-				if (cancelled) {
-					await sessionListUnsubscribe(result.id);
-					return;
-				}
-
-				watchIdRef.current = result.id;
-				setSessions(result.sessions);
-			} catch (error) {
-				console.error("Failed to subscribe to session list:", error);
-				if (!cancelled) {
-					reset();
-				}
-			}
-		}
-
-		setupSubscription();
-
-		return () => {
-			cancelled = true;
-			if (watchIdRef.current) {
-				sessionListUnsubscribe(watchIdRef.current);
-				watchIdRef.current = null;
-			}
-		};
-	}, [
-		enabled,
-		isConnected,
-		sessionListSubscribe,
-		sessionListUnsubscribe,
-		setSessions,
-		updateSessions,
-		reset,
-	]);
+	const sessions = useSessionStore((s) => s.sessions);
+	const isLoading = useSessionStore((s) => s.isLoading);
+	const isSuccess = useSessionStore((s) => s.isSuccess);
+	const updateSessions = useSessionStore((s) => s.updateSessions);
+	const { refresh } = useSessionSubscription(enabled);
 
 	// Register session existence checker for wsStore
 	useEffect(() => {
@@ -144,10 +38,7 @@ export function useSession({
 		onSuccess: (newSession) => {
 			// Optimistically add session to avoid redirect race condition.
 			// The subscription notification will deduplicate.
-			updateSessions((old) => [
-				newSession,
-				...old.filter((s) => s.id !== newSession.id),
-			]);
+			updateSessions((old) => prependSession(old, newSession));
 		},
 	});
 
@@ -180,6 +71,7 @@ export function useSession({
 		isSuccess,
 		redirectSessionId,
 		needsNewSession,
+		refresh,
 		createSession: () => createMutation.mutateAsync(),
 		deleteSession: (id: string) => deleteMutation.mutateAsync(id),
 		updateTitle: (id: string, title: string) =>
