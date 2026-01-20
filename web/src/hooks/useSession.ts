@@ -141,6 +141,14 @@ export function useSession({
 
 	const createMutation = useMutation({
 		mutationFn: createSession,
+		onSuccess: (newSession) => {
+			// Optimistically add session to avoid redirect race condition.
+			// The subscription notification will deduplicate.
+			updateSessions((old) => [
+				newSession,
+				...old.filter((s) => s.id !== newSession.id),
+			]);
+		},
 	});
 
 	const deleteMutation = useMutation({

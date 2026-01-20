@@ -399,4 +399,33 @@ describe("useSession", () => {
 			});
 		});
 	});
+
+	describe("optimistic update", () => {
+		it("adds session immediately on createSession success", async () => {
+			const { createSession: mockCreateSession } = await import(
+				"../lib/sessionApi"
+			);
+			const newSession = mockSession("new-id", "New Session");
+			vi.mocked(mockCreateSession).mockResolvedValue(newSession);
+
+			mockSessions = [mockSession("1")];
+
+			const { result } = renderHook(() => useSession({ routeSessionId: "1" }), {
+				wrapper: createWrapper(queryClient),
+			});
+
+			await waitFor(() => {
+				expect(result.current.sessions.length).toBe(1);
+			});
+
+			// Call createSession - should optimistically add before notification
+			await act(async () => {
+				await result.current.createSession();
+			});
+
+			// Session should be added immediately (optimistic update)
+			expect(result.current.sessions.length).toBe(2);
+			expect(result.current.sessions[0].id).toBe("new-id");
+		});
+	});
 });
