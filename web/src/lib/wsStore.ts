@@ -7,6 +7,7 @@ import type {
 	ServerNotification,
 	SessionListChangedNotification,
 	SessionListSubscribeResult,
+	SessionMeta,
 } from "../types/message";
 import { getWebSocketUrl } from "../utils/config";
 import {
@@ -54,16 +55,26 @@ interface ConnectionActions {
 
 // TODO: Implement retry logic for watcher subscriptions.
 // Currently callers must handle failures; retry only happens on WebSocket reconnect.
+
+/** Base result for all watch subscriptions */
+export interface WatchSubscribeResult<TInitial = void> {
+	id: string;
+	initial?: TInitial;
+}
+
 export interface WatchActions {
-	fsSubscribe: (path: string, callback: () => void) => Promise<string>;
+	fsSubscribe: (
+		path: string,
+		callback: () => void,
+	) => Promise<WatchSubscribeResult>;
 	fsUnsubscribe: (id: string) => Promise<void>;
-	gitSubscribe: (callback: () => void) => Promise<string>;
+	gitSubscribe: (callback: () => void) => Promise<WatchSubscribeResult>;
 	gitUnsubscribe: (id: string) => Promise<void>;
-	worktreeSubscribe: (callback: () => void) => Promise<string>;
+	worktreeSubscribe: (callback: () => void) => Promise<WatchSubscribeResult>;
 	worktreeUnsubscribe: (id: string) => Promise<void>;
 	sessionListSubscribe: (
 		callback: (params: SessionListChangedNotification) => void,
-	) => Promise<SessionListSubscribeResult>;
+	) => Promise<WatchSubscribeResult<SessionMeta[]>>;
 	sessionListUnsubscribe: (id: string) => Promise<void>;
 }
 
@@ -396,10 +407,7 @@ export const useWSStore = create<WSState>((set, get) => ({
 			};
 		},
 
-		fsSubscribe: async (
-			path: string,
-			callback: () => void,
-		): Promise<string> => {
+		fsSubscribe: async (path: string, callback: () => void) => {
 			const client = getClient();
 			if (!client) {
 				throw new Error("Not connected");
@@ -408,10 +416,10 @@ export const useWSStore = create<WSState>((set, get) => ({
 				id: string;
 			};
 			fsWatchCallbacks.set(result.id, callback);
-			return result.id;
+			return { id: result.id };
 		},
 
-		fsUnsubscribe: async (id: string): Promise<void> => {
+		fsUnsubscribe: async (id: string) => {
 			fsWatchCallbacks.delete(id);
 			const client = getClient();
 			if (client) {
@@ -423,7 +431,7 @@ export const useWSStore = create<WSState>((set, get) => ({
 			}
 		},
 
-		gitSubscribe: async (callback: () => void): Promise<string> => {
+		gitSubscribe: async (callback: () => void) => {
 			const client = getClient();
 			if (!client) {
 				throw new Error("Not connected");
@@ -432,10 +440,10 @@ export const useWSStore = create<WSState>((set, get) => ({
 				id: string;
 			};
 			gitWatchCallbacks.set(result.id, callback);
-			return result.id;
+			return { id: result.id };
 		},
 
-		gitUnsubscribe: async (id: string): Promise<void> => {
+		gitUnsubscribe: async (id: string) => {
 			gitWatchCallbacks.delete(id);
 			const client = getClient();
 			if (client) {
@@ -447,7 +455,7 @@ export const useWSStore = create<WSState>((set, get) => ({
 			}
 		},
 
-		worktreeSubscribe: async (callback: () => void): Promise<string> => {
+		worktreeSubscribe: async (callback: () => void) => {
 			const client = getClient();
 			if (!client) {
 				throw new Error("Not connected");
@@ -456,10 +464,10 @@ export const useWSStore = create<WSState>((set, get) => ({
 				id: string;
 			};
 			worktreeWatchCallbacks.set(result.id, callback);
-			return result.id;
+			return { id: result.id };
 		},
 
-		worktreeUnsubscribe: async (id: string): Promise<void> => {
+		worktreeUnsubscribe: async (id: string) => {
 			worktreeWatchCallbacks.delete(id);
 			const client = getClient();
 			if (client) {
@@ -473,7 +481,7 @@ export const useWSStore = create<WSState>((set, get) => ({
 
 		sessionListSubscribe: async (
 			callback: (params: SessionListChangedNotification) => void,
-		): Promise<SessionListSubscribeResult> => {
+		) => {
 			const client = getClient();
 			if (!client) {
 				throw new Error("Not connected");
@@ -483,10 +491,10 @@ export const useWSStore = create<WSState>((set, get) => ({
 				{},
 			)) as SessionListSubscribeResult;
 			sessionListWatchCallbacks.set(result.id, callback);
-			return result;
+			return { id: result.id, initial: result.sessions };
 		},
 
-		sessionListUnsubscribe: async (id: string): Promise<void> => {
+		sessionListUnsubscribe: async (id: string) => {
 			sessionListWatchCallbacks.delete(id);
 			const client = getClient();
 			if (client) {

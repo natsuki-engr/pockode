@@ -70,7 +70,6 @@ export function useWorktree({
 		staleTime: Number.POSITIVE_INFINITY,
 	});
 
-	// Subscribe to worktree list changes
 	const handleWorktreeChanged = useCallback(() => {
 		queryClient.invalidateQueries({ queryKey: ["worktrees"] });
 	}, [queryClient]);
@@ -81,6 +80,8 @@ export function useWorktree({
 		handleWorktreeChanged,
 		{
 			enabled: enabled && isGitRepo,
+			// Worktree list subscription is Manager-level, not worktree-scoped
+			resubscribeOnWorktreeChange: false,
 		},
 	);
 

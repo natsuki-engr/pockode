@@ -454,11 +454,8 @@ describe("wsStore", () => {
 				}
 			});
 
-			const subscriptionId = await wsActions.fsSubscribe(
-				"/test/path",
-				callback,
-			);
-			expect(subscriptionId).toBe("f_test123");
+			const result = await wsActions.fsSubscribe("/test/path", callback);
+			expect(result.id).toBe("f_test123");
 
 			ws.simulateNotification("fs.changed", {
 				id: "f_test123",
@@ -530,11 +527,8 @@ describe("wsStore", () => {
 				}
 			});
 
-			const subscriptionId = await wsActions.fsSubscribe(
-				"/test/path",
-				callback,
-			);
-			await wsActions.fsUnsubscribe(subscriptionId);
+			const result = await wsActions.fsSubscribe("/test/path", callback);
+			await wsActions.fsUnsubscribe(result.id);
 
 			ws.simulateNotification("fs.changed", {
 				id: "f_test123",

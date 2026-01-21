@@ -24,7 +24,7 @@ let mockStatus = "connected";
 const mockSubscribe = vi.fn(
 	async (callback: (p: SessionListChangedNotification) => void) => {
 		notificationCallback = callback;
-		return { id: "watch-1", sessions: mockSessions };
+		return { id: "watch-1", initial: mockSessions };
 	},
 );
 const mockUnsubscribe = vi.fn();

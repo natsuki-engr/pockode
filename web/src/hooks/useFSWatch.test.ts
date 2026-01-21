@@ -25,7 +25,7 @@ describe("useFSWatch", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockStatus = "connected";
-		mockFsSubscribe.mockResolvedValue("fs-sub-123");
+		mockFsSubscribe.mockResolvedValue({ id: "fs-sub-123" });
 		mockFsUnsubscribe.mockResolvedValue(undefined);
 	});
 

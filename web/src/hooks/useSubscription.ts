@@ -1,51 +1,132 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import { worktreeActions } from "../lib/worktreeStore";
 import { useWSStore } from "../lib/wsStore";
 
-interface SubscriptionOptions {
+interface SubscriptionOptions<TInitial> {
 	enabled?: boolean;
+	/**
+	 * Resubscribe when worktree changes.
+	 * Server resets worktree-scoped subscriptions on switch.
+	 * @default true
+	 */
+	resubscribeOnWorktreeChange?: boolean;
+	/**
+	 * Called when subscription succeeds with initial data (if any).
+	 */
+	onSubscribed?: (initial: TInitial) => void;
+	/**
+	 * Called when subscription fails or is disabled.
+	 */
+	onReset?: () => void;
+}
+
+interface SubscribeResult<TInitial> {
+	id: string;
+	initial?: TInitial;
 }
 
 /**
  * Generic hook for WebSocket subscription lifecycle management.
- * Handles subscribe/unsubscribe, race conditions, and cleanup.
+ * Handles subscribe/unsubscribe, race conditions, cleanup, and worktree changes.
+ *
+ * @typeParam TNotification - Type of notification params (void for parameterless notifications)
+ * @typeParam TInitial - Type of initial data returned by subscribe (void if none)
+ *
+ * @param subscribe - Function to subscribe. Receives notification callback, returns { id, initial? }.
+ * @param unsubscribe - Function to unsubscribe by id.
+ * @param onNotification - Called when a notification is received.
+ * @param options - Configuration options.
  */
-export function useSubscription(
-	subscribe: (callback: () => void) => Promise<string>,
+export function useSubscription<TNotification = void, TInitial = void>(
+	subscribe: (
+		onNotification: (params: TNotification) => void,
+	) => Promise<SubscribeResult<TInitial>>,
 	unsubscribe: (id: string) => Promise<void>,
-	onChanged: () => void,
-	options: SubscriptionOptions = {},
-): void {
-	const { enabled = true } = options;
+	onNotification: (params: TNotification) => void,
+	options: SubscriptionOptions<TInitial> = {},
+): { refresh: () => Promise<void> } {
+	const {
+		enabled = true,
+		resubscribeOnWorktreeChange = true,
+		onSubscribed,
+		onReset,
+	} = options;
 	const status = useWSStore((s) => s.status);
+	const isConnected = status === "connected";
 
-	const onChangedRef = useRef(onChanged);
-	onChangedRef.current = onChanged;
+	const onNotificationRef = useRef(onNotification);
+	onNotificationRef.current = onNotification;
 
-	useEffect(() => {
-		if (!enabled || status !== "connected") return;
+	const onSubscribedRef = useRef(onSubscribed);
+	onSubscribedRef.current = onSubscribed;
 
-		let subscriptionId: string | null = null;
-		let cancelled = false;
+	const onResetRef = useRef(onReset);
+	onResetRef.current = onReset;
 
-		subscribe(() => {
-			onChangedRef.current();
-		})
-			.then((id) => {
-				if (cancelled) {
-					unsubscribe(id);
-				} else {
-					subscriptionId = id;
-				}
-			})
-			.catch((err) => {
-				console.error("Subscription failed:", err);
+	const subscriptionIdRef = useRef<string | null>(null);
+	const cancelledRef = useRef(false);
+
+	const doSubscribe = useCallback(async () => {
+		if (subscriptionIdRef.current) {
+			await unsubscribe(subscriptionIdRef.current);
+			subscriptionIdRef.current = null;
+		}
+
+		if (cancelledRef.current) return;
+
+		try {
+			const result = await subscribe((params) => {
+				onNotificationRef.current(params);
 			});
 
+			if (cancelledRef.current) {
+				await unsubscribe(result.id);
+				return;
+			}
+
+			subscriptionIdRef.current = result.id;
+			if ("initial" in result && onSubscribedRef.current) {
+				onSubscribedRef.current(result.initial as TInitial);
+			}
+		} catch (err) {
+			console.error("Subscription failed:", err);
+			if (!cancelledRef.current) {
+				onResetRef.current?.();
+			}
+		}
+	}, [subscribe, unsubscribe]);
+
+	useEffect(() => {
+		if (!enabled || !isConnected) {
+			onResetRef.current?.();
+			return;
+		}
+
+		cancelledRef.current = false;
+		doSubscribe();
+
+		// Resubscribe on worktree change (server resets worktree-scoped subscriptions)
+		const unregister = resubscribeOnWorktreeChange
+			? worktreeActions.onWorktreeChange(() => {
+					doSubscribe();
+				})
+			: undefined;
+
 		return () => {
-			cancelled = true;
-			if (subscriptionId) {
-				unsubscribe(subscriptionId);
+			unregister?.();
+			cancelledRef.current = true;
+			if (subscriptionIdRef.current) {
+				unsubscribe(subscriptionIdRef.current);
+				subscriptionIdRef.current = null;
 			}
 		};
-	}, [enabled, status, subscribe, unsubscribe]);
+	}, [
+		enabled,
+		isConnected,
+		doSubscribe,
+		unsubscribe,
+		resubscribeOnWorktreeChange,
+	]);
+
+	return { refresh: doSubscribe };
 }

@@ -11,6 +11,20 @@ vi.mock("../lib/wsStore", () => ({
 	}),
 }));
 
+const worktreeChangeCallbacks: Array<() => void> = [];
+
+vi.mock("../lib/worktreeStore", () => ({
+	worktreeActions: {
+		onWorktreeChange: vi.fn((callback: () => void) => {
+			worktreeChangeCallbacks.push(callback);
+			return () => {
+				const index = worktreeChangeCallbacks.indexOf(callback);
+				if (index !== -1) worktreeChangeCallbacks.splice(index, 1);
+			};
+		}),
+	},
+}));
+
 describe("useSubscription", () => {
 	const mockSubscribe = vi.fn();
 	const mockUnsubscribe = vi.fn();
@@ -19,7 +33,8 @@ describe("useSubscription", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockStatus = "connected";
-		mockSubscribe.mockResolvedValue("sub-123");
+		worktreeChangeCallbacks.length = 0;
+		mockSubscribe.mockResolvedValue({ id: "sub-123" });
 		mockUnsubscribe.mockResolvedValue(undefined);
 	});
 
@@ -91,7 +106,7 @@ describe("useSubscription", () => {
 
 	describe("race condition handling", () => {
 		it("unsubscribes if unmounted before subscribe completes", async () => {
-			let resolveSubscribe: (id: string) => void = () => {};
+			let resolveSubscribe: (result: { id: string }) => void = () => {};
 			mockSubscribe.mockReturnValue(
 				new Promise((resolve) => {
 					resolveSubscribe = resolve;
@@ -108,7 +123,7 @@ describe("useSubscription", () => {
 			unmount();
 
 			await act(async () => {
-				resolveSubscribe("sub-456");
+				resolveSubscribe({ id: "sub-456" });
 			});
 
 			expect(mockUnsubscribe).toHaveBeenCalledWith("sub-456");
@@ -120,7 +135,7 @@ describe("useSubscription", () => {
 			let capturedCallback: (() => void) | null = null;
 			mockSubscribe.mockImplementation((callback) => {
 				capturedCallback = callback;
-				return Promise.resolve("sub-789");
+				return Promise.resolve({ id: "sub-789" });
 			});
 
 			renderHook(() =>
@@ -142,7 +157,7 @@ describe("useSubscription", () => {
 			let capturedCallback: (() => void) | null = null;
 			mockSubscribe.mockImplementation((callback) => {
 				capturedCallback = callback;
-				return Promise.resolve("sub-999");
+				return Promise.resolve({ id: "sub-999" });
 			});
 
 			const onChanged1 = vi.fn();
@@ -169,6 +184,122 @@ describe("useSubscription", () => {
 		});
 	});
 
+	describe("initial data and callbacks", () => {
+		it("calls onSubscribed with initial data", async () => {
+			const onSubscribed = vi.fn();
+			mockSubscribe.mockResolvedValue({
+				id: "sub-init",
+				initial: ["item1", "item2"],
+			});
+
+			renderHook(() =>
+				useSubscription(mockSubscribe, mockUnsubscribe, mockOnChanged, {
+					onSubscribed,
+				}),
+			);
+
+			await waitFor(() => {
+				expect(onSubscribed).toHaveBeenCalledWith(["item1", "item2"]);
+			});
+		});
+
+		it("does not call onSubscribed when no initial data", async () => {
+			const onSubscribed = vi.fn();
+			mockSubscribe.mockResolvedValue({ id: "sub-no-init" });
+
+			renderHook(() =>
+				useSubscription(mockSubscribe, mockUnsubscribe, mockOnChanged, {
+					onSubscribed,
+				}),
+			);
+
+			await waitFor(() => {
+				expect(mockSubscribe).toHaveBeenCalled();
+			});
+			await new Promise((r) => setTimeout(r, 50));
+			expect(onSubscribed).not.toHaveBeenCalled();
+		});
+
+		it("calls onReset when disconnected", async () => {
+			const onReset = vi.fn();
+			mockStatus = "disconnected";
+
+			renderHook(() =>
+				useSubscription(mockSubscribe, mockUnsubscribe, mockOnChanged, {
+					onReset,
+				}),
+			);
+
+			await waitFor(() => {
+				expect(onReset).toHaveBeenCalled();
+			});
+		});
+	});
+
+	describe("refresh", () => {
+		it("resubscribes when refresh is called", async () => {
+			mockSubscribe
+				.mockResolvedValueOnce({ id: "sub-1" })
+				.mockResolvedValueOnce({ id: "sub-2" });
+
+			const { result } = renderHook(() =>
+				useSubscription(mockSubscribe, mockUnsubscribe, mockOnChanged),
+			);
+
+			await waitFor(() => {
+				expect(mockSubscribe).toHaveBeenCalledTimes(1);
+			});
+
+			await act(async () => {
+				await result.current.refresh();
+			});
+
+			expect(mockUnsubscribe).toHaveBeenCalledWith("sub-1");
+			expect(mockSubscribe).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe("worktree change handling", () => {
+		it("resubscribes on worktree change by default", async () => {
+			mockSubscribe
+				.mockResolvedValueOnce({ id: "sub-1" })
+				.mockResolvedValueOnce({ id: "sub-2" });
+
+			renderHook(() =>
+				useSubscription(mockSubscribe, mockUnsubscribe, mockOnChanged),
+			);
+
+			await waitFor(() => {
+				expect(mockSubscribe).toHaveBeenCalledTimes(1);
+			});
+
+			expect(worktreeChangeCallbacks.length).toBe(1);
+
+			await act(async () => {
+				worktreeChangeCallbacks[0]?.();
+			});
+
+			await waitFor(() => {
+				expect(mockSubscribe).toHaveBeenCalledTimes(2);
+			});
+			expect(mockUnsubscribe).toHaveBeenCalledWith("sub-1");
+		});
+
+		it("does not register worktree listener when resubscribeOnWorktreeChange is false", async () => {
+			renderHook(() =>
+				useSubscription(mockSubscribe, mockUnsubscribe, mockOnChanged, {
+					resubscribeOnWorktreeChange: false,
+				}),
+			);
+
+			await waitFor(() => {
+				expect(mockSubscribe).toHaveBeenCalledTimes(1);
+			});
+
+			expect(worktreeChangeCallbacks.length).toBe(0);
+		});
+	});
+
 	describe("error handling", () => {
 		it("logs error when subscribe fails", async () => {
 			const consoleSpy = vi
@@ -185,6 +316,26 @@ describe("useSubscription", () => {
 					"Subscription failed:",
 					expect.any(Error),
 				);
+			});
+
+			consoleSpy.mockRestore();
+		});
+
+		it("calls onReset when subscribe fails", async () => {
+			const consoleSpy = vi
+				.spyOn(console, "error")
+				.mockImplementation(() => {});
+			const onReset = vi.fn();
+			mockSubscribe.mockRejectedValue(new Error("Subscribe failed"));
+
+			renderHook(() =>
+				useSubscription(mockSubscribe, mockUnsubscribe, mockOnChanged, {
+					onReset,
+				}),
+			);
+
+			await waitFor(() => {
+				expect(onReset).toHaveBeenCalled();
 			});
 
 			consoleSpy.mockRestore();
