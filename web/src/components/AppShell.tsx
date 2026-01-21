@@ -33,12 +33,26 @@ function AppShell() {
 
 	const token = useAuthStore((state) => state.token);
 
-	// URL → Store sync
+	// Sync URL worktree to store, redirect if sessionId becomes invalid
+	const prevWorktreeRef = useRef(urlWorktree);
 	useEffect(() => {
+		const prevWorktree = prevWorktreeRef.current;
+		prevWorktreeRef.current = urlWorktree;
+
 		if (urlWorktree !== storeWorktree) {
 			worktreeActions.setCurrent(urlWorktree);
 		}
-	}, [urlWorktree, storeWorktree]);
+
+		// Redirect to home when worktree changes (sessionId is worktree-specific)
+		if (prevWorktree !== urlWorktree && routeSessionId) {
+			navigate(
+				buildNavigation(
+					{ type: "home", worktree: urlWorktree },
+					{ replace: true },
+				),
+			);
+		}
+	}, [urlWorktree, storeWorktree, routeSessionId, navigate]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: intentionally exclude wsStatus to avoid bypassing retry delay
 	useEffect(() => {
