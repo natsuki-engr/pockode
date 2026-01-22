@@ -168,17 +168,17 @@ func (m *Manager) create(name, workDir string) (*Worktree, error) {
 	processManager.SetMessageListener(chatMessagesWatcher)
 
 	wt := &Worktree{
-		Name:               name,
-		WorkDir:            workDir,
-		SessionStore:       sessionStore,
-		FSWatcher:          fsWatcher,
-		GitWatcher:         gitWatcher,
-		GitDiffWatcher:     gitDiffWatcher,
-		SessionListWatcher: sessionListWatcher,
+		Name:                name,
+		WorkDir:             workDir,
+		SessionStore:        sessionStore,
+		FSWatcher:           fsWatcher,
+		GitWatcher:          gitWatcher,
+		GitDiffWatcher:      gitDiffWatcher,
+		SessionListWatcher:  sessionListWatcher,
 		ChatMessagesWatcher: chatMessagesWatcher,
 		ProcessManager:      processManager,
 		watchers:            []watch.Watcher{fsWatcher, gitWatcher, gitDiffWatcher, sessionListWatcher, chatMessagesWatcher},
-		subscribers:        make(map[*jsonrpc2.Conn]struct{}),
+		subscribers:         make(map[*jsonrpc2.Conn]struct{}),
 	}
 
 	processManager.SetOnProcessEnd(func() {

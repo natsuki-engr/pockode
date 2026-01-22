@@ -16,8 +16,8 @@ import (
 // Implements process.ChatMessageListener to receive messages from ProcessManager.
 type ChatMessagesWatcher struct {
 	*BaseWatcher
-	store   session.Store
-	msgCh   chan process.ChatMessage
+	store session.Store
+	msgCh chan process.ChatMessage
 
 	sessionMu    sync.RWMutex
 	sessionToIDs map[string][]string // sessionID -> subscription IDs

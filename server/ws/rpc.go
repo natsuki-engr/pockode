@@ -114,7 +114,6 @@ func (s *rpcConnState) setConn(conn *jsonrpc2.Conn) {
 	s.mu.Unlock()
 }
 
-
 func (s *rpcConnState) cleanup(worktreeManager *worktree.Manager) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
