@@ -159,12 +159,10 @@ describe("ChatPanel", () => {
 			act(() => {
 				mockState.onNotification?.({
 					type: "text",
-					session_id: "test-session",
 					content: "Hello ",
 				});
 				mockState.onNotification?.({
 					type: "text",
-					session_id: "test-session",
 					content: "there!",
 				});
 			});
@@ -184,14 +182,12 @@ describe("ChatPanel", () => {
 			act(() => {
 				mockState.onNotification?.({
 					type: "tool_call",
-					session_id: "test-session",
 					tool_name: "Bash",
 					tool_input: { command: "ls" },
 					tool_use_id: "tool-1",
 				});
 				mockState.onNotification?.({
 					type: "tool_result",
-					session_id: "test-session",
 					tool_use_id: "tool-1",
 					tool_result: "file1.txt",
 				});
@@ -215,7 +211,6 @@ describe("ChatPanel", () => {
 			act(() => {
 				mockState.onNotification?.({
 					type: "error",
-					session_id: "test-session",
 					error: "Something went wrong",
 				});
 			});
@@ -233,7 +228,6 @@ describe("ChatPanel", () => {
 			act(() => {
 				mockState.onNotification?.({
 					type: "permission_request",
-					session_id: "test-session",
 					request_id: "req-1",
 					tool_name: "Bash",
 					tool_input: { command: "rm -rf /" },
@@ -265,7 +259,6 @@ describe("ChatPanel", () => {
 			act(() => {
 				mockState.onNotification?.({
 					type: "permission_request",
-					session_id: "test-session",
 					request_id: "req-2",
 					tool_name: "Edit",
 					tool_input: { file_path: "/etc/passwd" },
@@ -301,7 +294,6 @@ describe("ChatPanel", () => {
 			act(() => {
 				mockState.onNotification?.({
 					type: "text",
-					session_id: "test-session",
 					content: "Hello",
 				});
 			});
@@ -325,7 +317,6 @@ describe("ChatPanel", () => {
 			act(() => {
 				mockState.onNotification?.({
 					type: "text",
-					session_id: "test-session",
 					content: "Hello",
 				});
 			});
@@ -347,7 +338,6 @@ describe("ChatPanel", () => {
 			act(() => {
 				mockState.onNotification?.({
 					type: "ask_user_question",
-					session_id: "test-session",
 					request_id: "q-1",
 					tool_use_id: "toolu_q_1",
 					questions: [
