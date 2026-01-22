@@ -1,12 +1,10 @@
 import { useMutation } from "@tanstack/react-query";
-import { useEffect } from "react";
 import {
 	createSession,
 	deleteSession,
 	updateSessionTitle,
 } from "../lib/sessionApi";
 import { prependSession, useSessionStore } from "../lib/sessionStore";
-import { setSessionExistsChecker } from "../lib/wsStore";
 import { useSessionSubscription } from "./useSessionSubscription";
 
 interface UseSessionOptions {
@@ -24,14 +22,6 @@ export function useSession({
 	const isSuccess = useSessionStore((s) => s.isSuccess);
 	const updateSessions = useSessionStore((s) => s.updateSessions);
 	const { refresh } = useSessionSubscription(enabled);
-
-	// Register session existence checker for wsStore
-	useEffect(() => {
-		setSessionExistsChecker((sessionId) =>
-			sessions.some((s) => s.id === sessionId),
-		);
-		return () => setSessionExistsChecker(null);
-	}, [sessions]);
 
 	const createMutation = useMutation({
 		mutationFn: createSession,

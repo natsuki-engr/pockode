@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"testing"
+	"time"
 )
 
 var ctx = context.Background()
@@ -239,7 +240,22 @@ func TestFileStore_History(t *testing.T) {
 	}
 }
 
-func TestFileStore_AppendToHistory_UpdatesUpdatedAt(t *testing.T) {
+func TestFileStore_Touch_UpdatesUpdatedAt(t *testing.T) {
+	store, _ := NewFileStore(t.TempDir())
+
+	sess, _ := store.Create(ctx, "test-session")
+	initialUpdatedAt := sess.UpdatedAt
+
+	time.Sleep(time.Millisecond) // Ensure time difference
+	store.Touch(ctx, sess.ID)
+
+	sessions, _ := store.List()
+	if !sessions[0].UpdatedAt.After(initialUpdatedAt) {
+		t.Error("expected UpdatedAt to be updated after Touch")
+	}
+}
+
+func TestFileStore_AppendToHistory_DoesNotUpdateTimestamp(t *testing.T) {
 	store, _ := NewFileStore(t.TempDir())
 
 	sess, _ := store.Create(ctx, "test-session")
@@ -248,17 +264,8 @@ func TestFileStore_AppendToHistory_UpdatesUpdatedAt(t *testing.T) {
 	store.AppendToHistory(ctx, sess.ID, map[string]string{"type": "message"})
 
 	sessions, _ := store.List()
-	if !sessions[0].UpdatedAt.After(initialUpdatedAt) {
-		t.Error("expected UpdatedAt to be updated after AppendToHistory")
-	}
-}
-
-func TestFileStore_AppendToHistory_NonExistent(t *testing.T) {
-	store, _ := NewFileStore(t.TempDir())
-
-	err := store.AppendToHistory(ctx, "non-existent", map[string]string{"type": "message"})
-	if err != ErrSessionNotFound {
-		t.Errorf("expected ErrSessionNotFound, got %v", err)
+	if sessions[0].UpdatedAt != initialUpdatedAt {
+		t.Error("expected UpdatedAt to remain unchanged after AppendToHistory")
 	}
 }
 

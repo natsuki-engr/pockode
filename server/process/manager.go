@@ -258,6 +258,13 @@ func (p *Process) streamEvents(ctx context.Context) {
 			log.Error("failed to append to history", "error", err)
 		}
 
+		// Touch session for events that should notify unread
+		if eventType.NotifiesUnread() {
+			if err := p.sessionStore.Touch(ctx, p.sessionID); err != nil {
+				log.Error("failed to touch session", "error", err)
+			}
+		}
+
 		// Emit to listener (ChatMessagesWatcher)
 		p.manager.EmitMessage(p.sessionID, event)
 	}

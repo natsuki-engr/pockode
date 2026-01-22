@@ -8,7 +8,6 @@ import type {
 	AuthParams,
 	AuthResult,
 	ChatMessagesSubscribeResult,
-	ServerMethod,
 	ServerNotification,
 	SessionListChangedNotification,
 	SessionListSubscribeResult,
@@ -29,19 +28,8 @@ import {
 	type SessionActions,
 	type WorktreeActions,
 } from "./rpc";
-import { unreadActions } from "./unreadStore";
 import { APP_VERSION } from "./version";
 import { worktreeActions } from "./worktreeStore";
-
-// Events that should NOT trigger unread notifications.
-// These are either streaming events (continuous output) or control messages.
-// Any new event type not listed here will trigger unread by default (safe fallback).
-const SILENT_EVENTS = new Set<ServerMethod>([
-	"text",
-	"tool_call",
-	"tool_result",
-	"system",
-]);
 
 export type ConnectionStatus =
 	| "connecting"
@@ -148,15 +136,6 @@ function clearWatchSubscriptions(): void {
 	// not worktree-specific. It persists across worktree switches.
 }
 
-// Callback to check if a session exists (set by useSession hook)
-let sessionExistsChecker: ((sessionId: string) => boolean) | null = null;
-
-export function setSessionExistsChecker(
-	checker: ((sessionId: string) => boolean) | null,
-) {
-	sessionExistsChecker = checker;
-}
-
 // Callback to clear worktree-dependent caches (set by queryClient)
 let onWorktreeSwitched: (() => void) | null = null;
 
@@ -245,18 +224,6 @@ function handleNotification(method: string, params: unknown): void {
 			type: eventType,
 			...rest,
 		} as ServerNotification;
-
-		const sessionId = notification.session_id;
-		if (sessionId) {
-			// Mark as unread if not viewing
-			if (
-				!unreadActions.isViewing(sessionId) &&
-				!SILENT_EVENTS.has(eventType as ServerMethod) &&
-				sessionExistsChecker?.(sessionId)
-			) {
-				unreadActions.markUnread(sessionId);
-			}
-		}
 
 		// Route by subscription ID (consistent with other watchers)
 		chatMessagesCallbacks.get(id)?.(notification);
@@ -670,7 +637,6 @@ export function resetWSStore() {
 	worktreeWatchCallbacks.clear();
 	sessionListWatchCallbacks.clear();
 	chatMessagesCallbacks.clear();
-	sessionExistsChecker = null;
 	worktreeDeletedListener = null;
 	onWorktreeSwitched = null;
 	useWSStore.setState({

@@ -40,7 +40,6 @@ vi.mock("../lib/wsStore", () => ({
 		};
 		return selector(state);
 	}),
-	setSessionExistsChecker: vi.fn(),
 }));
 
 vi.mock("../lib/sessionApi", () => ({

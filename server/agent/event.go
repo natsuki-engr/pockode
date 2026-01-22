@@ -25,6 +25,22 @@ const (
 	EventTypeCommandOutput      EventType = "command_output"      // Local command output (e.g., /context)
 )
 
+// NotifiesUnread returns true for events that should trigger unread notifications.
+// These are meaningful state changes that the user should be aware of:
+// - done: AI completed its response
+// - error: fatal error occurred (e.g., CLI crash)
+// - permission_request: AI is asking for permission (user action required)
+// - ask_user_question: AI is asking a question (user action required)
+func (e EventType) NotifiesUnread() bool {
+	switch e {
+	case EventTypeDone, EventTypeError,
+		EventTypePermissionRequest, EventTypeAskUserQuestion:
+		return true
+	default:
+		return false
+	}
+}
+
 // PermissionBehavior represents the permission action.
 type PermissionBehavior string
 

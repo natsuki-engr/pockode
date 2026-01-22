@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSessionStore } from "../lib/sessionStore";
+import { useUnreadStore } from "../lib/unreadStore";
 import type {
 	SessionListChangedNotification,
 	SessionMeta,
@@ -50,6 +51,10 @@ describe("useSessionSubscription", () => {
 			sessions: [],
 			isLoading: true,
 			isSuccess: false,
+		});
+		useUnreadStore.setState({
+			unreadSessionIds: new Set(),
+			viewingSessionId: null,
 		});
 	});
 
@@ -138,6 +143,67 @@ describe("useSessionSubscription", () => {
 			});
 
 			expect(useSessionStore.getState().sessions[0].title).toBe("New");
+		});
+
+		it("marks session as unread on update when not viewing", async () => {
+			mockSessions = [mockSession("1")];
+
+			renderHook(() => useSessionSubscription(true));
+
+			await waitFor(() => {
+				expect(useSessionStore.getState().sessions.length).toBe(1);
+			});
+
+			act(() => {
+				notificationCallback?.({
+					id: "watch-1",
+					operation: "update",
+					session: mockSession("1", "Updated"),
+				});
+			});
+
+			expect(useUnreadStore.getState().unreadSessionIds.has("1")).toBe(true);
+		});
+
+		it("does not mark session as unread on update when viewing", async () => {
+			mockSessions = [mockSession("1")];
+			useUnreadStore.setState({ viewingSessionId: "1" });
+
+			renderHook(() => useSessionSubscription(true));
+
+			await waitFor(() => {
+				expect(useSessionStore.getState().sessions.length).toBe(1);
+			});
+
+			act(() => {
+				notificationCallback?.({
+					id: "watch-1",
+					operation: "update",
+					session: mockSession("1", "Updated"),
+				});
+			});
+
+			expect(useUnreadStore.getState().unreadSessionIds.has("1")).toBe(false);
+		});
+
+		it("does not mark session as unread on create", async () => {
+			mockSessions = [];
+
+			renderHook(() => useSessionSubscription(true));
+
+			await waitFor(() => {
+				expect(mockSubscribe).toHaveBeenCalled();
+			});
+
+			act(() => {
+				notificationCallback?.({
+					id: "watch-1",
+					operation: "create",
+					session: mockSession("1"),
+				});
+			});
+
+			expect(useUnreadStore.getState().unreadSessionIds.has("1")).toBe(false);
 		});
 
 		it("handles delete notification", async () => {

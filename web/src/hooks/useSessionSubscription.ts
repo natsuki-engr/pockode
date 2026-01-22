@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import { prependSession, useSessionStore } from "../lib/sessionStore";
+import { unreadActions } from "../lib/unreadStore";
 import { useWSStore } from "../lib/wsStore";
 import type {
 	SessionListChangedNotification,
@@ -25,6 +26,14 @@ export function useSessionSubscription(enabled: boolean) {
 
 	const handleNotification = useCallback(
 		(params: SessionListChangedNotification) => {
+			// Mark as unread when session is updated and user is not viewing it
+			if (
+				params.operation === "update" &&
+				!unreadActions.isViewing(params.session.id)
+			) {
+				unreadActions.markUnread(params.session.id);
+			}
+
 			updateSessions((old) => {
 				switch (params.operation) {
 					case "create":

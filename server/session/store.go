@@ -25,8 +25,10 @@ type Store interface {
 
 	// History persistence
 	GetHistory(ctx context.Context, sessionID string) ([]json.RawMessage, error)
-	// AppendToHistory appends a JSON-serializable record (ClientMessage or ServerMessage) to history.
+	// AppendToHistory appends a JSON-serializable record to history (does not update timestamp).
 	AppendToHistory(ctx context.Context, sessionID string, record any) error
+	// Touch updates the session's UpdatedAt and notifies listeners.
+	Touch(ctx context.Context, sessionID string) error
 
 	// Change notification
 	SetOnChangeListener(listener OnChangeListener)
@@ -291,20 +293,6 @@ func (s *FileStore) AppendToHistory(ctx context.Context, sessionID string, recor
 		return err
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	idx := -1
-	for i, sess := range s.sessions {
-		if sess.ID == sessionID {
-			idx = i
-			break
-		}
-	}
-	if idx < 0 {
-		return ErrSessionNotFound
-	}
-
 	path := s.historyPath(sessionID)
 
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
@@ -323,8 +311,27 @@ func (s *FileStore) AppendToHistory(ctx context.Context, sessionID string, recor
 	}
 
 	data = append(data, '\n')
-	if _, err = file.Write(data); err != nil {
+	_, err = file.Write(data)
+	return err
+}
+
+func (s *FileStore) Touch(ctx context.Context, sessionID string) error {
+	if err := ctx.Err(); err != nil {
 		return err
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	idx := -1
+	for i, sess := range s.sessions {
+		if sess.ID == sessionID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return ErrSessionNotFound
 	}
 
 	s.sessions[idx].UpdatedAt = time.Now()

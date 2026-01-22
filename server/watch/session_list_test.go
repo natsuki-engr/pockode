@@ -46,6 +46,10 @@ func (m *mockSessionStore) AppendToHistory(ctx context.Context, sessionID string
 	return nil
 }
 
+func (m *mockSessionStore) Touch(ctx context.Context, sessionID string) error {
+	return nil
+}
+
 func (m *mockSessionStore) SetOnChangeListener(listener session.OnChangeListener) {
 	m.listener = listener
 }
