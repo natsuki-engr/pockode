@@ -41,7 +41,7 @@ function PathDisplay({
 			<button
 				type="button"
 				onClick={onClick}
-				className="min-w-0 max-w-full flex items-center gap-1 text-left rounded-md border border-th-border bg-th-bg-secondary px-2 py-1 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent text-th-text-secondary hover:bg-th-bg-primary hover:text-th-text-primary active:scale-[0.97]"
+				className="min-w-0 max-w-full flex items-center gap-1 text-left rounded-md border border-th-border bg-th-bg-secondary px-2 py-1 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent text-th-text-secondary hover:border-th-border-focus hover:text-th-text-primary active:scale-95"
 				aria-label={`Open ${fileName}`}
 			>
 				<div className="min-w-0 flex-1">{content}</div>
@@ -54,10 +54,10 @@ function PathDisplay({
 }
 
 export const navButtonClass =
-	"flex items-center justify-center rounded-md border border-th-border bg-th-bg-tertiary min-h-[44px] min-w-[44px] p-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent text-th-text-secondary hover:border-th-border-focus hover:bg-th-bg-primary hover:text-th-text-primary active:scale-[0.97]";
+	"flex items-center justify-center rounded-md border border-th-border bg-th-bg-tertiary min-h-[44px] min-w-[44px] p-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent text-th-text-secondary hover:border-th-border-focus hover:text-th-text-primary active:scale-95";
 
 export const navButtonActiveClass =
-	"flex items-center justify-center rounded-md border border-th-accent bg-th-accent text-th-bg min-h-[44px] min-w-[44px] p-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent active:scale-[0.97]";
+	"flex items-center justify-center rounded-md border border-th-accent bg-th-accent text-th-bg min-h-[44px] min-w-[44px] p-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent active:scale-95";
 
 export default function ContentView({
 	path,

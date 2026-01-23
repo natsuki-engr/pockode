@@ -17,7 +17,7 @@ function DeleteButton({
 	onDelete,
 	confirmMessage,
 	ariaLabel,
-	className = "rounded p-1 text-th-text-muted transition-opacity hover:bg-th-error/10 hover:text-th-error sm:opacity-0 sm:group-hover:opacity-100",
+	className = "flex items-center justify-center min-h-[36px] min-w-[36px] rounded-md text-th-text-secondary transition-all hover:text-th-error active:scale-95 sm:hidden sm:group-hover:flex",
 }: Props) {
 	const [showConfirm, setShowConfirm] = useState(false);
 

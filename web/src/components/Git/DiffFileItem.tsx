@@ -33,7 +33,6 @@ function DiffFileItem({
 
 	const Icon = staged ? Minus : Plus;
 	const actionLabel = staged ? "Unstage file" : "Stage file";
-	const iconColor = staged ? "text-th-warning" : "text-th-success";
 
 	return (
 		<SidebarListItem
@@ -58,17 +57,17 @@ function DiffFileItem({
 						onToggleStage();
 					}}
 					disabled={isToggling}
-					className={`flex items-center justify-center min-h-[44px] min-w-[44px] rounded-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent ${
+					className={`flex items-center justify-center min-h-[36px] min-w-[36px] rounded-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent ${
 						isToggling
-							? "opacity-50 cursor-not-allowed"
-							: `${iconColor} hover:bg-th-bg-primary active:scale-95`
+							? "opacity-50 cursor-not-allowed text-th-text-muted"
+							: "text-th-text-secondary hover:text-th-text-primary active:scale-95"
 					}`}
 					aria-label={actionLabel}
 				>
 					{isToggling ? (
-						<Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+						<Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
 					) : (
-						<Icon className="h-5 w-5" aria-hidden="true" />
+						<Icon className="h-4 w-4" aria-hidden="true" />
 					)}
 				</button>
 			}

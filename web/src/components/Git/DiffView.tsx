@@ -19,8 +19,8 @@ interface Props {
 const getNavButtonClass = (enabled: boolean) =>
 	`flex items-center justify-center rounded border border-th-border bg-th-bg-tertiary h-8 w-8 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent ${
 		enabled
-			? "text-th-text-secondary hover:border-th-border-focus hover:bg-th-bg-primary hover:text-th-text-primary active:scale-95"
-			: "cursor-not-allowed opacity-40"
+			? "text-th-text-secondary hover:border-th-border-focus hover:text-th-text-primary active:scale-95"
+			: "cursor-not-allowed opacity-50"
 	}`;
 
 function DiffView({ path, staged, onBack }: Props) {
@@ -94,7 +94,7 @@ function DiffView({ path, staged, onBack }: Props) {
 
 	const stageButtonLabel = staged ? "Unstage" : "Stage";
 	const StageIcon = staged ? Minus : Plus;
-	const stageIconColor = staged ? "text-th-warning" : "text-th-success";
+	const stageButtonColor = staged ? "text-th-warning" : "text-th-success";
 
 	const handlePathClick = () => {
 		navigate(
@@ -155,14 +155,14 @@ function DiffView({ path, staged, onBack }: Props) {
 						className={`flex items-center gap-1.5 rounded border border-th-border bg-th-bg-tertiary h-8 px-3 text-xs font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent active:scale-95 ${
 							isToggling
 								? "opacity-50 cursor-not-allowed text-th-text-muted"
-								: `${stageIconColor} hover:border-th-border-focus hover:bg-th-bg-primary`
+								: `${stageButtonColor} hover:border-th-border-focus`
 						}`}
 						aria-label={stageButtonLabel}
 					>
 						{isToggling ? (
-							<Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+							<Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
 						) : (
-							<StageIcon className="h-3 w-3" aria-hidden="true" />
+							<StageIcon className="h-4 w-4" aria-hidden="true" />
 						)}
 						{stageButtonLabel}
 					</button>

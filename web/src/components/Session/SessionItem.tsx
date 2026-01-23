@@ -32,7 +32,6 @@ const SessionItem = memo(function SessionItem({
 					itemType="session"
 					onDelete={() => onDelete(session.id)}
 					confirmMessage={`Are you sure you want to delete "${session.title}"? This action cannot be undone.`}
-					className="rounded p-1 text-th-text-muted transition-opacity hover:bg-th-error/10 hover:text-th-error sm:opacity-0 sm:group-hover:opacity-100"
 				/>
 			}
 		/>

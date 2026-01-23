@@ -30,7 +30,6 @@ function DiffFileList({
 	const isTogglingAll = files.every((f) => togglingPaths.has(f.path));
 	const isTogglingAny = files.some((f) => togglingPaths.has(f.path));
 	const toggleAllLabel = staged ? "Unstage All" : "Stage All";
-	const toggleAllColor = staged ? "text-th-warning" : "text-th-success";
 
 	return (
 		<div className="flex flex-col">
@@ -45,7 +44,7 @@ function DiffFileList({
 					className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent ${
 						isTogglingAny
 							? "opacity-50 cursor-not-allowed text-th-text-muted"
-							: `${toggleAllColor} hover:bg-th-bg-tertiary active:scale-95`
+							: "text-th-text-secondary hover:text-th-text-primary active:scale-95"
 					}`}
 				>
 					{isTogglingAll && (
