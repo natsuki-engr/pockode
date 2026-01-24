@@ -111,6 +111,26 @@ describe("useSubscription", () => {
 
 			expect(mockUnsubscribe).toHaveBeenCalledWith("sub-123");
 		});
+
+		it("calls onReset when disabled after being enabled", async () => {
+			const onReset = vi.fn();
+			const { rerender } = renderHook(
+				({ enabled }) =>
+					useSubscription(mockSubscribe, mockUnsubscribe, mockOnNotification, {
+						enabled,
+						onReset,
+					}),
+				{ initialProps: { enabled: true } },
+			);
+
+			await waitFor(() => {
+				expect(mockSubscribe).toHaveBeenCalled();
+			});
+
+			rerender({ enabled: false });
+
+			expect(onReset).toHaveBeenCalled();
+		});
 	});
 
 	describe("race condition handling", () => {
@@ -136,6 +156,89 @@ describe("useSubscription", () => {
 			});
 
 			expect(mockUnsubscribe).toHaveBeenCalledWith("sub-456");
+		});
+
+		it("ignores stale subscription when new subscribe starts before old completes", async () => {
+			let resolveFirst: (result: { id: string; initial: string }) => void =
+				() => {};
+			let resolveSecond: (result: { id: string; initial: string }) => void =
+				() => {};
+
+			mockSubscribe
+				.mockReturnValueOnce(
+					new Promise((resolve) => {
+						resolveFirst = resolve;
+					}),
+				)
+				.mockReturnValueOnce(
+					new Promise((resolve) => {
+						resolveSecond = resolve;
+					}),
+				);
+
+			const onSubscribed = vi.fn();
+			const { result } = renderHook(() =>
+				useSubscription(mockSubscribe, mockUnsubscribe, mockOnNotification, {
+					onSubscribed,
+				}),
+			);
+
+			expect(mockSubscribe).toHaveBeenCalledTimes(1);
+
+			await act(async () => {
+				result.current.refresh();
+			});
+
+			expect(mockSubscribe).toHaveBeenCalledTimes(2);
+
+			await act(async () => {
+				resolveFirst({ id: "sub-1", initial: "stale-data" });
+			});
+
+			expect(mockUnsubscribe).toHaveBeenCalledWith("sub-1");
+			expect(onSubscribed).not.toHaveBeenCalled();
+
+			await act(async () => {
+				resolveSecond({ id: "sub-2", initial: "fresh-data" });
+			});
+
+			expect(onSubscribed).toHaveBeenCalledTimes(1);
+			expect(onSubscribed).toHaveBeenCalledWith("fresh-data");
+		});
+
+		it("ignores notification from stale subscription", async () => {
+			let capturedCallback: ((params: string) => void) | null = null;
+			let resolveFirst: (result: { id: string }) => void = () => {};
+
+			mockSubscribe
+				.mockImplementationOnce((callback) => {
+					capturedCallback = callback;
+					return new Promise((resolve) => {
+						resolveFirst = resolve;
+					});
+				})
+				.mockResolvedValueOnce({ id: "sub-2" });
+
+			const { result } = renderHook(() =>
+				useSubscription(mockSubscribe, mockUnsubscribe, mockOnNotification),
+			);
+
+			expect(mockSubscribe).toHaveBeenCalledTimes(1);
+			const staleCallback = capturedCallback;
+
+			await act(async () => {
+				result.current.refresh();
+			});
+
+			await act(async () => {
+				resolveFirst({ id: "sub-1" });
+			});
+
+			act(() => {
+				staleCallback?.("stale-notification");
+			});
+
+			expect(mockOnNotification).not.toHaveBeenCalled();
 		});
 	});
 

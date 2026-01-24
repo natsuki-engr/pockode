@@ -64,22 +64,26 @@ export function useSubscription<TNotification = void, TInitial = void>(
 	onResetRef.current = onReset;
 
 	const subscriptionIdRef = useRef<string | null>(null);
-	const cancelledRef = useRef(false);
+	const generationRef = useRef(0);
 
 	const doSubscribe = useCallback(async () => {
+		const generation = ++generationRef.current;
+		const isStale = () => generationRef.current !== generation;
+
 		if (subscriptionIdRef.current) {
 			await unsubscribe(subscriptionIdRef.current);
 			subscriptionIdRef.current = null;
 		}
 
-		if (cancelledRef.current) return;
+		if (isStale()) return;
 
 		try {
 			const result = await subscribe((params) => {
+				if (isStale()) return;
 				onNotificationRef.current(params);
 			});
 
-			if (cancelledRef.current) {
+			if (isStale()) {
 				await unsubscribe(result.id);
 				return;
 			}
@@ -90,53 +94,50 @@ export function useSubscription<TNotification = void, TInitial = void>(
 			}
 		} catch (err) {
 			console.error("Subscription failed:", err);
-			if (!cancelledRef.current) {
+			if (!isStale()) {
 				onResetRef.current?.();
 			}
 		}
 	}, [subscribe, unsubscribe]);
 
+	const invalidate = useCallback(() => {
+		generationRef.current++;
+		if (subscriptionIdRef.current) {
+			unsubscribe(subscriptionIdRef.current);
+			subscriptionIdRef.current = null;
+		}
+	}, [unsubscribe]);
+
 	useEffect(() => {
 		if (!enabled || !isConnected) {
+			invalidate();
 			onResetRef.current?.();
 			return;
 		}
 
-		cancelledRef.current = false;
 		doSubscribe();
 
 		const cleanupSwitchStart = resubscribeOnWorktreeChange
 			? worktreeActions.onWorktreeSwitchStart(() => {
-					cancelledRef.current = true;
+					invalidate();
 					onResetRef.current?.();
-					if (subscriptionIdRef.current) {
-						unsubscribe(subscriptionIdRef.current);
-						subscriptionIdRef.current = null;
-					}
 				})
 			: undefined;
 
 		const cleanupSwitchEnd = resubscribeOnWorktreeChange
-			? worktreeActions.onWorktreeSwitchEnd(() => {
-					cancelledRef.current = false;
-					doSubscribe();
-				})
+			? worktreeActions.onWorktreeSwitchEnd(doSubscribe)
 			: undefined;
 
 		return () => {
 			cleanupSwitchStart?.();
 			cleanupSwitchEnd?.();
-			cancelledRef.current = true;
-			if (subscriptionIdRef.current) {
-				unsubscribe(subscriptionIdRef.current);
-				subscriptionIdRef.current = null;
-			}
+			invalidate();
 		};
 	}, [
 		enabled,
 		isConnected,
 		doSubscribe,
-		unsubscribe,
+		invalidate,
 		resubscribeOnWorktreeChange,
 	]);
 
