@@ -152,7 +152,7 @@ export function ThemeSection({ id }: { id: string }) {
 							<div className="flex min-h-12 items-center justify-between bg-th-bg-secondary px-3 py-2">
 								<div>
 									<div
-										className={`text-sm font-medium ${isSelected ? "text-th-text-primary" : "text-th-text-secondary"}`}
+										className={`text-sm ${isSelected ? " text-th-text-primary" : "text-th-text-secondary"}`}
 									>
 										{info.label}
 									</div>

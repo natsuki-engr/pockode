@@ -89,7 +89,7 @@ function WorktreeSwitcher({ onClose, isDesktop = true }: Props) {
 		return (
 			<div className="mx-3 mt-3 mb-2 flex items-center gap-2">
 				<div className="flex min-w-0 flex-1 items-center px-1 py-2">
-					<span className="truncate text-base font-semibold text-th-text-primary">
+					<span className="truncate text-base font-bold text-th-text-primary">
 						Pockode
 					</span>
 				</div>
@@ -126,9 +126,7 @@ function WorktreeSwitcher({ onClose, isDesktop = true }: Props) {
 					className="h-4 w-4 shrink-0 text-th-text-muted"
 					aria-hidden="true"
 				/>
-				<span className="flex-1 truncate text-left text-sm font-medium">
-					{displayName}
-				</span>
+				<span className="flex-1 truncate text-left text-sm">{displayName}</span>
 				<ChevronDown
 					className={`h-4 w-4 shrink-0 text-th-text-muted transition-transform group-hover:text-th-text-primary ${
 						isOpen ? "rotate-180" : ""

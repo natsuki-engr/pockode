@@ -40,7 +40,7 @@ function CommandPalette({ commands, selectedIndex, onSelect, filter }: Props) {
 							role="option"
 							aria-selected={index === selectedIndex}
 						>
-							<span className="font-medium text-th-text-primary">
+							<span className=" text-th-text-primary">
 								/<HighlightedText text={cmd.name} highlight={filter} />
 							</span>
 							{!cmd.isBuiltin && (

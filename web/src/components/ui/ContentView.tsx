@@ -30,9 +30,7 @@ function PathDisplay({
 	const { fileName, directory } = splitPath(path);
 	const content = (
 		<>
-			<div className={`truncate text-sm font-medium ${pathColor}`}>
-				{fileName}
-			</div>
+			<div className={`truncate text-sm ${pathColor}`}>{fileName}</div>
 			{directory && (
 				<div className="truncate text-xs text-th-text-muted">{directory}</div>
 			)}
@@ -89,7 +87,7 @@ export default function ContentView({
 					</div>
 				) : error ? (
 					<div className="p-4 text-center text-th-error">
-						<div className="font-medium">Failed to load</div>
+						<div className="">Failed to load</div>
 						<div className="mt-1 text-sm text-th-text-muted">
 							{error.message}
 						</div>

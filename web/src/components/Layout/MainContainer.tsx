@@ -28,7 +28,7 @@ function MainContainer({
 							<Menu className="h-5 w-5" aria-hidden="true" />
 						</button>
 					)}
-					<h1 className="text-base font-semibold text-th-text-primary sm:text-lg">
+					<h1 className="text-base font-bold text-th-text-primary sm:text-lg">
 						{title}
 					</h1>
 				</div>

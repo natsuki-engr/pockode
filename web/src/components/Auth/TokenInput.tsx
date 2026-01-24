@@ -38,7 +38,7 @@ function TokenInput({ onSubmit }: Props) {
 				<button
 					type="submit"
 					disabled={!authToken.trim()}
-					className="w-full rounded-lg bg-th-accent p-3 font-semibold text-th-accent-text transition-colors hover:bg-th-accent-hover disabled:cursor-not-allowed disabled:bg-th-bg-tertiary disabled:text-th-text-muted"
+					className="w-full rounded-lg bg-th-accent p-3 text-th-accent-text transition-colors hover:bg-th-accent-hover disabled:cursor-not-allowed disabled:bg-th-bg-tertiary disabled:text-th-text-muted"
 				>
 					Connect
 				</button>

@@ -28,7 +28,7 @@ function SessionsTab({
 				<button
 					type="button"
 					onClick={onCreateSession}
-					className="flex w-full items-center justify-center gap-2 rounded-lg bg-th-accent p-3 font-medium text-th-accent-text hover:bg-th-accent-hover"
+					className="flex w-full items-center justify-center gap-2 rounded-lg bg-th-accent p-3 text-th-accent-text hover:bg-th-accent-hover"
 				>
 					<Plus className="h-5 w-5" aria-hidden="true" />
 					New Chat

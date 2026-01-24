@@ -36,7 +36,7 @@ function ConnectionStatus() {
 			<button
 				type="button"
 				onClick={() => window.location.reload()}
-				className="flex items-center gap-1 rounded-md bg-red-500/10 px-2 py-1 text-xs font-medium text-red-500 hover:bg-red-500/20 active:bg-red-500/25"
+				className="flex items-center gap-1 rounded-md bg-red-500/10 px-2 py-1 text-xs text-red-500 hover:bg-red-500/20 active:bg-red-500/25"
 				aria-label="Connection failed. Click to retry"
 			>
 				<WifiOff className="h-3.5 w-3.5" aria-hidden="true" />

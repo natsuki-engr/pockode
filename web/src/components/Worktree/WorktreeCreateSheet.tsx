@@ -98,10 +98,7 @@ function WorktreeCreateSheet({
 
 				{/* Header */}
 				<div className="flex items-center justify-between border-b border-th-border px-4 py-3">
-					<h2
-						id={titleId}
-						className="text-base font-semibold text-th-text-primary"
-					>
+					<h2 id={titleId} className="text-base font-bold text-th-text-primary">
 						New Worktree
 					</h2>
 					<button
@@ -121,7 +118,7 @@ function WorktreeCreateSheet({
 						<div className="space-y-1.5">
 							<label
 								htmlFor="worktree-name"
-								className="text-sm font-medium text-th-text-primary"
+								className="text-sm text-th-text-primary"
 							>
 								Name
 							</label>
@@ -146,7 +143,7 @@ function WorktreeCreateSheet({
 						<div className="space-y-1.5">
 							<label
 								htmlFor="worktree-branch"
-								className="text-sm font-medium text-th-text-primary"
+								className="text-sm text-th-text-primary"
 							>
 								Branch{" "}
 								<span className="font-normal text-th-text-muted">
@@ -179,14 +176,14 @@ function WorktreeCreateSheet({
 						<button
 							type="button"
 							onClick={onClose}
-							className="flex-1 rounded-lg bg-th-bg-tertiary px-4 py-2.5 text-sm font-medium text-th-text-primary transition-opacity hover:opacity-90"
+							className="flex-1 rounded-lg bg-th-bg-tertiary px-4 py-2.5 text-sm text-th-text-primary transition-opacity hover:opacity-90"
 							disabled={isCreating}
 						>
 							Cancel
 						</button>
 						<button
 							type="submit"
-							className="flex-1 rounded-lg bg-th-accent px-4 py-2.5 text-sm font-medium text-th-accent-text transition-colors hover:bg-th-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+							className="flex-1 rounded-lg bg-th-accent px-4 py-2.5 text-sm text-th-accent-text transition-colors hover:bg-th-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
 							disabled={!canSubmit}
 						>
 							{isCreating ? "Creating..." : "Create"}

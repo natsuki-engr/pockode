@@ -9,7 +9,7 @@ interface Props {
 export default function SettingsSection({ id, title, children }: Props) {
 	return (
 		<section id={id} className="mb-6">
-			<h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-th-text-muted">
+			<h2 className="mb-3 text-xs uppercase tracking-wider text-th-text-muted">
 				{title}
 			</h2>
 			{children}

@@ -43,7 +43,7 @@ function DiffFileItem({
 			ariaLabel={`View ${statusInfo.label.toLowerCase()} file: ${file.path}`}
 			leftSlot={
 				<span
-					className={`shrink-0 self-start mt-0.5 text-xs font-medium ${statusInfo.color}`}
+					className={`shrink-0 self-start mt-0.5 text-xs ${statusInfo.color}`}
 					title={statusInfo.label}
 				>
 					{file.status}

@@ -34,14 +34,14 @@ function DiffFileList({
 	return (
 		<div className="flex flex-col">
 			<div className="flex items-center justify-between px-3 py-2">
-				<span className="text-xs font-semibold uppercase text-th-text-muted">
+				<span className="text-xs uppercase text-th-text-muted">
 					{title} ({files.length})
 				</span>
 				<button
 					type="button"
 					onClick={onToggleAll}
 					disabled={isTogglingAny}
-					className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent ${
+					className={`flex items-center gap-1 rounded px-2 py-1 text-xs transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent ${
 						isTogglingAny
 							? "opacity-50 cursor-not-allowed text-th-text-muted"
 							: "text-th-text-secondary hover:text-th-text-primary active:scale-95"

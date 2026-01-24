@@ -55,7 +55,7 @@ function DialogShell({
 				<div className="border-b border-th-border p-4">
 					<h2
 						id="dialog-title"
-						className="text-lg font-semibold text-th-text-primary"
+						className="text-lg font-bold text-th-text-primary"
 					>
 						{title}
 					</h2>
@@ -71,7 +71,7 @@ function DialogShell({
 							ref={idx === primaryActionIndex ? primaryButtonRef : undefined}
 							type="button"
 							onClick={action.onClick}
-							className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${variantStyles[action.variant]}`}
+							className={`rounded-lg px-4 py-2 text-sm transition-colors ${variantStyles[action.variant]}`}
 						>
 							{action.label}
 						</button>

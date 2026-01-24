@@ -93,7 +93,7 @@ describe("InputBar", () => {
 		const onSend = vi.fn();
 		render(<InputBar sessionId={TEST_SESSION_ID} onSend={onSend} />);
 
-		await user.type(screen.getByRole("textbox"), "  Hello World  ");
+		await user.type(screen.getByRole("textbox"), " Hello World ");
 		await user.click(screen.getByRole("button", { name: /Send/ }));
 
 		expect(onSend).toHaveBeenCalledWith("Hello World");
@@ -162,7 +162,7 @@ describe("InputBar", () => {
 		const onSend = vi.fn();
 		render(<InputBar sessionId={TEST_SESSION_ID} onSend={onSend} />);
 
-		await user.type(screen.getByRole("textbox"), "   ");
+		await user.type(screen.getByRole("textbox"), "  ");
 		await user.click(screen.getByRole("button", { name: /Send/ }));
 
 		expect(onSend).not.toHaveBeenCalled();

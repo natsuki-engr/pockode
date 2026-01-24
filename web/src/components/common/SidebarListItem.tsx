@@ -38,7 +38,7 @@ function SidebarListItem({
 				{leftSlot}
 				<div className="min-w-0 flex-1">
 					<div
-						className={`truncate text-sm text-th-text-primary ${hasChanges ? "font-semibold" : "font-medium"}`}
+						className={`truncate text-sm text-th-text-primary ${hasChanges ? "" : ""}`}
 					>
 						{title}
 					</div>

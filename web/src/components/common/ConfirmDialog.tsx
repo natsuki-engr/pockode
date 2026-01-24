@@ -65,7 +65,7 @@ function ConfirmDialog({
 			{/* biome-ignore lint/a11y/useKeyWithClickEvents lint/a11y/noStaticElementInteractions: backdrop */}
 			<div className="absolute inset-0" onClick={onCancel} />
 			<div className="relative mx-4 w-full max-w-sm rounded-lg bg-th-bg-secondary p-4 shadow-xl">
-				<h2 id={titleId} className="text-lg font-semibold text-th-text-primary">
+				<h2 id={titleId} className="text-lg font-bold text-th-text-primary">
 					{title}
 				</h2>
 				<p className="mt-2 text-sm text-th-text-muted">{message}</p>
@@ -75,14 +75,14 @@ function ConfirmDialog({
 						ref={cancelButtonRef}
 						type="button"
 						onClick={onCancel}
-						className="rounded-lg bg-th-bg-tertiary px-4 py-2 text-sm font-medium text-th-text-primary transition-colors hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent"
+						className="rounded-lg bg-th-bg-tertiary px-4 py-2 text-sm text-th-text-primary transition-colors hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent"
 					>
 						{cancelLabel}
 					</button>
 					<button
 						type="button"
 						onClick={onConfirm}
-						className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent ${confirmButtonStyle}`}
+						className={`rounded-lg px-4 py-2 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent ${confirmButtonStyle}`}
 					>
 						{confirmLabel}
 					</button>

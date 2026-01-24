@@ -37,7 +37,7 @@ function WorktreeItem({
 						{displayName}
 					</span>
 					{worktree.is_main && (
-						<span className="shrink-0 rounded border border-th-border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-th-text-muted">
+						<span className="shrink-0 rounded border border-th-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-th-text-muted">
 							Default
 						</span>
 					)}

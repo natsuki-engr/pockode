@@ -40,7 +40,7 @@ function FileTree({
 	if (error) {
 		return (
 			<div className="p-4 text-center text-th-error">
-				<div className="font-medium">Failed to load files</div>
+				<div className="">Failed to load files</div>
 				<div className="mt-1 text-sm text-th-text-muted">
 					{error instanceof Error ? error.message : String(error)}
 				</div>

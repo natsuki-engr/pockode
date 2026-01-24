@@ -27,7 +27,7 @@ export default function SettingsPage({ onBack, onLogout }: Props) {
 		<div className="flex min-h-0 flex-1 flex-col">
 			<header className="flex items-center gap-1.5 border-b border-th-border bg-th-bg-secondary px-2 py-2">
 				<BackToChatButton onClick={onBack} />
-				<h1 className="px-2 text-sm font-medium text-th-text-primary">
+				<h1 className="px-2 text-sm font-bold text-th-text-primary">
 					Settings
 				</h1>
 			</header>

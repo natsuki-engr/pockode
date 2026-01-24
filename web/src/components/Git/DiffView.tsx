@@ -152,7 +152,7 @@ function DiffView({ path, staged, onBack }: Props) {
 						type="button"
 						onClick={handleToggleStage}
 						disabled={isToggling}
-						className={`flex items-center gap-1.5 rounded border border-th-border bg-th-bg-tertiary h-8 px-3 text-xs font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent active:scale-95 ${
+						className={`flex items-center gap-1.5 rounded border border-th-border bg-th-bg-tertiary h-8 px-3 text-xs transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent active:scale-95 ${
 							isToggling
 								? "opacity-50 cursor-not-allowed text-th-text-muted"
 								: `${stageButtonColor} hover:border-th-border-focus`
