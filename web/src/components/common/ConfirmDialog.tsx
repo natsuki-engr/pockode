@@ -75,14 +75,14 @@ function ConfirmDialog({
 						ref={cancelButtonRef}
 						type="button"
 						onClick={onCancel}
-						className="rounded-lg bg-th-bg-tertiary px-4 py-2 text-sm font-medium text-th-text-primary transition-colors hover:opacity-90"
+						className="rounded-lg bg-th-bg-tertiary px-4 py-2 text-sm font-medium text-th-text-primary transition-colors hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent"
 					>
 						{cancelLabel}
 					</button>
 					<button
 						type="button"
 						onClick={onConfirm}
-						className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${confirmButtonStyle}`}
+						className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent ${confirmButtonStyle}`}
 					>
 						{confirmLabel}
 					</button>

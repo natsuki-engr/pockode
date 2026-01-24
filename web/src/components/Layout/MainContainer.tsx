@@ -22,7 +22,7 @@ function MainContainer({
 						<button
 							type="button"
 							onClick={onOpenSidebar}
-							className="-ml-2 flex h-11 w-11 items-center justify-center rounded text-th-text-muted hover:bg-th-bg-tertiary hover:text-th-text-primary md:hidden"
+							className="-ml-2 flex h-11 w-11 items-center justify-center rounded text-th-text-muted transition-all hover:bg-th-bg-tertiary hover:text-th-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent active:scale-95 md:hidden"
 							aria-label="Open menu"
 						>
 							<Menu className="h-5 w-5" aria-hidden="true" />
@@ -38,7 +38,7 @@ function MainContainer({
 						<button
 							type="button"
 							onClick={onOpenSettings}
-							className="-mr-1 flex h-11 w-11 items-center justify-center rounded text-th-text-muted transition-transform hover:bg-th-bg-tertiary hover:text-th-text-primary active:scale-95"
+							className="-mr-1 flex h-11 w-11 items-center justify-center rounded text-th-text-muted transition-all hover:bg-th-bg-tertiary hover:text-th-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent active:scale-95"
 							aria-label="Settings"
 						>
 							<Settings className="h-5 w-5" aria-hidden="true" />
