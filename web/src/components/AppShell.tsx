@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useIsDesktop } from "../hooks/useIsDesktop";
 import { useRouteState } from "../hooks/useRouteState";
 import { useSession } from "../hooks/useSession";
+import { useSettingsSubscription } from "../hooks/useSettingsSubscription";
 import { useWorktree } from "../hooks/useWorktree";
 import {
 	authActions,
@@ -72,6 +73,8 @@ function AppShell() {
 		isSuccess: isWorktreesLoaded,
 		isGitRepo,
 	} = useWorktree({ enabled: hasAuthToken });
+
+	useSettingsSubscription(hasAuthToken);
 
 	// Redirect to main when URL worktree doesn't exist in worktree list
 	useEffect(() => {

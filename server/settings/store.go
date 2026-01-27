@@ -8,10 +8,16 @@ import (
 	"sync"
 )
 
+// OnChangeListener is notified when settings are updated.
+type OnChangeListener interface {
+	OnSettingsChange(settings Settings)
+}
+
 type Store struct {
-	path   string
-	dataMu sync.RWMutex
-	data   Settings
+	path     string
+	dataMu   sync.RWMutex
+	data     Settings
+	listener OnChangeListener
 }
 
 // NewStore loads existing settings from disk or uses defaults.
@@ -43,7 +49,18 @@ func (s *Store) Update(settings Settings) error {
 	}
 
 	s.data = settings
+
+	if s.listener != nil {
+		s.listener.OnSettingsChange(settings)
+	}
+
 	return nil
+}
+
+func (s *Store) SetOnChangeListener(listener OnChangeListener) {
+	s.dataMu.Lock()
+	defer s.dataMu.Unlock()
+	s.listener = listener
 }
 
 func (s *Store) load() error {

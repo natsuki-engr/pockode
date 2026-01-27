@@ -16,7 +16,7 @@ func TestFileStore_Create(t *testing.T) {
 		t.Fatalf("NewFileStore failed: %v", err)
 	}
 
-	sess, err := store.Create(ctx, "test-session-id")
+	sess, err := store.Create(ctx, "test-session-id", false)
 	if err != nil {
 		t.Fatalf("Create failed: %v", err)
 	}
@@ -44,8 +44,8 @@ func TestFileStore_List(t *testing.T) {
 		t.Errorf("expected 0 sessions, got %d", len(sessions))
 	}
 
-	sess1, _ := store.Create(ctx, "session-1")
-	sess2, _ := store.Create(ctx, "session-2")
+	sess1, _ := store.Create(ctx, "session-1", false)
+	sess2, _ := store.Create(ctx, "session-2", false)
 
 	sessions, err = store.List()
 	if err != nil {
@@ -67,7 +67,7 @@ func TestFileStore_List(t *testing.T) {
 func TestFileStore_Delete(t *testing.T) {
 	store, _ := NewFileStore(t.TempDir())
 
-	sess, _ := store.Create(ctx, "session-to-delete")
+	sess, _ := store.Create(ctx, "session-to-delete", false)
 
 	err := store.Delete(ctx, sess.ID)
 	if err != nil {
@@ -92,7 +92,7 @@ func TestFileStore_DeleteNonExistent(t *testing.T) {
 func TestFileStore_Update(t *testing.T) {
 	store, _ := NewFileStore(t.TempDir())
 
-	sess, _ := store.Create(ctx, "session-to-update")
+	sess, _ := store.Create(ctx, "session-to-update", false)
 	if sess.Title != "New Chat" {
 		t.Fatalf("expected initial title 'New Chat', got %q", sess.Title)
 	}
@@ -135,7 +135,7 @@ func TestFileStore_Get(t *testing.T) {
 		t.Error("expected not found for non-existent session")
 	}
 
-	created, _ := store.Create(ctx, "test-session")
+	created, _ := store.Create(ctx, "test-session", false)
 	sess, found, err := store.Get("test-session")
 	if err != nil {
 		t.Fatalf("Get failed: %v", err)
@@ -151,7 +151,7 @@ func TestFileStore_Get(t *testing.T) {
 func TestFileStore_Activate(t *testing.T) {
 	store, _ := NewFileStore(t.TempDir())
 
-	sess, _ := store.Create(ctx, "session-to-activate")
+	sess, _ := store.Create(ctx, "session-to-activate", false)
 	if sess.Activated {
 		t.Error("expected new session to not be activated")
 	}
@@ -186,7 +186,7 @@ func TestFileStore_Persistence(t *testing.T) {
 	dir := t.TempDir()
 
 	store1, _ := NewFileStore(dir)
-	sess, _ := store1.Create(ctx, "persistent-session")
+	sess, _ := store1.Create(ctx, "persistent-session", false)
 
 	// Create new store instance, should see persisted data
 	store2, _ := NewFileStore(dir)
@@ -205,7 +205,7 @@ func TestFileStore_Persistence(t *testing.T) {
 func TestFileStore_History(t *testing.T) {
 	store, _ := NewFileStore(t.TempDir())
 
-	sess, _ := store.Create(ctx, "test-session")
+	sess, _ := store.Create(ctx, "test-session", false)
 
 	history, err := store.GetHistory(ctx, sess.ID)
 	if err != nil {
@@ -245,7 +245,7 @@ func TestFileStore_History(t *testing.T) {
 func TestFileStore_Touch_UpdatesUpdatedAt(t *testing.T) {
 	store, _ := NewFileStore(t.TempDir())
 
-	sess, _ := store.Create(ctx, "test-session")
+	sess, _ := store.Create(ctx, "test-session", false)
 	initialUpdatedAt := sess.UpdatedAt
 
 	time.Sleep(time.Millisecond) // Ensure time difference
@@ -260,7 +260,7 @@ func TestFileStore_Touch_UpdatesUpdatedAt(t *testing.T) {
 func TestFileStore_AppendToHistory_DoesNotUpdateTimestamp(t *testing.T) {
 	store, _ := NewFileStore(t.TempDir())
 
-	sess, _ := store.Create(ctx, "test-session")
+	sess, _ := store.Create(ctx, "test-session", false)
 	initialUpdatedAt := sess.UpdatedAt
 
 	store.AppendToHistory(ctx, sess.ID, map[string]string{"type": "message"})
@@ -275,7 +275,7 @@ func TestFileStore_Delete_RemovesHistory(t *testing.T) {
 	store, _ := NewFileStore(t.TempDir())
 
 	sessionID := "session-with-history"
-	store.Create(ctx, sessionID)
+	store.Create(ctx, sessionID, false)
 	store.AppendToHistory(ctx, sessionID, map[string]string{"type": "message", "content": "test"})
 
 	history, _ := store.GetHistory(ctx, sessionID)

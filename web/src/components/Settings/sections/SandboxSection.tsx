@@ -1,33 +1,16 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
+import { useSettingsStore } from "../../../lib/settingsStore";
 import { useWSStore } from "../../../lib/wsStore";
 import type { Settings } from "../../../types/settings";
 import SettingsSection from "../SettingsSection";
 
 export function SandboxSection({ id }: { id: string }) {
-	const queryClient = useQueryClient();
 	const status = useWSStore((s) => s.status);
-	const { getSettings, updateSettings } = useWSStore((s) => s.actions);
-
-	const {
-		data: settings,
-		isLoading,
-		error,
-	} = useQuery({
-		queryKey: ["settings"],
-		queryFn: getSettings,
-		enabled: status === "connected",
-		retry: false,
-	});
+	const { updateSettings } = useWSStore((s) => s.actions);
+	const settings = useSettingsStore((s) => s.settings);
 
 	const mutation = useMutation({
 		mutationFn: (newSettings: Settings) => updateSettings(newSettings),
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["settings"] });
-		},
-		onError: () => {
-			// Refetch to restore UI to server state
-			queryClient.invalidateQueries({ queryKey: ["settings"] });
-		},
 	});
 
 	const isEnabled = settings?.sandbox ?? false;
@@ -38,31 +21,11 @@ export function SandboxSection({ id }: { id: string }) {
 		}
 	};
 
-	if (status !== "connected") {
+	if (status !== "connected" || settings === null) {
 		return (
 			<SettingsSection id={id} title="Sandbox">
 				<div className="flex h-11 items-center justify-center text-sm text-th-text-muted">
-					Not connected
-				</div>
-			</SettingsSection>
-		);
-	}
-
-	if (isLoading) {
-		return (
-			<SettingsSection id={id} title="Sandbox">
-				<div className="flex h-11 items-center justify-center text-sm text-th-text-muted">
-					Loading...
-				</div>
-			</SettingsSection>
-		);
-	}
-
-	if (error) {
-		return (
-			<SettingsSection id={id} title="Sandbox">
-				<div className="flex h-11 items-center justify-center text-sm text-red-500">
-					Failed to load settings
+					{status !== "connected" ? "Not connected" : "Loading..."}
 				</div>
 			</SettingsSection>
 		);
@@ -100,15 +63,11 @@ export function SandboxSection({ id }: { id: string }) {
 			</button>
 			{isEnabled && (
 				<p className="mt-3 text-xs text-th-text-muted">
-					Requires{" "}
+					Uses{" "}
 					<code className="rounded bg-th-bg-tertiary px-1 py-0.5">
-						docker sandbox
-					</code>{" "}
-					command. Run{" "}
-					<code className="rounded bg-th-bg-tertiary px-1 py-0.5">
-						docker sandbox run claude
-					</code>{" "}
-					once to authenticate.
+						docker sandbox run --credentials host claude
+					</code>
+					. Run this command once manually to authenticate before enabling.
 				</p>
 			)}
 		</SettingsSection>

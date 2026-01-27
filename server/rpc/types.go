@@ -238,6 +238,11 @@ type AskUserQuestionParams struct {
 
 // Settings namespace
 
+type SettingsSubscribeResult struct {
+	ID       string            `json:"id"`
+	Settings settings.Settings `json:"settings"`
+}
+
 type SettingsUpdateParams struct {
 	Settings settings.Settings `json:"settings"`
 }

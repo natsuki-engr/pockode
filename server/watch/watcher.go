@@ -16,4 +16,5 @@ var (
 	_ Watcher = (*GitDiffWatcher)(nil)
 	_ Watcher = (*WorktreeWatcher)(nil)
 	_ Watcher = (*SessionListWatcher)(nil)
+	_ Watcher = (*SettingsWatcher)(nil)
 )

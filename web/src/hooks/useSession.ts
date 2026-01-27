@@ -1,5 +1,10 @@
 import { useMutation } from "@tanstack/react-query";
-import { prependSession, useSessionStore } from "../lib/sessionStore";
+import {
+	prependSession,
+	useFilteredSessions,
+	useSessionStore,
+} from "../lib/sessionStore";
+import { useSettingsStore } from "../lib/settingsStore";
 import { wsActions } from "../lib/wsStore";
 import { useSessionSubscription } from "./useSessionSubscription";
 
@@ -13,10 +18,15 @@ export function useSession({
 	enabled = true,
 	routeSessionId,
 }: UseSessionOptions = {}) {
-	const sessions = useSessionStore((s) => s.sessions);
-	const isLoading = useSessionStore((s) => s.isLoading);
-	const isSuccess = useSessionStore((s) => s.isSuccess);
+	const sessions = useFilteredSessions();
+	const sessionStoreLoading = useSessionStore((s) => s.isLoading);
+	const sessionStoreSuccess = useSessionStore((s) => s.isSuccess);
+	const settingsLoaded = useSettingsStore((s) => s.settings !== null);
 	const updateSessions = useSessionStore((s) => s.updateSessions);
+
+	// Both sessions and settings must be loaded before we consider data ready
+	const isLoading = sessionStoreLoading || !settingsLoaded;
+	const isSuccess = sessionStoreSuccess && settingsLoaded;
 	const { refresh } = useSessionSubscription(enabled);
 
 	const createMutation = useMutation({

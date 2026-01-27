@@ -13,6 +13,11 @@ import type {
 	SessionListSubscribeResult,
 	SessionMeta,
 } from "../types/message";
+import type {
+	Settings,
+	SettingsChangedNotification,
+	SettingsSubscribeResult,
+} from "../types/settings";
 import { getWebSocketUrl } from "../utils/config";
 import {
 	type ChatActions,
@@ -79,6 +84,10 @@ export interface WatchActions {
 		callback: (notification: ServerNotification) => void,
 	) => Promise<WatchSubscribeResult<ChatMessagesSubscribeResult>>;
 	chatMessagesUnsubscribe: (id: string) => Promise<void>;
+	settingsSubscribe: (
+		callback: (params: SettingsChangedNotification) => void,
+	) => Promise<WatchSubscribeResult<Settings>>;
+	settingsUnsubscribe: (id: string) => Promise<void>;
 }
 
 type RPCActions = ConnectionActions &
@@ -121,6 +130,10 @@ const chatMessagesCallbacks = new Map<
 	string,
 	(notification: ServerNotification) => void
 >();
+const settingsWatchCallbacks = new Map<
+	string,
+	(params: SettingsChangedNotification) => void
+>();
 
 /**
  * Clear all local watch subscriptions.
@@ -135,8 +148,8 @@ function clearWatchSubscriptions(): void {
 	gitDiffWatchCallbacks.clear();
 	sessionListWatchCallbacks.clear();
 	chatMessagesCallbacks.clear();
-	// Note: worktreeWatchCallbacks is NOT cleared here because it's Manager-level,
-	// not worktree-specific. It persists across worktree switches.
+	// Note: worktreeWatchCallbacks and settingsWatchCallbacks are NOT cleared here
+	// because they are Manager-level, not worktree-specific.
 }
 
 // Callback to clear worktree-dependent caches (set by queryClient)
@@ -208,6 +221,11 @@ const watchNotificationHandlers: Record<string, WatchNotificationHandler> = {
 	"session.list.changed": (params) => {
 		const changedParams = params as SessionListChangedNotification;
 		sessionListWatchCallbacks.get(changedParams.id)?.(changedParams);
+		return true;
+	},
+	"settings.changed": (params) => {
+		const changedParams = params as SettingsChangedNotification;
+		settingsWatchCallbacks.get(changedParams.id)?.(changedParams);
 		return true;
 	},
 };
@@ -569,6 +587,33 @@ export const useWSStore = create<WSState>((set, get) => ({
 			}
 		},
 
+		settingsSubscribe: async (
+			callback: (params: SettingsChangedNotification) => void,
+		) => {
+			const client = getClient();
+			if (!client) {
+				throw new Error("Not connected");
+			}
+			const result = (await client.request(
+				"settings.subscribe",
+				{},
+			)) as SettingsSubscribeResult;
+			settingsWatchCallbacks.set(result.id, callback);
+			return { id: result.id, initial: result.settings };
+		},
+
+		settingsUnsubscribe: async (id: string) => {
+			settingsWatchCallbacks.delete(id);
+			const client = getClient();
+			if (client) {
+				try {
+					await client.request("settings.unsubscribe", { id });
+				} catch {
+					// Ignore errors (connection might be closed)
+				}
+			}
+		},
+
 		// Spread namespace-specific actions
 		...chatActions,
 		...commandActions,
@@ -653,6 +698,7 @@ export function resetWSStore() {
 	worktreeWatchCallbacks.clear();
 	sessionListWatchCallbacks.clear();
 	chatMessagesCallbacks.clear();
+	settingsWatchCallbacks.clear();
 	worktreeDeletedListener = null;
 	onWorktreeSwitched = null;
 	useWSStore.setState({

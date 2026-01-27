@@ -334,6 +334,7 @@ func main() {
 			cancelRelayStreams()
 			relayManager.Stop()
 		}
+		wsHandler.Stop()
 		worktreeManager.Shutdown()
 		close(shutdownDone)
 	}()

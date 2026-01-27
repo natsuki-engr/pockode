@@ -1,5 +1,7 @@
+import { useMemo } from "react";
 import { create } from "zustand";
 import type { SessionMeta } from "../types/message";
+import { useSettingsStore } from "./settingsStore";
 
 interface SessionState {
 	sessions: SessionMeta[];
@@ -35,4 +37,17 @@ export function prependSession(
 	session: SessionMeta,
 ): SessionMeta[] {
 	return [session, ...sessions.filter((s) => s.id !== session.id)];
+}
+
+/**
+ * Hook to get sessions filtered by the current sandbox mode.
+ * Returns only sessions matching the current settings.sandbox value.
+ */
+export function useFilteredSessions(): SessionMeta[] {
+	const sessions = useSessionStore((s) => s.sessions);
+	const sandboxMode = useSettingsStore((s) => s.settings?.sandbox ?? false);
+	return useMemo(
+		() => sessions.filter((s) => s.sandbox === sandboxMode),
+		[sessions, sandboxMode],
+	);
 }

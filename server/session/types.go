@@ -34,6 +34,7 @@ type SessionMeta struct {
 	UpdatedAt time.Time `json:"updated_at"`
 	Activated bool      `json:"activated"` // true after first message sent
 	Mode      Mode      `json:"mode"`      // agent mode (default, yolo, plan)
+	Sandbox   bool      `json:"sandbox"`   // true if created in sandbox mode
 }
 
 // Operation represents the type of change to the session list.

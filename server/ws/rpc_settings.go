@@ -7,10 +7,16 @@ import (
 	"github.com/sourcegraph/jsonrpc2"
 )
 
-func (h *rpcMethodHandler) handleSettingsGet(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
-	result := h.settingsStore.Get()
+func (h *rpcMethodHandler) handleSettingsSubscribe(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+	id, settings := h.settingsWatcher.Subscribe(conn, h.state.getConnID())
+	h.log.Debug("subscribed to settings", "watchId", id)
+
+	result := rpc.SettingsSubscribeResult{
+		ID:       id,
+		Settings: settings,
+	}
 	if err := conn.Reply(ctx, req.ID, result); err != nil {
-		h.log.Error("failed to send settings get response", "error", err)
+		h.log.Error("failed to send settings subscribe response", "error", err)
 	}
 }
 

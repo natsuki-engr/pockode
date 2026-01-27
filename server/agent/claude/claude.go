@@ -39,7 +39,7 @@ func New() *Agent {
 func (a *Agent) Start(ctx context.Context, opts agent.StartOptions) (agent.Session, error) {
 	procCtx, cancel := context.WithCancel(ctx)
 
-	args := []string{
+	claudeArgs := []string{
 		"--output-format", "stream-json",
 		"--input-format", "stream-json",
 		"--verbose",
@@ -48,21 +48,30 @@ func (a *Agent) Start(ctx context.Context, opts agent.StartOptions) (agent.Sessi
 	// Add mode-specific options
 	switch opts.Mode {
 	case session.ModeYolo:
-		args = append(args, "--dangerously-skip-permissions")
+		claudeArgs = append(claudeArgs, "--dangerously-skip-permissions")
 	default:
 		// Default mode: use permission prompt tool
-		args = append(args, "--permission-prompt-tool", "stdio")
+		claudeArgs = append(claudeArgs, "--permission-prompt-tool", "stdio")
 	}
 
 	if opts.SessionID != "" {
 		if opts.Resume {
-			args = append(args, "--resume", opts.SessionID)
+			claudeArgs = append(claudeArgs, "--resume", opts.SessionID)
 		} else {
-			args = append(args, "--session-id", opts.SessionID)
+			claudeArgs = append(claudeArgs, "--session-id", opts.SessionID)
 		}
 	}
 
-	cmd := exec.CommandContext(procCtx, Binary, args...)
+	// Build command: use docker sandbox when sandbox mode is enabled
+	var cmd *exec.Cmd
+	if opts.Sandbox {
+		// docker sandbox run --credentials host claude [args...]
+		args := []string{"sandbox", "run", "--credentials", "host", Binary}
+		args = append(args, claudeArgs...)
+		cmd = exec.CommandContext(procCtx, "docker", args...)
+	} else {
+		cmd = exec.CommandContext(procCtx, Binary, claudeArgs...)
+	}
 	cmd.Dir = opts.WorkDir
 
 	// stdin ownership is transferred to session; closed by session.Close()
@@ -96,7 +105,7 @@ func (a *Agent) Start(ctx context.Context, opts agent.StartOptions) (agent.Sessi
 	}
 
 	log := slog.With("sessionId", opts.SessionID)
-	log.Info("claude process started", "pid", cmd.Process.Pid, "mode", opts.Mode)
+	log.Info("claude process started", "pid", cmd.Process.Pid, "mode", opts.Mode, "sandbox", opts.Sandbox)
 
 	events := make(chan agent.AgentEvent)
 	pendingRequests := &sync.Map{}

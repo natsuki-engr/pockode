@@ -74,7 +74,7 @@ func (m *Manager) EmitMessage(sessionID string, event agent.AgentEvent) {
 }
 
 // GetOrCreateProcess returns an existing process or creates a new one.
-func (m *Manager) GetOrCreateProcess(ctx context.Context, sessionID string, resume bool, mode session.Mode) (*Process, bool, error) {
+func (m *Manager) GetOrCreateProcess(ctx context.Context, sessionID string, resume bool, mode session.Mode, sandbox bool) (*Process, bool, error) {
 	m.processesMu.Lock()
 	defer m.processesMu.Unlock()
 
@@ -89,6 +89,7 @@ func (m *Manager) GetOrCreateProcess(ctx context.Context, sessionID string, resu
 		SessionID: sessionID,
 		Resume:    resume,
 		Mode:      mode,
+		Sandbox:   sandbox,
 	}
 	sess, err := m.agent.Start(m.ctx, opts)
 	if err != nil {

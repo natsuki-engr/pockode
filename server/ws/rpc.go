@@ -29,9 +29,13 @@ type RPCHandler struct {
 	commandStore    *command.Store
 	worktreeManager *worktree.Manager
 	settingsStore   *settings.Store
+	settingsWatcher *watch.SettingsWatcher
 }
 
 func NewRPCHandler(token, version string, devMode bool, commandStore *command.Store, worktreeManager *worktree.Manager, settingsStore *settings.Store) *RPCHandler {
+	settingsWatcher := watch.NewSettingsWatcher(settingsStore)
+	settingsWatcher.Start()
+
 	return &RPCHandler{
 		token:           token,
 		version:         version,
@@ -39,7 +43,13 @@ func NewRPCHandler(token, version string, devMode bool, commandStore *command.St
 		commandStore:    commandStore,
 		worktreeManager: worktreeManager,
 		settingsStore:   settingsStore,
+		settingsWatcher: settingsWatcher,
 	}
+}
+
+// Stop stops the RPC handler and releases resources.
+func (h *RPCHandler) Stop() {
+	h.settingsWatcher.Stop()
 }
 
 func (h *RPCHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -88,7 +98,7 @@ func (h *RPCHandler) HandleStream(ctx context.Context, stream jsonrpc2.ObjectStr
 
 	<-rpcConn.DisconnectNotify()
 
-	state.cleanup(h.worktreeManager)
+	state.cleanup(h.worktreeManager, h.settingsWatcher)
 	log.Info("connection closed")
 }
 
@@ -117,12 +127,13 @@ func (s *rpcConnState) setConn(conn *jsonrpc2.Conn) {
 	s.mu.Unlock()
 }
 
-func (s *rpcConnState) cleanup(worktreeManager *worktree.Manager) {
+func (s *rpcConnState) cleanup(worktreeManager *worktree.Manager, settingsWatcher watch.Watcher) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Cleanup worktree watcher subscription (Manager-level, not worktree-specific)
+	// Cleanup manager-level watchers (not worktree-specific)
 	worktreeManager.WorktreeWatcher.CleanupConnection(s.connID)
+	settingsWatcher.CleanupConnection(s.connID)
 
 	if s.worktree == nil {
 		return // Not authenticated yet (e.g., connection closed before auth)
@@ -186,8 +197,11 @@ func (h *rpcMethodHandler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req 
 	case "command.list":
 		h.handleCommandList(ctx, conn, req)
 		return
-	case "settings.get":
-		h.handleSettingsGet(ctx, conn, req)
+	case "settings.subscribe":
+		h.handleSettingsSubscribe(ctx, conn, req)
+		return
+	case "settings.unsubscribe":
+		h.handleWatcherUnsubscribe(ctx, conn, req, h.settingsWatcher, "settings")
 		return
 	case "settings.update":
 		h.handleSettingsUpdate(ctx, conn, req)
