@@ -183,7 +183,7 @@ func TestCreate_WithBaseBranch(t *testing.T) {
 	dir := initGitRepo(t)
 	r := NewRegistry(dir)
 
-	// Create a base branch with a commit
+	// Set up: base-branch and main diverge so we can verify which one is used
 	cmd := exec.Command("git", "-C", dir, "checkout", "-b", "base-branch")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git checkout -b failed: %s", out)
@@ -192,15 +192,11 @@ func TestCreate_WithBaseBranch(t *testing.T) {
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git commit failed: %s", out)
 	}
-
-	// Get the commit hash of base-branch
 	cmd = exec.Command("git", "-C", dir, "rev-parse", "base-branch")
 	baseCommit, err := cmd.Output()
 	if err != nil {
 		t.Fatalf("git rev-parse failed: %v", err)
 	}
-
-	// Switch back to main and add another commit
 	cmd = exec.Command("git", "-C", dir, "checkout", "-")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git checkout failed: %s", out)
@@ -210,7 +206,6 @@ func TestCreate_WithBaseBranch(t *testing.T) {
 		t.Fatalf("git commit failed: %s", out)
 	}
 
-	// Create worktree with base branch specified
 	info, err := r.Create("feature", "feature-branch", "base-branch")
 	if err != nil {
 		t.Fatalf("Create() with base branch failed: %v", err)
@@ -219,13 +214,12 @@ func TestCreate_WithBaseBranch(t *testing.T) {
 		t.Errorf("info.Branch = %q, want %q", info.Branch, "feature-branch")
 	}
 
-	// Verify the worktree is based on base-branch, not current HEAD
+	// Verify worktree is based on base-branch, not HEAD
 	cmd = exec.Command("git", "-C", info.Path, "rev-parse", "HEAD")
 	worktreeCommit, err := cmd.Output()
 	if err != nil {
 		t.Fatalf("git rev-parse in worktree failed: %v", err)
 	}
-
 	if string(worktreeCommit) != string(baseCommit) {
 		t.Error("worktree should be based on base-branch, not current HEAD")
 	}
