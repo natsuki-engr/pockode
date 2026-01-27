@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { useFilteredSessions } from "./sessionStore";
 
 interface UnreadState {
 	unreadSessionIds: Set<string>;
@@ -43,7 +44,9 @@ export function useHasUnread(sessionId: string): boolean {
 }
 
 export function useHasAnyUnread(): boolean {
-	return useUnreadStore((state) => state.unreadSessionIds.size > 0);
+	const sessions = useFilteredSessions();
+	const unreadSessionIds = useUnreadStore((state) => state.unreadSessionIds);
+	return sessions.some((s) => unreadSessionIds.has(s.id));
 }
 
 // Reset function for testing
