@@ -73,7 +73,7 @@ func (a *Agent) Start(ctx context.Context, opts agent.StartOptions) (agent.Sessi
 
 	var cmd *exec.Cmd
 	if opts.Sandbox {
-		args := []string{"exec", "-i", sandboxID, Binary}
+		args := []string{"exec", "-i", "-w", opts.WorkDir, sandboxID, Binary}
 		args = append(args, claudeArgs...)
 		cmd = exec.CommandContext(procCtx, "docker", args...)
 	} else {
