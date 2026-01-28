@@ -12,9 +12,8 @@ import (
 
 func (h *rpcMethodHandler) handleSessionCreate(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
 	sessionID := uuid.Must(uuid.NewV7()).String()
-	sandbox := h.settingsStore.Get().Sandbox
 
-	sess, err := h.state.worktree.SessionStore.Create(ctx, sessionID, sandbox)
+	sess, err := h.state.worktree.SessionStore.Create(ctx, sessionID)
 	if err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, "failed to create session")
 		return

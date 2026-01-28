@@ -3,7 +3,6 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useSessionStore } from "../lib/sessionStore";
-import { useSettingsStore } from "../lib/settingsStore";
 import type {
 	SessionListChangedNotification,
 	SessionMeta,
@@ -16,7 +15,6 @@ const mockSession = (id: string, title = "Test Session"): SessionMeta => ({
 	created_at: "2024-01-01T00:00:00Z",
 	updated_at: "2024-01-01T00:00:00Z",
 	mode: "default",
-	sandbox: false,
 });
 
 let notificationCallback: ((p: SessionListChangedNotification) => void) | null =
@@ -80,9 +78,6 @@ describe("useSession", () => {
 			sessions: [],
 			isLoading: true,
 			isSuccess: false,
-		});
-		useSettingsStore.setState({
-			settings: { sandbox: false },
 		});
 	});
 

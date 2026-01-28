@@ -1,6 +1,5 @@
 import { Shield, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useSettingsStore } from "../../lib/settingsStore";
 import type { SessionMode } from "../../types/message";
 
 interface Props {
@@ -17,33 +16,25 @@ interface ModeConfig {
 	labelColor: string;
 }
 
-function getModeConfig(sandbox: boolean): Record<SessionMode, ModeConfig> {
-	const yoloColor = sandbox ? "text-th-warning" : "text-th-error";
-	const yoloDescription = sandbox
-		? "Skip all permissions"
-		: "Skip all permissions\nRecommend: Enable Sandbox in Settings";
-	return {
-		default: {
-			label: "Default",
-			description: "Ask before actions",
-			icon: Shield,
-			iconColor: "text-th-text-secondary group-hover:text-th-text-primary",
-			labelColor: "text-th-text-primary",
-		},
-		yolo: {
-			label: "YOLO",
-			description: yoloDescription,
-			icon: Zap,
-			iconColor: yoloColor,
-			labelColor: yoloColor,
-		},
-	};
-}
+const modeConfig: Record<SessionMode, ModeConfig> = {
+	default: {
+		label: "Default",
+		description: "Ask before actions",
+		icon: Shield,
+		iconColor: "text-th-text-secondary group-hover:text-th-text-primary",
+		labelColor: "text-th-text-primary",
+	},
+	yolo: {
+		label: "YOLO",
+		description: "Skip all permissions",
+		icon: Zap,
+		iconColor: "text-th-warning",
+		labelColor: "text-th-warning",
+	},
+};
 
 function ModeSelector({ mode, onModeChange, disabled = false }: Props) {
 	const [isOpen, setIsOpen] = useState(false);
-	const sandbox = useSettingsStore((s) => s.settings?.sandbox ?? false);
-	const modeConfig = getModeConfig(sandbox);
 
 	const handleSelect = async (newMode: SessionMode) => {
 		if (newMode !== mode) {

@@ -1,24 +1,13 @@
-import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { SessionMeta } from "../types/message";
-import {
-	prependSession,
-	useFilteredSessions,
-	useSessionStore,
-} from "./sessionStore";
-import { useSettingsStore } from "./settingsStore";
+import { prependSession, useSessionStore } from "./sessionStore";
 
-const mockSession = (
-	id: string,
-	title = "Test",
-	sandbox = false,
-): SessionMeta => ({
+const mockSession = (id: string, title = "Test"): SessionMeta => ({
 	id,
 	title,
 	created_at: "2024-01-01T00:00:00Z",
 	updated_at: "2024-01-01T00:00:00Z",
 	mode: "default",
-	sandbox,
 });
 
 describe("prependSession", () => {
@@ -100,96 +89,5 @@ describe("useSessionStore", () => {
 			expect(state.isLoading).toBe(false);
 			expect(state.isSuccess).toBe(false);
 		});
-	});
-});
-
-describe("useFilteredSessions", () => {
-	beforeEach(() => {
-		useSessionStore.setState({
-			sessions: [],
-			isLoading: false,
-			isSuccess: true,
-		});
-		useSettingsStore.setState({ settings: { sandbox: false } });
-	});
-
-	it("returns only normal sessions when sandbox mode is off", () => {
-		useSessionStore.setState({
-			sessions: [
-				mockSession("1", "Normal 1", false),
-				mockSession("2", "Sandbox 1", true),
-				mockSession("3", "Normal 2", false),
-			],
-		});
-		useSettingsStore.setState({ settings: { sandbox: false } });
-
-		const { result } = renderHook(() => useFilteredSessions());
-
-		expect(result.current.length).toBe(2);
-		expect(result.current.map((s) => s.id)).toEqual(["1", "3"]);
-	});
-
-	it("returns only sandbox sessions when sandbox mode is on", () => {
-		useSessionStore.setState({
-			sessions: [
-				mockSession("1", "Normal 1", false),
-				mockSession("2", "Sandbox 1", true),
-				mockSession("3", "Sandbox 2", true),
-			],
-		});
-		useSettingsStore.setState({ settings: { sandbox: true } });
-
-		const { result } = renderHook(() => useFilteredSessions());
-
-		expect(result.current.length).toBe(2);
-		expect(result.current.map((s) => s.id)).toEqual(["2", "3"]);
-	});
-
-	it("returns empty array when no sessions match current mode", () => {
-		useSessionStore.setState({
-			sessions: [mockSession("1", "Normal", false)],
-		});
-		useSettingsStore.setState({ settings: { sandbox: true } });
-
-		const { result } = renderHook(() => useFilteredSessions());
-
-		expect(result.current.length).toBe(0);
-	});
-
-	it("defaults to normal mode when settings is null", () => {
-		useSessionStore.setState({
-			sessions: [
-				mockSession("1", "Normal", false),
-				mockSession("2", "Sandbox", true),
-			],
-		});
-		useSettingsStore.setState({ settings: null });
-
-		const { result } = renderHook(() => useFilteredSessions());
-
-		expect(result.current.length).toBe(1);
-		expect(result.current[0].id).toBe("1");
-	});
-
-	it("updates when sandbox mode changes", () => {
-		useSessionStore.setState({
-			sessions: [
-				mockSession("1", "Normal", false),
-				mockSession("2", "Sandbox", true),
-			],
-		});
-		useSettingsStore.setState({ settings: { sandbox: false } });
-
-		const { result } = renderHook(() => useFilteredSessions());
-
-		expect(result.current.length).toBe(1);
-		expect(result.current[0].id).toBe("1");
-
-		act(() => {
-			useSettingsStore.setState({ settings: { sandbox: true } });
-		});
-
-		expect(result.current.length).toBe(1);
-		expect(result.current[0].id).toBe("2");
 	});
 });

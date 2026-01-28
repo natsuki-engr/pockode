@@ -239,7 +239,7 @@ func (h *rpcMethodHandler) getOrCreateProcess(ctx context.Context, log *slog.Log
 	}
 
 	resume := meta.Activated
-	proc, created, err := h.state.worktree.ProcessManager.GetOrCreateProcess(ctx, sessionID, resume, meta.Mode, meta.Sandbox)
+	proc, created, err := h.state.worktree.ProcessManager.GetOrCreateProcess(ctx, sessionID, resume, meta.Mode)
 	if err != nil {
 		return nil, err
 	}

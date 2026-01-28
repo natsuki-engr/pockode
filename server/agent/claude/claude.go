@@ -37,15 +37,6 @@ func New() *Agent {
 
 // Start launches a persistent Claude CLI process.
 func (a *Agent) Start(ctx context.Context, opts agent.StartOptions) (agent.Session, error) {
-	var sandboxID string
-	if opts.Sandbox {
-		var err error
-		sandboxID, err = ensureSandboxRunning(ctx, opts.WorkDir)
-		if err != nil {
-			return nil, fmt.Errorf("failed to start sandbox: %w", err)
-		}
-	}
-
 	procCtx, cancel := context.WithCancel(ctx)
 
 	claudeArgs := []string{
@@ -71,14 +62,7 @@ func (a *Agent) Start(ctx context.Context, opts agent.StartOptions) (agent.Sessi
 		}
 	}
 
-	var cmd *exec.Cmd
-	if opts.Sandbox {
-		args := []string{"exec", "-i", "-w", opts.WorkDir, sandboxID, Binary}
-		args = append(args, claudeArgs...)
-		cmd = exec.CommandContext(procCtx, "docker", args...)
-	} else {
-		cmd = exec.CommandContext(procCtx, Binary, claudeArgs...)
-	}
+	cmd := exec.CommandContext(procCtx, Binary, claudeArgs...)
 	cmd.Dir = opts.WorkDir
 
 	// stdin ownership is transferred to session; closed by session.Close()
@@ -112,7 +96,7 @@ func (a *Agent) Start(ctx context.Context, opts agent.StartOptions) (agent.Sessi
 	}
 
 	log := slog.With("sessionId", opts.SessionID)
-	log.Info("claude process started", "pid", cmd.Process.Pid, "mode", opts.Mode, "sandbox", opts.Sandbox)
+	log.Info("claude process started", "pid", cmd.Process.Pid, "mode", opts.Mode)
 
 	events := make(chan agent.AgentEvent)
 	pendingRequests := &sync.Map{}
@@ -825,20 +809,4 @@ func parseResultEvent(line []byte) agent.AgentEvent {
 	}
 
 	return agent.DoneEvent{}
-}
-
-// ensureSandboxRunning ensures the sandbox is running and returns its ID.
-// docker sandbox automatically identifies sandbox by current working directory.
-func ensureSandboxRunning(ctx context.Context, workDir string) (string, error) {
-	slog.Debug("ensuring sandbox is running", "workDir", workDir)
-	cmd := exec.CommandContext(ctx, "docker", "sandbox", "run", "-d",
-		"--credentials", "host",
-		Binary,
-	)
-	cmd.Dir = workDir
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("docker sandbox run failed: %w: %s", err, string(output))
-	}
-	return strings.TrimSpace(string(output)), nil
 }

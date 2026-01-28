@@ -22,7 +22,7 @@ func (m *mockSessionStore) Get(sessionID string) (session.SessionMeta, bool, err
 	return session.SessionMeta{}, false, nil
 }
 
-func (m *mockSessionStore) Create(ctx context.Context, sessionID string, sandbox bool) (session.SessionMeta, error) {
+func (m *mockSessionStore) Create(ctx context.Context, sessionID string) (session.SessionMeta, error) {
 	return session.SessionMeta{}, nil
 }
 

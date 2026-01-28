@@ -1,6 +1,4 @@
-export interface Settings {
-	sandbox: boolean;
-}
+export type Settings = Record<string, never>;
 
 export interface SettingsSubscribeResult {
 	id: string;

@@ -6,7 +6,6 @@ export interface SessionMeta {
 	created_at: string;
 	updated_at: string;
 	mode: SessionMode;
-	sandbox: boolean;
 }
 
 export type MessageStatus =
