@@ -65,17 +65,22 @@ describe("MessageItem", () => {
 		expect(screen.getByRole("status")).toBeInTheDocument();
 	});
 
-	it("shows process ended for streaming status when process is not running", () => {
+	it("shows no indicator for streaming message that is no longer last", () => {
 		const message: Message = {
 			id: "3",
 			role: "assistant",
-			parts: [],
+			parts: [{ type: "text", content: "Previous response" }],
 			status: "streaming",
 			createdAt: new Date(),
 		};
 
-		render(<MessageItem message={message} isLast isProcessRunning={false} />);
-		expect(screen.getByText("Process ended")).toBeInTheDocument();
+		// When a new message is added, the previous streaming message becomes !isLast
+		// In this case, no indicator is shown - the message content stands on its own
+		render(
+			<MessageItem message={message} isLast={false} isProcessRunning={true} />,
+		);
+		expect(screen.queryByRole("status")).not.toBeInTheDocument();
+		expect(screen.queryByText("Process ended")).not.toBeInTheDocument();
 	});
 
 	it("shows error message for error status", () => {

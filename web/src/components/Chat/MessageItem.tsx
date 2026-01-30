@@ -551,12 +551,9 @@ const MessageItem = memo(function MessageItem({
 
 				{/* Status indicator */}
 				{message.status === "sending" && <Spinner className="mt-2" />}
-				{message.status === "streaming" &&
-					(isLast && isProcessRunning ? (
-						<Spinner className="mt-2" />
-					) : (
-						<p className="mt-2 text-sm text-th-warning">Process ended</p>
-					))}
+				{message.status === "streaming" && isLast && isProcessRunning && (
+					<Spinner className="mt-2" />
+				)}
 				{message.status === "error" && (
 					<p className="mt-2 text-sm text-th-error">{message.error}</p>
 				)}
