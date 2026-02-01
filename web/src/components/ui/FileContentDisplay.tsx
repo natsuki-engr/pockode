@@ -1,21 +1,11 @@
-import {
-	CodeHighlighter,
-	getLanguageFromPath,
-	isMarkdownFile,
-} from "../../lib/shikiUtils";
-import { MarkdownContent } from "../Chat/MarkdownContent";
+import { CodeHighlighter, getLanguageFromPath } from "../../lib/shikiUtils";
 
 interface Props {
 	content: string;
 	filePath?: string;
-	showRaw?: boolean;
 }
 
-export function FileContentDisplay({ content, filePath, showRaw }: Props) {
-	if (filePath && isMarkdownFile(filePath) && !showRaw) {
-		return <MarkdownContent content={content} />;
-	}
-
+export function FileContentDisplay({ content, filePath }: Props) {
 	const language = filePath ? getLanguageFromPath(filePath) : undefined;
 	return <CodeHighlighter language={language}>{content}</CodeHighlighter>;
 }
