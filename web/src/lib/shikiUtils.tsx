@@ -3,7 +3,6 @@ import * as React from "react";
 import { useShikiHighlighter } from "react-shiki";
 import {
 	type BundledLanguage,
-	bundledLanguages,
 	bundledLanguagesInfo,
 	createCssVariablesTheme,
 	createHighlighter,
@@ -38,9 +37,7 @@ let highlighterPromise: ReturnType<typeof getDiffViewHighlighter> | null = null;
 
 export function getDiffHighlighter() {
 	if (!highlighterPromise) {
-		highlighterPromise = getDiffViewHighlighter(
-			Object.keys(bundledLanguages) as BundledLanguage[],
-		);
+		highlighterPromise = getDiffViewHighlighter();
 	}
 	return highlighterPromise;
 }
