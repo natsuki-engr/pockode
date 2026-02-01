@@ -13,6 +13,7 @@ interface NavToFileOverlay {
 	overlayType: "staged" | "unstaged" | "file";
 	path: string;
 	sessionId: string | null;
+	edit?: boolean;
 }
 
 interface NavToSettingsOverlay {
@@ -65,6 +66,7 @@ export function overlayToNavigation(
 					overlayType: "file" as const,
 					path: overlay.path,
 					sessionId,
+					edit: overlay.edit,
 				};
 			case "settings":
 				return {
@@ -128,8 +130,14 @@ export function buildNavigation(
 				if (!isMain) {
 					result.params.worktree = target.worktree;
 				}
-				if (target.sessionId) {
-					result.search = { session: target.sessionId };
+				if (target.sessionId || target.edit) {
+					result.search = {};
+					if (target.sessionId) {
+						result.search.session = target.sessionId;
+					}
+					if (target.edit) {
+						result.search.mode = "edit";
+					}
 				}
 			}
 			break;

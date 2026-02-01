@@ -47,3 +47,28 @@ func (h *rpcMethodHandler) handleFileGet(ctx context.Context, conn *jsonrpc2.Con
 		h.log.Error("failed to send file get response", "error", err)
 	}
 }
+
+func (h *rpcMethodHandler) handleFileWrite(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+	var params rpc.FileWriteParams
+	if err := unmarshalParams(req, &params); err != nil {
+		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid params")
+		return
+	}
+
+	if err := contents.WriteFile(h.state.worktree.WorkDir, params.Path, params.Content); err != nil {
+		if errors.Is(err, contents.ErrNotFound) {
+			h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, err.Error())
+			return
+		}
+		if errors.Is(err, contents.ErrInvalidPath) {
+			h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid path")
+			return
+		}
+		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, err.Error())
+		return
+	}
+
+	if err := conn.Reply(ctx, req.ID, nil); err != nil {
+		h.log.Error("failed to send file write response", "error", err)
+	}
+}

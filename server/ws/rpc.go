@@ -245,6 +245,8 @@ func (h *rpcMethodHandler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req 
 	// file namespace
 	case "file.get":
 		h.handleFileGet(ctx, conn, req)
+	case "file.write":
+		h.handleFileWrite(ctx, conn, req)
 	// git namespace
 	case "git.status":
 		h.handleGitStatus(ctx, conn, req)

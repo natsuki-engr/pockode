@@ -8,7 +8,7 @@ import type {
 	PermissionRequest,
 } from "../../types/message";
 import type { OverlayState } from "../../types/overlay";
-import { FileView } from "../Files";
+import { FileEditor, FileView } from "../Files";
 import { DiffView } from "../Git";
 import MainContainer from "../Layout/MainContainer";
 import { SettingsPage } from "../Settings";
@@ -168,6 +168,14 @@ function ChatPanel({
 					/>
 				);
 			case "file":
+				if (overlay.edit) {
+					return (
+						<FileEditor
+							path={overlay.path}
+							onBack={onCloseOverlay ?? (() => {})}
+						/>
+					);
+				}
 				return (
 					<FileView path={overlay.path} onBack={onCloseOverlay ?? (() => {})} />
 				);

@@ -87,7 +87,7 @@ export function useRouteState(): RouteInfo {
 		const search = (fileMatch?.search ??
 			wtFileMatch?.search) as OverlaySearchParams;
 		return {
-			overlay: { type: "file", path: filePath },
+			overlay: { type: "file", path: filePath, edit: search.mode === "edit" },
 			sessionId: search.session ?? null,
 			worktree,
 		};

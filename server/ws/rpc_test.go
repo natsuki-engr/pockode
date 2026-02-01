@@ -861,6 +861,50 @@ func TestHandler_FileGet_InvalidPath(t *testing.T) {
 	}
 }
 
+func TestHandler_FileWrite(t *testing.T) {
+	workDir := t.TempDir()
+	env := newWorkDirTestEnv(t, workDir)
+	testFile := filepath.Join(workDir, "test.txt")
+	os.WriteFile(testFile, []byte("original"), 0644)
+
+	resp := env.call("file.write", rpc.FileWriteParams{Path: "test.txt", Content: "updated"})
+
+	if resp.Error != nil {
+		t.Fatalf("unexpected error: %s", resp.Error.Message)
+	}
+
+	content, _ := os.ReadFile(testFile)
+	if string(content) != "updated" {
+		t.Errorf("expected 'updated', got %q", string(content))
+	}
+}
+
+func TestHandler_FileWrite_NotFound(t *testing.T) {
+	env := newWorkDirTestEnv(t, t.TempDir())
+
+	resp := env.call("file.write", rpc.FileWriteParams{Path: "nonexistent.txt", Content: "test"})
+
+	if resp.Error == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(resp.Error.Message, "not found") {
+		t.Errorf("expected 'not found' error, got %q", resp.Error.Message)
+	}
+}
+
+func TestHandler_FileWrite_InvalidPath(t *testing.T) {
+	env := newWorkDirTestEnv(t, t.TempDir())
+
+	resp := env.call("file.write", rpc.FileWriteParams{Path: "../etc/passwd", Content: "test"})
+
+	if resp.Error == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(resp.Error.Message, "invalid path") {
+		t.Errorf("expected 'invalid path' error, got %q", resp.Error.Message)
+	}
+}
+
 // Git RPC tests
 
 func setupGitRepo(t *testing.T) string {

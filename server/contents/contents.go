@@ -176,3 +176,20 @@ func isBinary(content []byte) bool {
 	}
 	return false
 }
+
+// WriteFile writes content to a file within workDir.
+// Returns ErrInvalidPath for path traversal attempts or absolute paths.
+// Returns ErrNotFound if file doesn't exist (no new file creation via edit).
+func WriteFile(workDir, path, content string) error {
+	if err := ValidatePath(workDir, path); err != nil {
+		return err
+	}
+
+	fullPath := filepath.Join(workDir, path)
+
+	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		return fmt.Errorf("%w: %s", ErrNotFound, path)
+	}
+
+	return os.WriteFile(fullPath, []byte(content), 0644)
+}

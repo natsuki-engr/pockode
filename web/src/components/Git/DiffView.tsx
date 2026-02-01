@@ -7,7 +7,7 @@ import { useGitStatus } from "../../hooks/useGitStatus";
 import { useRouteState } from "../../hooks/useRouteState";
 import { overlayToNavigation } from "../../lib/navigation";
 import { flattenGitStatus } from "../../types/git";
-import { BottomActionBar, ContentView } from "../ui";
+import { BottomActionBar, ContentView, getActionIconButtonClass } from "../ui";
 import DiffContent from "./DiffContent";
 
 interface Props {
@@ -15,13 +15,6 @@ interface Props {
 	staged: boolean;
 	onBack: () => void;
 }
-
-const getNavButtonClass = (enabled: boolean) =>
-	`flex items-center justify-center rounded border border-th-border bg-th-bg-tertiary h-8 w-8 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent ${
-		enabled
-			? "text-th-text-secondary hover:border-th-border-focus hover:text-th-text-primary active:scale-95"
-			: "cursor-not-allowed opacity-50"
-	}`;
 
 function DiffView({ path, staged, onBack }: Props) {
 	const navigate = useNavigate();
@@ -112,7 +105,7 @@ function DiffView({ path, staged, onBack }: Props) {
 							type="button"
 							disabled={!prev}
 							onClick={() => prev && navigateTo(prev)}
-							className={getNavButtonClass(!!prev)}
+							className={getActionIconButtonClass(!!prev)}
 							aria-label="Previous file"
 						>
 							<ChevronLeft className="h-4 w-4" aria-hidden="true" />
@@ -121,7 +114,7 @@ function DiffView({ path, staged, onBack }: Props) {
 							type="button"
 							disabled={!next}
 							onClick={() => next && navigateTo(next)}
-							className={getNavButtonClass(!!next)}
+							className={getActionIconButtonClass(!!next)}
 							aria-label="Next file"
 						>
 							<ChevronRight className="h-4 w-4" aria-hidden="true" />

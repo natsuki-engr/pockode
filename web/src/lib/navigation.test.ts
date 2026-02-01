@@ -77,6 +77,40 @@ describe("buildNavigation", () => {
 			});
 		});
 
+		it("builds file edit route with mode=edit", () => {
+			const result = buildNavigation({
+				type: "overlay",
+				worktree: "",
+				overlayType: "file",
+				path: "src/main.ts",
+				sessionId: null,
+				edit: true,
+			});
+
+			expect(result).toEqual({
+				to: "/files/$",
+				params: { _splat: "src/main.ts" },
+				search: { mode: "edit" },
+			});
+		});
+
+		it("builds file edit route with session and edit", () => {
+			const result = buildNavigation({
+				type: "overlay",
+				worktree: "feature-x",
+				overlayType: "file",
+				path: "app.ts",
+				sessionId: "sess123",
+				edit: true,
+			});
+
+			expect(result).toEqual({
+				to: "/w/$worktree/files/$",
+				params: { worktree: "feature-x", _splat: "app.ts" },
+				search: { session: "sess123", mode: "edit" },
+			});
+		});
+
 		it("builds main worktree settings route", () => {
 			const result = buildNavigation({
 				type: "overlay",

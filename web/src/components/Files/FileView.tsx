@@ -1,11 +1,16 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { Code } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { Code, Pencil } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { contentsQueryKey, useContents } from "../../hooks/useContents";
 import { useFSWatch } from "../../hooks/useFSWatch";
+import { useCurrentWorktree, useRouteState } from "../../hooks/useRouteState";
+import { overlayToNavigation } from "../../lib/navigation";
 import { isMarkdownFile } from "../../lib/shikiUtils";
 import { isFileContent } from "../../types/contents";
 import {
+	actionIconButtonClass,
+	BottomActionBar,
 	ContentView,
 	FileContentDisplay,
 	navButtonActiveClass,
@@ -19,9 +24,24 @@ interface Props {
 
 function FileView({ path, onBack }: Props) {
 	const queryClient = useQueryClient();
+	const navigate = useNavigate();
+	const worktree = useCurrentWorktree();
+	const { sessionId } = useRouteState();
 	const { data, isLoading, error } = useContents(path);
 	const [showRaw, setShowRaw] = useState(false);
 	const isMarkdown = isMarkdownFile(path);
+
+	const isBinary = data && isFileContent(data) && data.encoding !== "text";
+
+	const handleEdit = useCallback(() => {
+		navigate(
+			overlayToNavigation(
+				{ type: "file", path, edit: true },
+				worktree,
+				sessionId,
+			),
+		);
+	}, [navigate, path, worktree, sessionId]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: reset showRaw when path changes
 	useEffect(() => {
@@ -86,7 +106,7 @@ function FileView({ path, onBack }: Props) {
 		);
 	}, [data, path, showRaw]);
 
-	const rawButton = isMarkdown ? (
+	const headerActions = isMarkdown ? (
 		<button
 			type="button"
 			onClick={() => setShowRaw(!showRaw)}
@@ -98,16 +118,34 @@ function FileView({ path, onBack }: Props) {
 		</button>
 	) : null;
 
+	const showActionBar = !isBinary;
+
 	return (
-		<ContentView
-			path={path}
-			isLoading={isLoading}
-			error={error instanceof Error ? error : null}
-			onBack={onBack}
-			headerActions={rawButton}
-		>
-			{content}
-		</ContentView>
+		<div className="flex flex-1 flex-col overflow-hidden">
+			<ContentView
+				path={path}
+				isLoading={isLoading}
+				error={error instanceof Error ? error : null}
+				onBack={onBack}
+				headerActions={headerActions}
+			>
+				{content}
+			</ContentView>
+			{showActionBar && (
+				<BottomActionBar>
+					<div className="flex items-center">
+						<button
+							type="button"
+							onClick={handleEdit}
+							className={actionIconButtonClass}
+							aria-label="Edit"
+						>
+							<Pencil className="h-4 w-4" aria-hidden="true" />
+						</button>
+					</div>
+				</BottomActionBar>
+			)}
+		</div>
 	);
 }
 

@@ -9,6 +9,7 @@ import { ROUTES, WT_CHILD_ROUTES, WT_ROUTES } from "./lib/routes";
 
 const overlaySearchSchema = z.object({
 	session: z.string().optional(),
+	mode: z.enum(["edit"]).optional(),
 });
 
 export type OverlaySearchParams = z.infer<typeof overlaySearchSchema>;

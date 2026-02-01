@@ -11,8 +11,14 @@ interface FileGetResult {
 	file?: FileContent;
 }
 
+interface FileWriteParams {
+	path: string;
+	content: string;
+}
+
 export interface FileActions {
 	getFile: (path?: string) => Promise<FileGetResult>;
+	writeFile: (path: string, content: string) => Promise<void>;
 }
 
 export function createFileActions(
@@ -31,6 +37,12 @@ export function createFileActions(
 			return requireClient().request("file.get", {
 				path,
 			} as FileGetParams);
+		},
+		writeFile: async (path: string, content: string): Promise<void> => {
+			await requireClient().request("file.write", {
+				path,
+				content,
+			} as FileWriteParams);
 		},
 	};
 }

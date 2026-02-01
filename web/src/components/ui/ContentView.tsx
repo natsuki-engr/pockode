@@ -60,6 +60,16 @@ export const navButtonClass =
 export const navButtonActiveClass =
 	"flex items-center justify-center rounded-md border border-th-accent bg-th-accent text-th-bg min-h-[44px] min-w-[44px] p-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent active:scale-95";
 
+const actionButtonBase =
+	"flex items-center justify-center rounded border border-th-border bg-th-bg-tertiary transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-th-accent active:scale-95";
+
+export const actionIconButtonClass = `${actionButtonBase} h-8 w-8 text-th-text-secondary hover:border-th-border-focus hover:text-th-text-primary`;
+
+export const actionIconButtonDisabledClass = `${actionButtonBase} h-8 w-8 opacity-50 cursor-not-allowed`;
+
+export const getActionIconButtonClass = (enabled: boolean) =>
+	enabled ? actionIconButtonClass : actionIconButtonDisabledClass;
+
 export default function ContentView({
 	path,
 	pathColor,
@@ -87,7 +97,7 @@ export default function ContentView({
 					</div>
 				) : error ? (
 					<div className="p-4 text-center text-th-error">
-						<div className="">Failed to load</div>
+						<div>Failed to load</div>
 						<div className="mt-1 text-sm text-th-text-muted">
 							{error.message}
 						</div>

@@ -724,3 +724,21 @@ samp {
 .code-block code {
 	display: block;
 }
+
+/* =============================================================================
+ * FILE EDITOR (react-simple-code-editor)
+ *
+ * react-simple-code-editor uses position: absolute for textarea/pre overlay.
+ * The root div has position: relative and handles scrolling.
+ * ============================================================================= */
+
+.editor-root {
+	font-family: var(--font-mono);
+	background-color: var(--th-bg-primary);
+	color: var(--shiki-foreground);
+}
+
+.editor-textarea {
+	/* biome-ignore lint/complexity/noImportantStyles: Override library's default focus ring */
+	outline: none !important;
+}

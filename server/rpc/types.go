@@ -80,6 +80,11 @@ type FileGetResult struct {
 	File    *contents.FileContent `json:"file,omitempty"`
 }
 
+type FileWriteParams struct {
+	Path    string `json:"path"`
+	Content string `json:"content"`
+}
+
 // Git namespace
 
 type GitStatusResult = git.GitStatus

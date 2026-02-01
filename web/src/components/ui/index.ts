@@ -3,7 +3,9 @@ export { default as BadgeDot } from "./BadgeDot";
 export { default as BottomActionBar } from "./BottomActionBar";
 export { default as ConnectionStatus } from "./ConnectionStatus";
 export {
+	actionIconButtonClass,
 	default as ContentView,
+	getActionIconButtonClass,
 	navButtonActiveClass,
 	navButtonClass,
 } from "./ContentView";
