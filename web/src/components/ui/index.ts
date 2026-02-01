@@ -6,8 +6,6 @@ export {
 	actionIconButtonClass,
 	default as ContentView,
 	getActionIconButtonClass,
-	navButtonActiveClass,
-	navButtonClass,
 } from "./ContentView";
 export { DiffViewer } from "./DiffViewer";
 export { FileContentDisplay } from "./FileContentDisplay";
