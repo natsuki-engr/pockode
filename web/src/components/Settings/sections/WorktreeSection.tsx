@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { FileCode } from "lucide-react";
 import { useCallback } from "react";
-import { SETUP_HOOK_PATH, overlayToNavigation } from "../../../lib/navigation";
+import { overlayToNavigation, SETUP_HOOK_PATH } from "../../../lib/navigation";
 import SettingsSection from "../SettingsSection";
 
 interface Props {

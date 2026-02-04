@@ -3,12 +3,12 @@ import { useCallback, useEffect } from "react";
 import { useChatMessages } from "../../hooks/useChatMessages";
 import { unreadActions } from "../../lib/unreadStore";
 import { useWSStore } from "../../lib/wsStore";
-import { hasCoarsePointer } from "../../utils/breakpoints";
 import type {
 	AskUserQuestionRequest,
 	PermissionRequest,
 } from "../../types/message";
 import type { OverlayState } from "../../types/overlay";
+import { hasCoarsePointer } from "../../utils/breakpoints";
 import { FileEditor, FileView } from "../Files";
 import { DiffView } from "../Git";
 import MainContainer from "../Layout/MainContainer";

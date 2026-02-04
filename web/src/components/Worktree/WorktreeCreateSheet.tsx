@@ -2,7 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { SETUP_HOOK_PATH, overlayToNavigation } from "../../lib/navigation";
+import { overlayToNavigation, SETUP_HOOK_PATH } from "../../lib/navigation";
 
 interface Props {
 	onClose: () => void;
