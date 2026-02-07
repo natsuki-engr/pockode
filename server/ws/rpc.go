@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -209,7 +210,8 @@ func (h *rpcMethodHandler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req 
 	}
 
 	// All other methods require a valid worktree
-	if h.state.getWorktree() == nil {
+	wt := h.state.getWorktree()
+	if wt == nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidRequest, "no worktree bound")
 		return
 	}
@@ -218,55 +220,55 @@ func (h *rpcMethodHandler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req 
 	switch req.Method {
 	// chat namespace
 	case "chat.messages.subscribe":
-		h.handleChatMessagesSubscribe(ctx, conn, req)
+		h.handleChatMessagesSubscribe(ctx, conn, req, wt)
 	case "chat.messages.unsubscribe":
-		h.handleWatcherUnsubscribe(ctx, conn, req, h.state.worktree.ChatMessagesWatcher, "chat-messages")
+		h.handleWatcherUnsubscribe(ctx, conn, req, wt.ChatMessagesWatcher, "chat-messages")
 	case "chat.message":
-		h.handleMessage(ctx, conn, req)
+		h.handleMessage(ctx, conn, req, wt)
 	case "chat.interrupt":
-		h.handleInterrupt(ctx, conn, req)
+		h.handleInterrupt(ctx, conn, req, wt)
 	case "chat.permission_response":
-		h.handlePermissionResponse(ctx, conn, req)
+		h.handlePermissionResponse(ctx, conn, req, wt)
 	case "chat.question_response":
-		h.handleQuestionResponse(ctx, conn, req)
+		h.handleQuestionResponse(ctx, conn, req, wt)
 	// session namespace
 	case "session.create":
-		h.handleSessionCreate(ctx, conn, req)
+		h.handleSessionCreate(ctx, conn, req, wt)
 	case "session.delete":
-		h.handleSessionDelete(ctx, conn, req)
+		h.handleSessionDelete(ctx, conn, req, wt)
 	case "session.update_title":
-		h.handleSessionUpdateTitle(ctx, conn, req)
+		h.handleSessionUpdateTitle(ctx, conn, req, wt)
 	case "session.set_mode":
-		h.handleSessionSetMode(ctx, conn, req)
+		h.handleSessionSetMode(ctx, conn, req, wt)
 	case "session.list.subscribe":
-		h.handleSessionListSubscribe(ctx, conn, req)
+		h.handleSessionListSubscribe(ctx, conn, req, wt)
 	case "session.list.unsubscribe":
-		h.handleWatcherUnsubscribe(ctx, conn, req, h.state.worktree.SessionListWatcher, "session list")
+		h.handleWatcherUnsubscribe(ctx, conn, req, wt.SessionListWatcher, "session list")
 	// file namespace
 	case "file.get":
-		h.handleFileGet(ctx, conn, req)
+		h.handleFileGet(ctx, conn, req, wt)
 	case "file.write":
-		h.handleFileWrite(ctx, conn, req)
+		h.handleFileWrite(ctx, conn, req, wt)
 	// git namespace
 	case "git.status":
-		h.handleGitStatus(ctx, conn, req)
+		h.handleGitStatus(ctx, conn, req, wt)
 	case "git.subscribe":
-		h.handleGitSubscribe(ctx, conn, req)
+		h.handleGitSubscribe(ctx, conn, req, wt)
 	case "git.unsubscribe":
-		h.handleWatcherUnsubscribe(ctx, conn, req, h.state.worktree.GitWatcher, "git")
+		h.handleWatcherUnsubscribe(ctx, conn, req, wt.GitWatcher, "git")
 	case "git.diff.subscribe":
-		h.handleGitDiffSubscribe(ctx, conn, req)
+		h.handleGitDiffSubscribe(ctx, conn, req, wt)
 	case "git.diff.unsubscribe":
-		h.handleWatcherUnsubscribe(ctx, conn, req, h.state.worktree.GitDiffWatcher, "git-diff")
+		h.handleWatcherUnsubscribe(ctx, conn, req, wt.GitDiffWatcher, "git-diff")
 	case "git.add":
-		h.handleGitAdd(ctx, conn, req)
+		h.handleGitAdd(ctx, conn, req, wt)
 	case "git.reset":
-		h.handleGitReset(ctx, conn, req)
+		h.handleGitReset(ctx, conn, req, wt)
 	// fs namespace
 	case "fs.subscribe":
-		h.handleFSSubscribe(ctx, conn, req)
+		h.handleFSSubscribe(ctx, conn, req, wt)
 	case "fs.unsubscribe":
-		h.handleWatcherUnsubscribe(ctx, conn, req, h.state.worktree.FSWatcher, "fs")
+		h.handleWatcherUnsubscribe(ctx, conn, req, wt.FSWatcher, "fs")
 	default:
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeMethodNotFound, "method not found: "+req.Method)
 	}
@@ -339,6 +341,9 @@ func (h *rpcMethodHandler) replyError(ctx context.Context, conn *jsonrpc2.Conn, 
 }
 
 func unmarshalParams(req *jsonrpc2.Request, v interface{}) error {
+	if req.Params == nil {
+		return errors.New("params required")
+	}
 	return json.Unmarshal(*req.Params, v)
 }
 

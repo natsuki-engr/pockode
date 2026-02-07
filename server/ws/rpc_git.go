@@ -8,11 +8,12 @@ import (
 	"github.com/pockode/server/contents"
 	"github.com/pockode/server/git"
 	"github.com/pockode/server/rpc"
+	"github.com/pockode/server/worktree"
 	"github.com/sourcegraph/jsonrpc2"
 )
 
-func (h *rpcMethodHandler) handleGitStatus(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
-	status, err := git.Status(h.state.worktree.WorkDir)
+func (h *rpcMethodHandler) handleGitStatus(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request, wt *worktree.Worktree) {
+	status, err := git.Status(wt.WorkDir)
 	if err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, err.Error())
 		return
@@ -23,7 +24,7 @@ func (h *rpcMethodHandler) handleGitStatus(ctx context.Context, conn *jsonrpc2.C
 	}
 }
 
-func (h *rpcMethodHandler) handleGitDiffSubscribe(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+func (h *rpcMethodHandler) handleGitDiffSubscribe(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request, wt *worktree.Worktree) {
 	var params rpc.GitDiffSubscribeParams
 	if err := unmarshalParams(req, &params); err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid params")
@@ -35,7 +36,7 @@ func (h *rpcMethodHandler) handleGitDiffSubscribe(ctx context.Context, conn *jso
 		return
 	}
 
-	if err := contents.ValidatePath(h.state.worktree.WorkDir, params.Path); err != nil {
+	if err := contents.ValidatePath(wt.WorkDir, params.Path); err != nil {
 		if errors.Is(err, contents.ErrInvalidPath) {
 			h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid path")
 			return
@@ -45,7 +46,7 @@ func (h *rpcMethodHandler) handleGitDiffSubscribe(ctx context.Context, conn *jso
 	}
 
 	connID := h.state.getConnID()
-	id, result, err := h.state.worktree.GitDiffWatcher.Subscribe(params.Path, params.Staged, conn, connID)
+	id, result, err := wt.GitDiffWatcher.Subscribe(params.Path, params.Staged, conn, connID)
 	if err != nil {
 		if strings.Contains(err.Error(), "file not found") {
 			h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, err.Error())
@@ -68,9 +69,9 @@ func (h *rpcMethodHandler) handleGitDiffSubscribe(ctx context.Context, conn *jso
 	}
 }
 
-func (h *rpcMethodHandler) handleGitSubscribe(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+func (h *rpcMethodHandler) handleGitSubscribe(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request, wt *worktree.Worktree) {
 	connID := h.state.getConnID()
-	id, err := h.state.worktree.GitWatcher.Subscribe(conn, connID)
+	id, err := wt.GitWatcher.Subscribe(conn, connID)
 	if err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, err.Error())
 		return
@@ -82,7 +83,7 @@ func (h *rpcMethodHandler) handleGitSubscribe(ctx context.Context, conn *jsonrpc
 	}
 }
 
-func (h *rpcMethodHandler) handleGitAdd(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+func (h *rpcMethodHandler) handleGitAdd(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request, wt *worktree.Worktree) {
 	var params rpc.GitPathsParams
 	if err := unmarshalParams(req, &params); err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid params")
@@ -94,7 +95,7 @@ func (h *rpcMethodHandler) handleGitAdd(ctx context.Context, conn *jsonrpc2.Conn
 		return
 	}
 
-	workDir := h.state.worktree.WorkDir
+	workDir := wt.WorkDir
 	for _, path := range params.Paths {
 		if err := contents.ValidatePath(workDir, path); err != nil {
 			if errors.Is(err, contents.ErrInvalidPath) {
@@ -116,7 +117,7 @@ func (h *rpcMethodHandler) handleGitAdd(ctx context.Context, conn *jsonrpc2.Conn
 	}
 }
 
-func (h *rpcMethodHandler) handleGitReset(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+func (h *rpcMethodHandler) handleGitReset(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request, wt *worktree.Worktree) {
 	var params rpc.GitPathsParams
 	if err := unmarshalParams(req, &params); err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid params")
@@ -128,7 +129,7 @@ func (h *rpcMethodHandler) handleGitReset(ctx context.Context, conn *jsonrpc2.Co
 		return
 	}
 
-	workDir := h.state.worktree.WorkDir
+	workDir := wt.WorkDir
 	for _, path := range params.Paths {
 		if err := contents.ValidatePath(workDir, path); err != nil {
 			if errors.Is(err, contents.ErrInvalidPath) {

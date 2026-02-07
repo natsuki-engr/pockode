@@ -6,17 +6,18 @@ import (
 
 	"github.com/pockode/server/contents"
 	"github.com/pockode/server/rpc"
+	"github.com/pockode/server/worktree"
 	"github.com/sourcegraph/jsonrpc2"
 )
 
-func (h *rpcMethodHandler) handleFileGet(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+func (h *rpcMethodHandler) handleFileGet(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request, wt *worktree.Worktree) {
 	var params rpc.FileGetParams
 	if err := unmarshalParams(req, &params); err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid params")
 		return
 	}
 
-	result, err := contents.GetContents(h.state.worktree.WorkDir, params.Path)
+	result, err := contents.GetContents(wt.WorkDir, params.Path)
 	if err != nil {
 		if errors.Is(err, contents.ErrNotFound) {
 			h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, err.Error())
@@ -48,14 +49,14 @@ func (h *rpcMethodHandler) handleFileGet(ctx context.Context, conn *jsonrpc2.Con
 	}
 }
 
-func (h *rpcMethodHandler) handleFileWrite(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+func (h *rpcMethodHandler) handleFileWrite(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request, wt *worktree.Worktree) {
 	var params rpc.FileWriteParams
 	if err := unmarshalParams(req, &params); err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid params")
 		return
 	}
 
-	if err := contents.WriteFile(h.state.worktree.WorkDir, params.Path, params.Content); err != nil {
+	if err := contents.WriteFile(wt.WorkDir, params.Path, params.Content); err != nil {
 		if errors.Is(err, contents.ErrNotFound) {
 			h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, err.Error())
 			return

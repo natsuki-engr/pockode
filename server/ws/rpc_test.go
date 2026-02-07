@@ -1254,3 +1254,28 @@ func TestHandler_WorktreeSwitch_NotFound(t *testing.T) {
 		t.Errorf("expected 'worktree not found' error, got %q", resp.Error.Message)
 	}
 }
+
+func TestHandler_MissingParams(t *testing.T) {
+	env := newTestEnv(t, &mockAgent{})
+
+	// Send request without params field
+	data := []byte(`{"jsonrpc":"2.0","id":999,"method":"session.delete"}`)
+	if err := env.conn.Write(env.ctx, websocket.MessageText, data); err != nil {
+		t.Fatalf("failed to send: %v", err)
+	}
+
+	_, respData, err := env.conn.Read(env.ctx)
+	if err != nil {
+		t.Fatalf("failed to read: %v", err)
+	}
+
+	var resp rpcResponse
+	json.Unmarshal(respData, &resp)
+
+	if resp.Error == nil {
+		t.Fatal("expected error for missing params")
+	}
+	if !strings.Contains(resp.Error.Message, "invalid params") {
+		t.Errorf("expected 'invalid params' error, got %q", resp.Error.Message)
+	}
+}

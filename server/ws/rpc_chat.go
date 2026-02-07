@@ -8,10 +8,11 @@ import (
 
 	"github.com/pockode/server/agent"
 	"github.com/pockode/server/rpc"
+	"github.com/pockode/server/worktree"
 	"github.com/sourcegraph/jsonrpc2"
 )
 
-func (h *rpcMethodHandler) handleChatMessagesSubscribe(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+func (h *rpcMethodHandler) handleChatMessagesSubscribe(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request, wt *worktree.Worktree) {
 	var params rpc.ChatMessagesSubscribeParams
 	if err := unmarshalParams(req, &params); err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid params")
@@ -21,7 +22,7 @@ func (h *rpcMethodHandler) handleChatMessagesSubscribe(ctx context.Context, conn
 	log := h.log.With("sessionId", params.SessionID)
 
 	// Verify session exists and get mode
-	meta, found, err := h.state.worktree.SessionStore.Get(params.SessionID)
+	meta, found, err := wt.SessionStore.Get(params.SessionID)
 	if err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, "failed to get session")
 		return
@@ -31,13 +32,13 @@ func (h *rpcMethodHandler) handleChatMessagesSubscribe(ctx context.Context, conn
 		return
 	}
 
-	id, history, err := h.state.worktree.ChatMessagesWatcher.Subscribe(conn, h.state.connID, params.SessionID)
+	id, history, err := wt.ChatMessagesWatcher.Subscribe(conn, h.state.connID, params.SessionID)
 	if err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, err.Error())
 		return
 	}
 
-	processRunning := h.state.worktree.ProcessManager.HasProcess(params.SessionID)
+	processRunning := wt.ProcessManager.HasProcess(params.SessionID)
 
 	result := rpc.ChatMessagesSubscribeResult{
 		ID:             id,
@@ -53,7 +54,7 @@ func (h *rpcMethodHandler) handleChatMessagesSubscribe(ctx context.Context, conn
 	log.Info("subscribed to chat messages", "subscriptionId", id, "processRunning", processRunning, "mode", meta.Mode)
 }
 
-func (h *rpcMethodHandler) handleMessage(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+func (h *rpcMethodHandler) handleMessage(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request, wt *worktree.Worktree) {
 	var params rpc.MessageParams
 	if err := unmarshalParams(req, &params); err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid params")
@@ -62,7 +63,7 @@ func (h *rpcMethodHandler) handleMessage(ctx context.Context, conn *jsonrpc2.Con
 
 	log := h.log.With("sessionId", params.SessionID)
 
-	sess, err := h.getOrCreateProcess(ctx, log, params.SessionID)
+	sess, err := h.getOrCreateProcess(ctx, log, wt, params.SessionID)
 	if err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, err.Error())
 		return
@@ -74,7 +75,7 @@ func (h *rpcMethodHandler) handleMessage(ctx context.Context, conn *jsonrpc2.Con
 
 	// Persist user message to history
 	event := agent.MessageEvent{Content: params.Content}
-	if err := h.state.worktree.SessionStore.AppendToHistory(ctx, params.SessionID, agent.NewEventRecord(event)); err != nil {
+	if err := wt.SessionStore.AppendToHistory(ctx, params.SessionID, agent.NewEventRecord(event)); err != nil {
 		log.Error("failed to append to history", "error", err)
 	}
 
@@ -89,7 +90,7 @@ func (h *rpcMethodHandler) handleMessage(ctx context.Context, conn *jsonrpc2.Con
 	}
 }
 
-func (h *rpcMethodHandler) handleInterrupt(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+func (h *rpcMethodHandler) handleInterrupt(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request, wt *worktree.Worktree) {
 	var params rpc.InterruptParams
 	if err := unmarshalParams(req, &params); err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid params")
@@ -98,7 +99,7 @@ func (h *rpcMethodHandler) handleInterrupt(ctx context.Context, conn *jsonrpc2.C
 
 	log := h.log.With("sessionId", params.SessionID)
 
-	sess, err := h.getOrCreateProcess(ctx, log, params.SessionID)
+	sess, err := h.getOrCreateProcess(ctx, log, wt, params.SessionID)
 	if err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, err.Error())
 		return
@@ -116,7 +117,7 @@ func (h *rpcMethodHandler) handleInterrupt(ctx context.Context, conn *jsonrpc2.C
 	}
 }
 
-func (h *rpcMethodHandler) handlePermissionResponse(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+func (h *rpcMethodHandler) handlePermissionResponse(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request, wt *worktree.Worktree) {
 	var params rpc.PermissionResponseParams
 	if err := unmarshalParams(req, &params); err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid params")
@@ -125,7 +126,7 @@ func (h *rpcMethodHandler) handlePermissionResponse(ctx context.Context, conn *j
 
 	log := h.log.With("sessionId", params.SessionID)
 
-	sess, err := h.getOrCreateProcess(ctx, log, params.SessionID)
+	sess, err := h.getOrCreateProcess(ctx, log, wt, params.SessionID)
 	if err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, err.Error())
 		return
@@ -146,7 +147,7 @@ func (h *rpcMethodHandler) handlePermissionResponse(ctx context.Context, conn *j
 
 	// Persist permission response to history
 	permEvent := agent.PermissionResponseEvent{RequestID: params.RequestID, Choice: params.Choice}
-	if err := h.state.worktree.SessionStore.AppendToHistory(ctx, params.SessionID, agent.NewEventRecord(permEvent)); err != nil {
+	if err := wt.SessionStore.AppendToHistory(ctx, params.SessionID, agent.NewEventRecord(permEvent)); err != nil {
 		log.Error("failed to append to history", "error", err)
 	}
 
@@ -157,7 +158,7 @@ func (h *rpcMethodHandler) handlePermissionResponse(ctx context.Context, conn *j
 	}
 }
 
-func (h *rpcMethodHandler) handleQuestionResponse(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+func (h *rpcMethodHandler) handleQuestionResponse(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request, wt *worktree.Worktree) {
 	var params rpc.QuestionResponseParams
 	if err := unmarshalParams(req, &params); err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid params")
@@ -166,7 +167,7 @@ func (h *rpcMethodHandler) handleQuestionResponse(ctx context.Context, conn *jso
 
 	log := h.log.With("sessionId", params.SessionID)
 
-	sess, err := h.getOrCreateProcess(ctx, log, params.SessionID)
+	sess, err := h.getOrCreateProcess(ctx, log, wt, params.SessionID)
 	if err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, err.Error())
 		return
@@ -184,7 +185,7 @@ func (h *rpcMethodHandler) handleQuestionResponse(ctx context.Context, conn *jso
 
 	// Persist question response to history
 	qEvent := agent.QuestionResponseEvent{RequestID: params.RequestID, Answers: params.Answers}
-	if err := h.state.worktree.SessionStore.AppendToHistory(ctx, params.SessionID, agent.NewEventRecord(qEvent)); err != nil {
+	if err := wt.SessionStore.AppendToHistory(ctx, params.SessionID, agent.NewEventRecord(qEvent)); err != nil {
 		log.Error("failed to append to history", "error", err)
 	}
 
@@ -229,8 +230,8 @@ func isWhitespace(r rune) bool {
 	return unicode.IsSpace(r)
 }
 
-func (h *rpcMethodHandler) getOrCreateProcess(ctx context.Context, log *slog.Logger, sessionID string) (agent.Session, error) {
-	meta, found, err := h.state.worktree.SessionStore.Get(sessionID)
+func (h *rpcMethodHandler) getOrCreateProcess(ctx context.Context, log *slog.Logger, wt *worktree.Worktree, sessionID string) (agent.Session, error) {
+	meta, found, err := wt.SessionStore.Get(sessionID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get session: %w", err)
 	}
@@ -239,14 +240,14 @@ func (h *rpcMethodHandler) getOrCreateProcess(ctx context.Context, log *slog.Log
 	}
 
 	resume := meta.Activated
-	proc, created, err := h.state.worktree.ProcessManager.GetOrCreateProcess(ctx, sessionID, resume, meta.Mode)
+	proc, created, err := wt.ProcessManager.GetOrCreateProcess(ctx, sessionID, resume, meta.Mode)
 	if err != nil {
 		return nil, err
 	}
 
 	// Mark as activated on first process creation
 	if created && !resume {
-		if err := h.state.worktree.SessionStore.Activate(ctx, sessionID); err != nil {
+		if err := wt.SessionStore.Activate(ctx, sessionID); err != nil {
 			log.Error("failed to activate session", "error", err)
 		}
 	}

@@ -7,13 +7,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/pockode/server/rpc"
 	"github.com/pockode/server/session"
+	"github.com/pockode/server/worktree"
 	"github.com/sourcegraph/jsonrpc2"
 )
 
-func (h *rpcMethodHandler) handleSessionCreate(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+func (h *rpcMethodHandler) handleSessionCreate(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request, wt *worktree.Worktree) {
 	sessionID := uuid.Must(uuid.NewV7()).String()
 
-	sess, err := h.state.worktree.SessionStore.Create(ctx, sessionID)
+	sess, err := wt.SessionStore.Create(ctx, sessionID)
 	if err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, "failed to create session")
 		return
@@ -26,15 +27,15 @@ func (h *rpcMethodHandler) handleSessionCreate(ctx context.Context, conn *jsonrp
 	}
 }
 
-func (h *rpcMethodHandler) handleSessionDelete(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+func (h *rpcMethodHandler) handleSessionDelete(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request, wt *worktree.Worktree) {
 	var params rpc.SessionDeleteParams
 	if err := unmarshalParams(req, &params); err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid params")
 		return
 	}
 
-	h.state.worktree.ProcessManager.Close(params.SessionID)
-	if err := h.state.worktree.SessionStore.Delete(ctx, params.SessionID); err != nil {
+	wt.ProcessManager.Close(params.SessionID)
+	if err := wt.SessionStore.Delete(ctx, params.SessionID); err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, "failed to delete session")
 		return
 	}
@@ -46,7 +47,7 @@ func (h *rpcMethodHandler) handleSessionDelete(ctx context.Context, conn *jsonrp
 	}
 }
 
-func (h *rpcMethodHandler) handleSessionUpdateTitle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+func (h *rpcMethodHandler) handleSessionUpdateTitle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request, wt *worktree.Worktree) {
 	var params rpc.SessionUpdateTitleParams
 	if err := unmarshalParams(req, &params); err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid params")
@@ -58,7 +59,7 @@ func (h *rpcMethodHandler) handleSessionUpdateTitle(ctx context.Context, conn *j
 		return
 	}
 
-	if err := h.state.worktree.SessionStore.Update(ctx, params.SessionID, params.Title); err != nil {
+	if err := wt.SessionStore.Update(ctx, params.SessionID, params.Title); err != nil {
 		if errors.Is(err, session.ErrSessionNotFound) {
 			h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "session not found")
 			return
@@ -74,7 +75,7 @@ func (h *rpcMethodHandler) handleSessionUpdateTitle(ctx context.Context, conn *j
 	}
 }
 
-func (h *rpcMethodHandler) handleSessionSetMode(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+func (h *rpcMethodHandler) handleSessionSetMode(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request, wt *worktree.Worktree) {
 	var params rpc.SessionSetModeParams
 	if err := unmarshalParams(req, &params); err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid params")
@@ -87,9 +88,9 @@ func (h *rpcMethodHandler) handleSessionSetMode(ctx context.Context, conn *jsonr
 	}
 
 	// Close any running process for this session (mode change requires restart)
-	h.state.worktree.ProcessManager.Close(params.SessionID)
+	wt.ProcessManager.Close(params.SessionID)
 
-	if err := h.state.worktree.SessionStore.SetMode(ctx, params.SessionID, params.Mode); err != nil {
+	if err := wt.SessionStore.SetMode(ctx, params.SessionID, params.Mode); err != nil {
 		if errors.Is(err, session.ErrSessionNotFound) {
 			h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "session not found")
 			return
@@ -105,9 +106,9 @@ func (h *rpcMethodHandler) handleSessionSetMode(ctx context.Context, conn *jsonr
 	}
 }
 
-func (h *rpcMethodHandler) handleSessionListSubscribe(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+func (h *rpcMethodHandler) handleSessionListSubscribe(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request, wt *worktree.Worktree) {
 	connID := h.state.getConnID()
-	id, sessions, err := h.state.worktree.SessionListWatcher.Subscribe(conn, connID)
+	id, sessions, err := wt.SessionListWatcher.Subscribe(conn, connID)
 	if err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInternalError, "failed to subscribe")
 		return

@@ -83,7 +83,7 @@ func (h *rpcMethodHandler) handleWorktreeDelete(ctx context.Context, conn *jsonr
 	}
 
 	if params.Name == "" {
-		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "cannot delete main worktree")
+		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "name required")
 		return
 	}
 

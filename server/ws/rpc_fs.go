@@ -4,10 +4,11 @@ import (
 	"context"
 
 	"github.com/pockode/server/rpc"
+	"github.com/pockode/server/worktree"
 	"github.com/sourcegraph/jsonrpc2"
 )
 
-func (h *rpcMethodHandler) handleFSSubscribe(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+func (h *rpcMethodHandler) handleFSSubscribe(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request, wt *worktree.Worktree) {
 	var params rpc.FSSubscribeParams
 	if err := unmarshalParams(req, &params); err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, "invalid params")
@@ -15,7 +16,7 @@ func (h *rpcMethodHandler) handleFSSubscribe(ctx context.Context, conn *jsonrpc2
 	}
 
 	connID := h.state.getConnID()
-	id, err := h.state.worktree.FSWatcher.Subscribe(params.Path, conn, connID)
+	id, err := wt.FSWatcher.Subscribe(params.Path, conn, connID)
 	if err != nil {
 		h.replyError(ctx, conn, req.ID, jsonrpc2.CodeInvalidParams, err.Error())
 		return
