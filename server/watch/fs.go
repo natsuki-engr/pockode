@@ -202,15 +202,22 @@ func (w *FSWatcher) handleEvent(event fsnotify.Event) {
 	w.timerMu.Unlock()
 }
 
-func (w *FSWatcher) notifyPath(path string) {
+func (w *FSWatcher) notifyPath(changedPath string) {
 	// Skip if watcher is stopped (timer may fire after Stop)
 	if w.Context().Err() != nil {
 		return
 	}
 
+	// Notify subscribers of the changed path and its parent directory.
 	w.pathMu.RLock()
-	ids := make([]string, len(w.pathToIDs[path]))
-	copy(ids, w.pathToIDs[path])
+	ids := append([]string{}, w.pathToIDs[changedPath]...)
+	if changedPath != "" {
+		parent := filepath.Dir(changedPath)
+		if parent == "." {
+			parent = ""
+		}
+		ids = append(ids, w.pathToIDs[parent]...)
+	}
 	w.pathMu.RUnlock()
 
 	if len(ids) == 0 {
@@ -232,5 +239,5 @@ func (w *FSWatcher) notifyPath(path string) {
 		notified++
 	}
 
-	slog.Debug("notified path change", "path", path, "subscribers", notified)
+	slog.Debug("notified path change", "path", changedPath, "subscribers", notified)
 }
