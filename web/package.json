@@ -9,6 +9,7 @@
 	"scripts": {
 		"dev": "vite",
 		"build": "tsc -b && vite build",
+		"build:release": "tsc -b && vite build --outDir ../server/static --emptyOutDir",
 		"lint": "biome check .",
 		"format": "biome format --write .",
 		"preview": "vite preview",

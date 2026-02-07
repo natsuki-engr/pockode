@@ -13,7 +13,7 @@ echo "Building Pockode $VERSION"
 echo "Building frontend..."
 cd web
 pnpm install --frozen-lockfile
-pnpm run build -- --outDir ../server/static --emptyOutDir
+pnpm run build:release
 cd ..
 touch server/static/.keep
 
