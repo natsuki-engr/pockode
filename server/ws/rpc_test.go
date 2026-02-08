@@ -291,15 +291,15 @@ func TestHandler_ChatMessagesSubscribe(t *testing.T) {
 
 	result := env.subscribeChatMessages("sess")
 
-	if result.ProcessRunning {
-		t.Error("expected process_running=false before message")
+	if result.State != "ended" {
+		t.Errorf("expected state=ended before message, got %s", result.State)
 	}
 	if result.ID == "" {
 		t.Error("expected subscription ID")
 	}
 }
 
-func TestHandler_ChatMessagesSubscribe_ProcessRunning(t *testing.T) {
+func TestHandler_ChatMessagesSubscribe_ProcessState(t *testing.T) {
 	mock := &mockAgent{
 		events: []agent.AgentEvent{
 			agent.TextEvent{Content: "Response"},
@@ -320,10 +320,10 @@ func TestHandler_ChatMessagesSubscribe_ProcessRunning(t *testing.T) {
 		t.Fatal("expected process to be running")
 	}
 
-	// New subscribe should show process_running=true
+	// New subscribe should show state=idle (process alive, done with response)
 	result := env.subscribeChatMessages("sess")
-	if !result.ProcessRunning {
-		t.Error("expected process_running=true after message")
+	if result.State != "idle" {
+		t.Errorf("expected state=idle after message, got %s", result.State)
 	}
 }
 

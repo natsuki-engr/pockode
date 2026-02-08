@@ -95,11 +95,11 @@ describe("ChatPanel", () => {
 		mockState.onNotification = null;
 		mockState.uuidCounter = 0;
 		mockState.mockHistory = [];
-		// Default: subscribe returns empty history and not running
+		// Default: subscribe returns empty history and ended state
 		mockState.chatMessagesSubscribe.mockImplementation(() =>
 			Promise.resolve({
 				id: "sub-1",
-				initial: { history: mockState.mockHistory, process_running: false },
+				initial: { history: mockState.mockHistory, state: "ended" },
 			}),
 		);
 		mockState.chatMessagesUnsubscribe.mockResolvedValue(undefined);

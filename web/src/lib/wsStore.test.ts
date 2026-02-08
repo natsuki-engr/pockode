@@ -35,7 +35,7 @@ class MockWebSocket {
 				if (parsed.method === "auth") {
 					result = { version: "test" };
 				} else if (parsed.method === "chat.messages.subscribe") {
-					result = { id: "sub-1", history: [], process_running: false };
+					result = { id: "sub-1", history: [], state: "ended" };
 				}
 				this.simulateMessage({
 					jsonrpc: "2.0",

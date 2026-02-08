@@ -229,10 +229,12 @@ export interface ChatMessagesSubscribeParams {
 	session_id: string;
 }
 
+export type ProcessState = "idle" | "running" | "ended";
+
 export interface ChatMessagesSubscribeResult {
 	id: string;
 	history: unknown[];
-	process_running: boolean;
+	state: ProcessState;
 	mode: SessionMode;
 }
 

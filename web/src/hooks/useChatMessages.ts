@@ -76,13 +76,7 @@ export function useChatMessages({
 	}, [sessionModeFromStore]);
 
 	const handleNotification = useCallback((notification: ServerNotification) => {
-		// Update process running state
-		if (notification.type === "process_ended") {
-			setIsProcessRunning(false);
-		} else {
-			// Any event from process means it's running
-			setIsProcessRunning(true);
-		}
+		setIsProcessRunning(notification.type !== "process_ended");
 
 		const event = normalizeEvent(notification);
 		setMessages((prev) => applyServerEvent(prev, event));
@@ -118,7 +112,7 @@ export function useChatMessages({
 				}
 				subscriptionIdRef.current = result.id;
 				if (result.initial) {
-					setIsProcessRunning(result.initial.process_running);
+					setIsProcessRunning(result.initial.state !== "ended");
 					setModeState(result.initial.mode);
 					setMessages(replayHistory(result.initial.history));
 				}

@@ -11,6 +11,15 @@ import (
 	"github.com/pockode/server/session"
 )
 
+// ProcessState represents the current state of an agent process.
+type ProcessState string
+
+const (
+	ProcessStateIdle    ProcessState = "idle"    // Process alive, waiting for user input
+	ProcessStateRunning ProcessState = "running" // AI is generating a response
+	ProcessStateEnded   ProcessState = "ended"   // Process has ended (not in map)
+)
+
 // Manager manages agent processes.
 type Manager struct {
 	agent        agent.Agent
@@ -40,6 +49,7 @@ type Process struct {
 
 	mu         sync.Mutex
 	lastActive time.Time
+	state      ProcessState
 }
 
 // NewManager creates a new manager with the given idle timeout.
@@ -101,6 +111,7 @@ func (m *Manager) GetOrCreateProcess(ctx context.Context, sessionID string, resu
 		sessionStore: m.sessionStore,
 		manager:      m,
 		lastActive:   time.Now(),
+		state:        ProcessStateIdle,
 	}
 	m.processes[sessionID] = proc
 
@@ -251,6 +262,18 @@ func (p *Process) getLastActive() time.Time {
 	return p.lastActive
 }
 
+func (p *Process) State() ProcessState {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.state
+}
+
+func (p *Process) SetState(state ProcessState) {
+	p.mu.Lock()
+	p.state = state
+	p.mu.Unlock()
+}
+
 // streamEvents routes events to history and emits to the event listener.
 func (p *Process) streamEvents(ctx context.Context) {
 	log := slog.With("sessionId", p.sessionID)
@@ -261,13 +284,18 @@ func (p *Process) streamEvents(ctx context.Context) {
 		eventType := event.EventType()
 		log.Debug("streaming event", "type", eventType)
 
+		// Set to running on first event after idle
+		if p.State() == ProcessStateIdle {
+			p.SetState(ProcessStateRunning)
+		}
+
 		// Persist to history
 		if err := p.sessionStore.AppendToHistory(ctx, p.sessionID, agent.NewEventRecord(event)); err != nil {
 			log.Error("failed to append to history", "error", err)
 		}
 
-		// Touch session for events that should notify unread
-		if eventType.NotifiesUnread() {
+		if eventType.AwaitsUserInput() {
+			p.SetState(ProcessStateIdle)
 			if err := p.sessionStore.Touch(ctx, p.sessionID); err != nil {
 				log.Error("failed to touch session", "error", err)
 			}

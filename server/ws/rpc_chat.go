@@ -7,6 +7,7 @@ import (
 	"unicode"
 
 	"github.com/pockode/server/agent"
+	"github.com/pockode/server/process"
 	"github.com/pockode/server/rpc"
 	"github.com/pockode/server/worktree"
 	"github.com/sourcegraph/jsonrpc2"
@@ -38,20 +39,26 @@ func (h *rpcMethodHandler) handleChatMessagesSubscribe(ctx context.Context, conn
 		return
 	}
 
-	processRunning := wt.ProcessManager.HasProcess(params.SessionID)
+	proc := wt.ProcessManager.GetProcess(params.SessionID)
+	var state process.ProcessState
+	if proc == nil {
+		state = process.ProcessStateEnded
+	} else {
+		state = proc.State()
+	}
 
 	result := rpc.ChatMessagesSubscribeResult{
-		ID:             id,
-		History:        history,
-		ProcessRunning: processRunning,
-		Mode:           meta.Mode,
+		ID:      id,
+		History: history,
+		State:   string(state),
+		Mode:    meta.Mode,
 	}
 	if err := conn.Reply(ctx, req.ID, result); err != nil {
 		log.Error("failed to send subscribe response", "error", err)
 		return
 	}
 
-	log.Info("subscribed to chat messages", "subscriptionId", id, "processRunning", processRunning, "mode", meta.Mode)
+	log.Info("subscribed to chat messages", "subscriptionId", id, "state", state, "mode", meta.Mode)
 }
 
 func (h *rpcMethodHandler) handleMessage(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request, wt *worktree.Worktree) {
