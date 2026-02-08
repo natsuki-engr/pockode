@@ -47,7 +47,7 @@ function SidebarListItem({
 					)}
 				</div>
 				{isRunning ? (
-					<span
+					<output
 						className="h-3 w-3 shrink-0 rounded-full border-2 border-th-accent border-t-transparent animate-spin"
 						aria-label="AI responding"
 					/>

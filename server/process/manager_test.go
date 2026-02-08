@@ -68,7 +68,6 @@ func (s *mockSession) isClosed() bool {
 	return s.closed
 }
 
-
 func TestManager_GetOrCreateProcess_NewSession(t *testing.T) {
 	store, _ := session.NewFileStore(t.TempDir())
 	mock := &mockAgent{}

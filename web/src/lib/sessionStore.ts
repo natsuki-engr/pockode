@@ -9,7 +9,9 @@ interface SessionState {
 
 interface SessionActions {
 	setSessions: (sessions: SessionListItem[]) => void;
-	updateSessions: (updater: (old: SessionListItem[]) => SessionListItem[]) => void;
+	updateSessions: (
+		updater: (old: SessionListItem[]) => SessionListItem[],
+	) => void;
 	reset: () => void;
 }
 
