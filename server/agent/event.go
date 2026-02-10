@@ -29,11 +29,12 @@ const (
 // These events transition the process state from running to idle:
 // - done: AI completed its response
 // - error: fatal error occurred (e.g., CLI crash)
+// - interrupted: user interrupted the AI (updates session timestamp)
 // - permission_request: AI is asking for permission (user action required)
 // - ask_user_question: AI is asking a question (user action required)
 func (e EventType) AwaitsUserInput() bool {
 	switch e {
-	case EventTypeDone, EventTypeError,
+	case EventTypeDone, EventTypeError, EventTypeInterrupted,
 		EventTypePermissionRequest, EventTypeAskUserQuestion:
 		return true
 	default:
