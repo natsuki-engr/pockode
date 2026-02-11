@@ -1,25 +1,21 @@
-import { Info } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import SettingsSection from "../../../components/Settings/SettingsSection";
 import { APP_VERSION } from "../../../lib/version";
 
 export default function AboutSection({ id }: { id: string }) {
 	return (
 		<SettingsSection id={id} title="About">
-			<div className="rounded-lg border border-th-border bg-th-bg-secondary p-4">
-				<div className="flex items-center gap-3">
-					<div className="flex h-10 w-10 items-center justify-center rounded-lg bg-th-accent/10">
-						<Info className="h-5 w-5 text-th-accent" aria-hidden="true" />
-					</div>
-					<div>
-						<div className="font-medium text-th-text-primary">Pockode</div>
-						<div className="text-sm text-th-text-muted">
-							Version {APP_VERSION}
-						</div>
-					</div>
-				</div>
-				<p className="mt-3 text-sm text-th-text-secondary">
-					AI-first mobile programming platform.
-				</p>
+			<div className="flex items-center justify-between text-sm text-th-text-muted">
+				<span>Pockode {APP_VERSION}</span>
+				<a
+					href="https://github.com/sijiaoh/pockode"
+					target="_blank"
+					rel="noopener noreferrer"
+					className="-m-2 inline-flex items-center gap-1 p-2 text-th-text-secondary transition-colors hover:text-th-accent focus:outline-none focus-visible:text-th-accent"
+				>
+					GitHub
+					<ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+				</a>
 			</div>
 		</SettingsSection>
 	);
