@@ -1,7 +1,6 @@
 import { Info } from "lucide-react";
 import SettingsSection from "../../../components/Settings/SettingsSection";
-
-const VERSION = "0.1.0-dev";
+import { APP_VERSION } from "../../../lib/version";
 
 export default function AboutSection({ id }: { id: string }) {
 	return (
@@ -13,7 +12,9 @@ export default function AboutSection({ id }: { id: string }) {
 					</div>
 					<div>
 						<div className="font-medium text-th-text-primary">Pockode</div>
-						<div className="text-sm text-th-text-muted">Version {VERSION}</div>
+						<div className="text-sm text-th-text-muted">
+							Version {APP_VERSION}
+						</div>
 					</div>
 				</div>
 				<p className="mt-3 text-sm text-th-text-secondary">
