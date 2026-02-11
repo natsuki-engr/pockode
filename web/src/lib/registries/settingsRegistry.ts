@@ -21,17 +21,14 @@ function notifyListeners() {
 export function registerSettingsSection(
 	config: SettingsSectionConfig,
 ): () => void {
-	// Immutable update for React change detection
 	sections = [...sections, config].sort((a, b) => a.priority - b.priority);
 	notifyListeners();
-	// Return unregister function
 	return () => {
 		sections = sections.filter((s) => s.id !== config.id);
 		notifyListeners();
 	};
 }
 
-// React hook with auto re-render on changes
 export function useSettingsSections(): SettingsSectionConfig[] {
 	return useSyncExternalStore(
 		(callback) => {
@@ -42,12 +39,10 @@ export function useSettingsSections(): SettingsSectionConfig[] {
 	);
 }
 
-// For non-React use (initialization, etc.)
 export function getSettingsSections(): SettingsSectionConfig[] {
 	return sections;
 }
 
-// For testing
 export function resetSettingsSections() {
 	sections = [];
 	notifyListeners();

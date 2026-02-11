@@ -8,41 +8,39 @@ This directory contains UI extensions that customize Pockode's interface.
    ```
    extensions/
    └── YourExtension/
-       ├── index.ts          # Entry point
-       └── settings/
-           ├── index.ts      # Register settings sections
-           └── YourSection.tsx
+       ├── index.ts             # Entry point with activate()
+       └── YourSection.tsx      # Component (organize as needed)
    ```
 
-2. Import your extension in `src/main.tsx`:
+2. Implement `id` and `activate` in `index.ts`:
    ```ts
-   import "./extensions/YourExtension";
+   // extensions/YourExtension/index.ts
+   import type { ExtensionContext } from "../../lib/extensions";
+   import YourSection from "./YourSection";
+
+   export const id = "your-extension";  // Unique extension ID
+
+   export function activate(ctx: ExtensionContext) {
+     ctx.settings.register({
+       id: "your-section",      // Unique section identifier
+       label: "Your Section",   // Navigation label
+       priority: 50,            // Sort order (lower = higher)
+       component: YourSection,
+     });
+   }
    ```
 
-## Available Registries
+3. Done! Extensions in this directory are automatically loaded at startup.
 
-### Settings Registry
+## Available APIs
+
+### ctx.settings.register()
 
 Add custom sections to the Settings page.
 
-```ts
-// extensions/YourExtension/settings/index.ts
-import { registerSettingsSection } from "../../../lib/registries/settingsRegistry";
-import YourSection from "./YourSection";
-
-registerSettingsSection({
-  id: "your-section",      // Unique identifier
-  label: "Your Section",   // Navigation label
-  priority: 50,            // Sort order (lower = higher)
-  component: YourSection,
-});
-```
-
-Section component receives `id` prop:
-
 ```tsx
-// extensions/YourExtension/settings/YourSection.tsx
-import SettingsSection from "../../../components/Settings/SettingsSection";
+// extensions/YourExtension/YourSection.tsx
+import SettingsSection from "../../components/Settings/SettingsSection";
 
 export default function YourSection({ id }: { id: string }) {
   return (
@@ -53,6 +51,11 @@ export default function YourSection({ id }: { id: string }) {
 }
 ```
 
+## How It Works
+
+Extensions are automatically discovered and loaded at startup via Vite's `import.meta.glob`.
+Any directory under `extensions/` with an `index.ts` exporting `id` and `activate` will be loaded.
+
 ## Example
 
-See `MyExtensions/` for a working example that adds an "About" section to Settings.
+See `ExampleExtension/` for a working example that adds an "About" section to Settings.
