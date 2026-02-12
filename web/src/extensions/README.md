@@ -37,17 +37,15 @@ This directory contains UI extensions that customize Pockode's interface.
 
 ### ctx.settings.register()
 
-Add custom sections to the Settings page.
+Add custom sections to the Settings page. Components receive no props - the section wrapper (heading, id, styles) is provided automatically by SettingsPage.
 
 ```tsx
 // extensions/YourExtension/YourSection.tsx
-import SettingsSection from "../../components/Settings/SettingsSection";
-
-export default function YourSection({ id }: { id: string }) {
+export default function YourSection() {
   return (
-    <SettingsSection id={id} title="Your Section">
+    <div>
       {/* Your content here */}
-    </SettingsSection>
+    </div>
   );
 }
 ```

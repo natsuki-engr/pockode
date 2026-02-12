@@ -7,8 +7,7 @@ export interface SettingsSectionConfig {
 	id: string;
 	label: string;
 	priority: number;
-	// biome-ignore lint/suspicious/noExplicitAny: Section components may have various props
-	component: ComponentType<{ id: string } & Record<string, any>>;
+	component: ComponentType;
 }
 
 let sections: SettingsSectionConfig[] = [];

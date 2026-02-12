@@ -31,7 +31,14 @@ export default function SettingsPage({ onBack }: Props) {
 				<div className="mx-auto max-w-2xl px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
 					{sections.map((section) => {
 						const Component = section.component;
-						return <Component key={section.id} id={section.id} />;
+						return (
+							<section key={section.id} id={section.id} className="mb-6">
+								<h2 className="mb-3 text-xs uppercase tracking-wider text-th-text-muted">
+									{section.label}
+								</h2>
+								<Component />
+							</section>
+						);
 					})}
 				</div>
 			</main>
