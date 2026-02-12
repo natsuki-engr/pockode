@@ -1,13 +1,13 @@
 import { useState } from "react";
+import { authActions } from "../../../lib/authStore";
 import ConfirmDialog from "../../common/ConfirmDialog";
 import SettingsSection from "../SettingsSection";
 
 interface Props {
 	id: string;
-	onLogout?: () => void;
 }
 
-export default function AccountSection({ id, onLogout }: Props) {
+export default function AccountSection({ id }: Props) {
 	const [showConfirm, setShowConfirm] = useState(false);
 
 	const handleLogoutClick = () => {
@@ -16,7 +16,7 @@ export default function AccountSection({ id, onLogout }: Props) {
 
 	const handleConfirm = () => {
 		setShowConfirm(false);
-		onLogout?.();
+		authActions.logout();
 	};
 
 	const handleCancel = () => {

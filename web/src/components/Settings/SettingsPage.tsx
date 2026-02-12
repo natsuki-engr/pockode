@@ -5,10 +5,9 @@ import SettingsNav from "./SettingsNav";
 
 interface Props {
 	onBack: () => void;
-	onLogout: () => void;
 }
 
-export default function SettingsPage({ onBack, onLogout }: Props) {
+export default function SettingsPage({ onBack }: Props) {
 	const scrollContainerRef = useRef<HTMLElement>(null);
 	const sections = useSettingsSections();
 
@@ -32,11 +31,7 @@ export default function SettingsPage({ onBack, onLogout }: Props) {
 				<div className="mx-auto max-w-2xl px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
 					{sections.map((section) => {
 						const Component = section.component;
-						// Pass extra props for specific sections
-						const extraProps = section.id === "account" ? { onLogout } : {};
-						return (
-							<Component key={section.id} id={section.id} {...extraProps} />
-						);
+						return <Component key={section.id} id={section.id} />;
 					})}
 				</div>
 			</main>
